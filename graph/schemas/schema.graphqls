@@ -1,0 +1,148 @@
+scalar Time
+
+
+input CreateLeaderInput {
+  day: String!
+  email: String
+  location: String
+  name: String!
+  password: String!
+  phoneNumber: String!
+  types: String!
+}
+
+input CreateRegistrationInput {
+  absence: Boolean
+  lastComment: String
+  present: Boolean
+}
+
+input CreateStudentInput {
+  day: String!
+  email: String
+  name: String!
+  phoneNumber: String!
+}
+
+input LoginLeaderInput {
+  password: String!
+  phoneNumber: String!
+}
+
+type Leader {
+  Aggregations: LeaderAggregations!
+  createdAt: Time!
+  day: String!
+  email: String
+  id: String!
+  location: String!
+  name: String!
+  types: String!
+  phoneNumber: String!
+  refreshToken: String!
+  students: [Student!]!
+  token: String!
+  updatedAt: Time!
+}
+
+type LeaderAggregations {
+  averageStudentsPerLeader: Float!
+  maxStudentsPerLeader: Int!
+  totalLeaders: Int!
+}
+
+type LeaderRegistrationsDistribution {
+  leaderID: String!
+  registrationIDs: [String!]!
+}
+
+type Query {
+  GetgroupBy(groupByField: String!, tableName: String!): GroupByResults
+  GetRegistrations: [WeeklyResults!]!
+  currentWeekRegistrations: [Registration!]!
+  leader(id: String!): Leader
+  leaders(sort: SortInput, _GroupBy: [String!]): [Leader]
+  leadersByIds(id: [String]!): [Leader]
+  registrationsByLeader(leaderID: String!): [Registration]
+  student(id: String!): Student
+  students(sort: SortInput): [Student!]!
+  studentsByLeader(leaderId: ID!): [Student!]! 
+  studentRegistrations(studentId: String!): [Registration!]!
+}
+type Registration {
+  id: String!
+  createdAt: Time!
+  lastComment: String!
+  absence: Boolean!
+  leaderID: String!
+  present: Boolean!
+  studentID: String!
+}
+
+type Student {
+  createdAt: Time!
+  day: String!
+  email: String
+  id: String!
+  leaderID: String!
+  name: String!
+  phoneNumber: String!
+  registrations: [Registration]
+  updatedAt: Time!
+}
+
+type WeeklyResults {
+  date: DateInfo
+  registrations: [Registration]
+}
+
+type DateInfo {
+  month: String
+  weekOfMonth: Int
+}
+
+type GroupBy {
+  count: Int
+  key: String
+}
+
+type GroupByResults {
+  total: Int
+  groupByResults: [GroupBy]
+}
+
+
+input SortInput {
+  field: String!
+  order: String!
+}
+
+type Mutation {
+  CallerCentarUpdateRegister(input: CreateRegistrationInput!, leaderIDs: [String]!): [Registration!]!
+  createLeader(input: CreateLeaderInput!): Leader!
+  createRegistration(studentId: String!, input: CreateRegistrationInput!): Registration!
+  createStudent(input: CreateStudentInput!): Student!
+  deleteStudent(studentId: String!): Boolean!
+  daleteRegistration(registrationId: String!): Boolean!
+  distributeRegistrationsToLeaders(leaderIds: [String!]!): [LeaderRegistrationsDistribution]
+  loginLeader(input: LoginLeaderInput!): Leader!
+  updateLeader(input: updateLeaderInput!): Leader!
+  updateRegistration(input: CreateRegistrationInput!, registrationId: String!): Registration!
+  updateRegistrationByLeader(input: CreateRegistrationInput!, registrationID: String!, leaderID: String!): Registration
+  updateStudent(input: updateStudentInput!, studentId: String!): Student!
+}
+input updateLeaderInput {
+  name: String
+  email: String
+  phoneNumber: String
+  day: String
+  password: String
+  types: String
+  location: String
+}
+input updateStudentInput {
+  name: String
+  email: String
+  phoneNumber: String
+  day: String
+}
