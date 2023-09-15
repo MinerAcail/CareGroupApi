@@ -151,12 +151,22 @@ func (r *mutationResolver) CreateRegistration(ctx context.Context, studentID str
 	if err != nil {
 		return nil, fmt.Errorf("invalid studentID: %w", err)
 	}
+
 	// Create a new Registration object using the input data
 	registration := &model.Registration{
-		LastComment: *input.LastComment,
-		Absence:     *input.Absence,
-		Present:     *input.Present,
-		StudentID:   studentID,
+		StudentID: studentID,
+	}
+
+	if input.LastComment != nil {
+		registration.LastComment = *input.LastComment
+	}
+
+	if input.Absence != nil {
+		registration.Absence = *input.Absence
+	}
+
+	if input.Present != nil {
+		registration.Present = *input.Present
 	}
 
 	// Save the registration to the database
@@ -166,6 +176,47 @@ func (r *mutationResolver) CreateRegistration(ctx context.Context, studentID str
 
 	// Return the created registration
 	return registration, nil
+}
+
+// CreateRegistrationArray is the resolver for the createRegistrationArray field.
+func (r *mutationResolver) CreateRegistrationArray(ctx context.Context, input []*model.RegistrationArrayInput) ([]*model.Registration, error) {
+	createdRegistrations := []*model.Registration{}
+
+	for _, registrationInput := range input {
+		// Check if studentID is a valid UUID
+		_, err := uuid.Parse(registrationInput.StudentID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid studentID: %w", err)
+		}
+
+		// Create a new Registration object using the input data
+		registration := &model.Registration{
+			StudentID: registrationInput.StudentID,
+		}
+
+		if registrationInput.CreateInput.LastComment != nil {
+			registration.LastComment = *registrationInput.CreateInput.LastComment
+		}
+
+		if registrationInput.CreateInput.Absence != nil { 
+			
+			registration.Absence = *registrationInput.CreateInput.Absence
+		}
+
+		if registrationInput.CreateInput.Present != nil {
+			registration.Present = *registrationInput.CreateInput.Present
+		}
+
+		// Save the registration to the database
+		if err := r.DB.Create(registration).Error; err != nil {
+			return nil, err
+		}
+
+		createdRegistrations = append(createdRegistrations, registration)
+	}
+
+	// Return the created registrations
+	return createdRegistrations, nil
 }
 
 // CreateStudent is the resolver for the createStudent field.
@@ -265,7 +316,7 @@ func (r *mutationResolver) DistributeRegistrationsToLeaders(ctx context.Context,
 		leaderRegistrationMap[leaderID] = append(leaderRegistrationMap[leaderID], reg.ID.String())
 
 		// Update the registration's leader_id
-		reg.LeaderID = leaderID // Update this line with the correct field name from your Registration model
+		reg.LeaderID = &leaderID // Update this line with the correct field name from your Registration model
 		if err := r.DB.Save(&reg).Error; err != nil {
 			return nil, err
 		}
@@ -282,34 +333,6 @@ func (r *mutationResolver) DistributeRegistrationsToLeaders(ctx context.Context,
 	}
 
 	return leaderDistribution, nil
-}
-
-// LoginLeader is the resolver for the loginLeader field.
-func (r *mutationResolver) LoginLeader(ctx context.Context, input model.LoginLeaderInput) (*model.Leader, error) {
-	// Fetch the leader from the database based on the provided email
-	leader := &model.Leader{}
-	if err := r.DB.Where("phone_number = ?", input.PhoneNumber).First(leader).Error; err != nil {
-		return nil, fmt.Errorf("leader not found")
-	}
-
-	// Verify the provided password against the hashed password in the database
-	if err := helpers.VerifyPassword(leader.Password, input.Password); err != nil {
-		return nil, fmt.Errorf("invalid password")
-	}
-	// Generate a new token for the authenticated leader
-	token, err := helpers.GenerateToken(leader.Types, leader.ID.String())
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate token")
-	}
-	// Update the leader's token with the newly generated token
-	leader.Token = token
-
-	// Save the updated leader with the token to the database
-	if err := r.DB.Save(leader).Error; err != nil {
-		return nil, fmt.Errorf("failed to save leader's token to the database")
-	}
-
-	return leader, nil
 }
 
 // UpdateLeader is the resolver for the updateLeader field.
@@ -394,12 +417,11 @@ func (r *mutationResolver) UpdateRegistration(ctx context.Context, input model.C
 func (r *mutationResolver) UpdateRegistrationByLeader(ctx context.Context, input model.CreateRegistrationInput, registrationID string, leaderID string) (*model.Registration, error) {
 	register := &model.Registration{}
 
-	if err := r.DB.Where("id =?", registrationID).First(&register).Error; err != nil {
+	if err := r.DB.Where("id =?", registrationID).Find(&register).Preload("Student").Error; err != nil {
 		return nil, err
 	}
-
 	// Check if the registration is associated with the provided leader ID
-	if register.LeaderID != leaderID {
+	if *register.LeaderID != leaderID {
 		return nil, fmt.Errorf("registration is not associated with the provided leader")
 	}
 
@@ -411,7 +433,7 @@ func (r *mutationResolver) UpdateRegistrationByLeader(ctx context.Context, input
 	if input.Present != nil {
 		register.Present = *input.Present
 	}
-	if input.LastComment != nil {
+	if input.LastComment != nil && *input.LastComment != "" {
 		register.LastComment = *input.LastComment
 	}
 
@@ -466,6 +488,59 @@ func (r *mutationResolver) UpdateStudent(ctx context.Context, input model.Update
 
 	// Return the updated Student
 	return Student, nil
+}
+
+// LoginLeader is the resolver for the loginLeader field.
+func (r *mutationResolver) LoginLeader(ctx context.Context, input model.LoginLeaderInput) (*model.Leader, error) {
+	// Fetch the leader from the database based on the provided email
+	leader := &model.Leader{}
+	if err := r.DB.Where("phone_number = ?", input.PhoneNumber).First(leader).Error; err != nil {
+		return nil, fmt.Errorf("leader not found")
+	}
+
+	// Verify the provided password against the hashed password in the database
+	if err := helpers.VerifyPassword(leader.Password, input.Password); err != nil {
+		return nil, fmt.Errorf("invalid password")
+	}
+	// Generate a new token for the authenticated leader
+	token, err := helpers.GenerateToken(leader.Types, leader.ID.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token")
+	}
+	// Update the leader's token with the newly generated token
+	leader.Token = token
+
+	// Save the updated leader with the token to the database
+	if err := r.DB.Save(leader).Error; err != nil {
+		return nil, fmt.Errorf("failed to save leader's token to the database")
+	}
+
+	// Retrieve the CookieAccess object from the context
+	ca := middleware.GetCookieAccess(ctx)
+
+	// Set the generated token as a cookie using the CookieAccess object
+	ca.SetToken(token)
+
+	return leader, nil
+}
+
+// LogOut is the resolver for the logOut field.
+func (r *mutationResolver) LogOut(ctx context.Context) (bool, error) {
+	// Assuming you have access to the CookieAccess object from the context
+	cookieAccess := middleware.GetCookieAccess(ctx)
+
+	// Call the Logout method to clear the user's session cookie
+	err := cookieAccess.Logout()
+	if err != nil {
+		// Handle the error, e.g., log it or return an appropriate GraphQL error
+		return false, err
+	}
+
+	// You can also perform any other logout-related actions here,
+	// such as invalidating tokens, revoking access, etc.
+
+	// Return true to indicate a successful logout
+	return true, nil
 }
 
 // GetgroupBy is the resolver for the GetgroupBy field.
@@ -560,14 +635,14 @@ func (r *queryResolver) GetRegistrations(ctx context.Context) ([]*model.WeeklyRe
 // CurrentWeekRegistrations is the resolver for the currentWeekRegistrations field.
 func (r *queryResolver) CurrentWeekRegistrations(ctx context.Context) ([]*model.Registration, error) {
 	var registrations []*model.Registration
-	if err := r.DB.Find(&registrations).Error; err != nil {
+	if err := r.DB.Preload("Student").Find(&registrations).Error; err != nil {
 		return nil, err
 	}
 	currentWeekNumber := schemas.GetWeekNumber(time.Now()) // Get the current week number
 
 	var currentWeekRegistrations []*model.Registration
 	for _, reg := range registrations {
-		if reg.Absence && schemas.GetWeekNumber(reg.CreatedAt) == currentWeekNumber {
+		if schemas.GetWeekNumber(reg.CreatedAt) == currentWeekNumber {
 			currentWeekRegistrations = append(currentWeekRegistrations, reg)
 		}
 	}
@@ -596,10 +671,10 @@ func (r *queryResolver) Leader(ctx context.Context, id string) (*model.Leader, e
 // Leaders is the resolver for the leaders field.
 func (r *queryResolver) Leaders(ctx context.Context, sort *model.SortInput, groupBy []string) ([]*model.Leader, error) {
 	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
-	/* err := middleware.ExtractCTXinfo(ctx)
+	err := middleware.ExtractCTXinfo(ctx)
 	if err != nil {
 		return nil, err
-	} */
+	}
 	// Retrieve the list of leaders from the database
 	var leaders []*model.Leader
 
@@ -667,9 +742,13 @@ func (r *queryResolver) LeadersByIds(ctx context.Context, id []*string) ([]*mode
 // RegistrationsByLeader is the resolver for the registrationsByLeader field.
 func (r *queryResolver) RegistrationsByLeader(ctx context.Context, leaderID string) ([]*model.Registration, error) {
 	var registrations []*model.Registration
-	if err := r.DB.Where("leader_id = ?", leaderID).Find(&registrations).Error; err != nil {
+
+	// Preload the Leader and Student associations
+	if err := r.DB.Where("leader_id = ?", leaderID).Preload("Leader").Preload("Student").Find(&registrations).Error; err != nil {
+		fmt.Println("Error preloading associations:", err)
 		return nil, err
 	}
+
 	return registrations, nil
 }
 
@@ -687,6 +766,20 @@ func (r *queryResolver) Student(ctx context.Context, id string) (*model.Student,
 
 	// Return the student
 	return student, nil
+}
+
+// QueryStudentIds is the resolver for the QueryStudentIds field.
+func (r *queryResolver) QueryStudentIds(ctx context.Context, studentIds []*string) ([]*model.Student, error) {
+	// Create a slice to store the retrieved student records
+	var students []*model.Student
+
+	// Use Gorm to query the database based on the provided student IDs
+	if err := r.DB.Where("id IN (?)", studentIds).Find(&students).Error; err != nil {
+		return nil, err
+	}
+
+	// Return the retrieved student records
+	return students, nil
 }
 
 // Students is the resolver for the students field.
@@ -722,14 +815,14 @@ func (r *queryResolver) Students(ctx context.Context, sort *model.SortInput) ([]
 
 // StudentsByLeader is the resolver for the studentsByLeader field.
 func (r *queryResolver) StudentsByLeader(ctx context.Context, leaderID string) ([]*model.Student, error) {
-	/* err := middleware.ExtractCTXinfo(ctx)
+	err := middleware.ExtractCTXinfo(ctx)
 	if err != nil {
 		return nil, err
-	} */
+	}
 	// Retrieve the list of students by the provided leaderID from the database
 	var students []*model.Student
 	// Use Preload to fetch students with eager-loaded registrations
-	err := r.DB.Model(&model.Student{}).Where("leader_id = ?", leaderID).Preload("Registrations").Find(&students).Error
+	err = r.DB.Model(&model.Student{}).Where("leader_id = ?", leaderID).Preload("Registrations").Find(&students).Error
 	if err != nil {
 		return nil, err
 	}
@@ -752,16 +845,12 @@ func (r *queryResolver) StudentRegistrations(ctx context.Context, studentID stri
 // ID is the resolver for the id field.
 func (r *registrationResolver) ID(ctx context.Context, obj *model.Registration) (string, error) {
 	id := obj.ID.String()
-	// Log the ID
-
 	return id, nil
 }
 
 // ID is the resolver for the id field.
 func (r *studentResolver) ID(ctx context.Context, obj *model.Student) (string, error) {
 	id := obj.ID.String()
-	// Log the ID
-
 	return id, nil
 }
 

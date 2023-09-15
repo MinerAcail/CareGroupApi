@@ -30,12 +30,14 @@ type LeaderWithRegistrations struct {
 }
 type Registration struct {
 	ID            uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4()"`
+	CreatedAt   time.Time `json:"createdAt"`
 	LastComment string    `json:"lastComment"`
 	Absence     bool      `json:"absence"`
+	LeaderID    *string   `json:"leaderID,omitempty"`
+	Leader      *Leader   `json:"leader,omitempty"`
 	Present     bool      `json:"present"`
-	CreatedAt   time.Time `json:"createdAt"`
 	StudentID   string    `json:"studentID"`
-	LeaderID    string    `json:"leaderID"`
+	Student     *Student  `json:"student,omitempty"`
 }
 
 type Student struct {

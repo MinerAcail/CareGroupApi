@@ -45,6 +45,11 @@ type LoginLeaderInput struct {
 	PhoneNumber string `json:"phoneNumber"`
 }
 
+type RegistrationArrayInput struct {
+	StudentID   string                   `json:"studentId"`
+	CreateInput *CreateRegistrationInput `json:"createInput"`
+}
+
 type SortInput struct {
 	Field string `json:"field"`
 	Order string `json:"order"`

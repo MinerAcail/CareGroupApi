@@ -56,14 +56,14 @@ func main() {
 	// Configure CORS
 	corsConfig := cors.New(cors.Options{
 		// { "http://localhost:5173", "http://yourdomain.com", "https://anotherdomain.com"},
-		AllowedOrigins:   []string{"*"}, // You can configure specific origins here
+		AllowedOrigins:   []string{"http://localhost:5173"}, // You can configure specific origins here
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,
 	})
 	router.Use(corsConfig.Handler) // Use the cors handler
 
-	router.Use(middleware.AuthenticationMiddleware)
+	router.Use(middleware.Middleware)
 
 	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	router.Handle("/query", server)

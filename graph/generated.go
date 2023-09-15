@@ -95,10 +95,12 @@ type ComplexityRoot struct {
 		CallerCentarUpdateRegister       func(childComplexity int, input model.CreateRegistrationInput, leaderIDs []*string) int
 		CreateLeader                     func(childComplexity int, input model.CreateLeaderInput) int
 		CreateRegistration               func(childComplexity int, studentID string, input model.CreateRegistrationInput) int
+		CreateRegistrationArray          func(childComplexity int, input []*model.RegistrationArrayInput) int
 		CreateStudent                    func(childComplexity int, input model.CreateStudentInput) int
 		DaleteRegistration               func(childComplexity int, registrationID string) int
 		DeleteStudent                    func(childComplexity int, studentID string) int
 		DistributeRegistrationsToLeaders func(childComplexity int, leaderIds []string) int
+		LogOut                           func(childComplexity int) int
 		LoginLeader                      func(childComplexity int, input model.LoginLeaderInput) int
 		UpdateLeader                     func(childComplexity int, input model.UpdateLeaderInput) int
 		UpdateRegistration               func(childComplexity int, input model.CreateRegistrationInput, registrationID string) int
@@ -113,6 +115,7 @@ type ComplexityRoot struct {
 		Leader                   func(childComplexity int, id string) int
 		Leaders                  func(childComplexity int, sort *model.SortInput, groupBy []string) int
 		LeadersByIds             func(childComplexity int, id []*string) int
+		QueryStudentIds          func(childComplexity int, studentIds []*string) int
 		RegistrationsByLeader    func(childComplexity int, leaderID string) int
 		Student                  func(childComplexity int, id string) int
 		StudentRegistrations     func(childComplexity int, studentID string) int
@@ -125,8 +128,10 @@ type ComplexityRoot struct {
 		CreatedAt   func(childComplexity int) int
 		ID          func(childComplexity int) int
 		LastComment func(childComplexity int) int
+		Leader      func(childComplexity int) int
 		LeaderID    func(childComplexity int) int
 		Present     func(childComplexity int) int
+		Student     func(childComplexity int) int
 		StudentID   func(childComplexity int) int
 	}
 
@@ -157,15 +162,17 @@ type MutationResolver interface {
 	CallerCentarUpdateRegister(ctx context.Context, input model.CreateRegistrationInput, leaderIDs []*string) ([]*model.Registration, error)
 	CreateLeader(ctx context.Context, input model.CreateLeaderInput) (*model.Leader, error)
 	CreateRegistration(ctx context.Context, studentID string, input model.CreateRegistrationInput) (*model.Registration, error)
+	CreateRegistrationArray(ctx context.Context, input []*model.RegistrationArrayInput) ([]*model.Registration, error)
 	CreateStudent(ctx context.Context, input model.CreateStudentInput) (*model.Student, error)
 	DeleteStudent(ctx context.Context, studentID string) (bool, error)
 	DaleteRegistration(ctx context.Context, registrationID string) (bool, error)
 	DistributeRegistrationsToLeaders(ctx context.Context, leaderIds []string) ([]*model.LeaderRegistrationsDistribution, error)
-	LoginLeader(ctx context.Context, input model.LoginLeaderInput) (*model.Leader, error)
 	UpdateLeader(ctx context.Context, input model.UpdateLeaderInput) (*model.Leader, error)
 	UpdateRegistration(ctx context.Context, input model.CreateRegistrationInput, registrationID string) (*model.Registration, error)
 	UpdateRegistrationByLeader(ctx context.Context, input model.CreateRegistrationInput, registrationID string, leaderID string) (*model.Registration, error)
 	UpdateStudent(ctx context.Context, input model.UpdateStudentInput, studentID string) (*model.Student, error)
+	LoginLeader(ctx context.Context, input model.LoginLeaderInput) (*model.Leader, error)
+	LogOut(ctx context.Context) (bool, error)
 }
 type QueryResolver interface {
 	GetgroupBy(ctx context.Context, groupByField string, tableName string) (*model.GroupByResults, error)
@@ -176,6 +183,7 @@ type QueryResolver interface {
 	LeadersByIds(ctx context.Context, id []*string) ([]*model.Leader, error)
 	RegistrationsByLeader(ctx context.Context, leaderID string) ([]*model.Registration, error)
 	Student(ctx context.Context, id string) (*model.Student, error)
+	QueryStudentIds(ctx context.Context, studentIds []*string) ([]*model.Student, error)
 	Students(ctx context.Context, sort *model.SortInput) ([]*model.Student, error)
 	StudentsByLeader(ctx context.Context, leaderID string) ([]*model.Student, error)
 	StudentRegistrations(ctx context.Context, studentID string) ([]*model.Registration, error)
@@ -406,6 +414,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreateRegistration(childComplexity, args["studentId"].(string), args["input"].(model.CreateRegistrationInput)), true
 
+	case "Mutation.createRegistrationArray":
+		if e.complexity.Mutation.CreateRegistrationArray == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createRegistrationArray_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateRegistrationArray(childComplexity, args["input"].([]*model.RegistrationArrayInput)), true
+
 	case "Mutation.createStudent":
 		if e.complexity.Mutation.CreateStudent == nil {
 			break
@@ -453,6 +473,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DistributeRegistrationsToLeaders(childComplexity, args["leaderIds"].([]string)), true
+
+	case "Mutation.logOut":
+		if e.complexity.Mutation.LogOut == nil {
+			break
+		}
+
+		return e.complexity.Mutation.LogOut(childComplexity), true
 
 	case "Mutation.loginLeader":
 		if e.complexity.Mutation.LoginLeader == nil {
@@ -576,6 +603,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.LeadersByIds(childComplexity, args["id"].([]*string)), true
 
+	case "Query.QueryStudentIds":
+		if e.complexity.Query.QueryStudentIds == nil {
+			break
+		}
+
+		args, err := ec.field_Query_QueryStudentIds_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.QueryStudentIds(childComplexity, args["studentIds"].([]*string)), true
+
 	case "Query.registrationsByLeader":
 		if e.complexity.Query.RegistrationsByLeader == nil {
 			break
@@ -664,6 +703,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Registration.LastComment(childComplexity), true
 
+	case "Registration.leader":
+		if e.complexity.Registration.Leader == nil {
+			break
+		}
+
+		return e.complexity.Registration.Leader(childComplexity), true
+
 	case "Registration.leaderID":
 		if e.complexity.Registration.LeaderID == nil {
 			break
@@ -677,6 +723,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Registration.Present(childComplexity), true
+
+	case "Registration.student":
+		if e.complexity.Registration.Student == nil {
+			break
+		}
+
+		return e.complexity.Registration.Student(childComplexity), true
 
 	case "Registration.studentID":
 		if e.complexity.Registration.StudentID == nil {
@@ -774,6 +827,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateRegistrationInput,
 		ec.unmarshalInputCreateStudentInput,
 		ec.unmarshalInputLoginLeaderInput,
+		ec.unmarshalInputRegistrationArrayInput,
 		ec.unmarshalInputSortInput,
 		ec.unmarshalInputupdateLeaderInput,
 		ec.unmarshalInputupdateStudentInput,
@@ -924,6 +978,21 @@ func (ec *executionContext) field_Mutation_createLeader_args(ctx context.Context
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNCreateLeaderInput2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCreateLeaderInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createRegistrationArray_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []*model.RegistrationArrayInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalORegistrationArrayInput2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationArrayInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1148,6 +1217,21 @@ func (ec *executionContext) field_Query_GetgroupBy_args(ctx context.Context, raw
 		}
 	}
 	args["tableName"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_QueryStudentIds_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []*string
+	if tmp, ok := rawArgs["studentIds"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("studentIds"))
+		arg0, err = ec.unmarshalNString2ᚕᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["studentIds"] = arg0
 	return args, nil
 }
 
@@ -2451,10 +2535,14 @@ func (ec *executionContext) fieldContext_Mutation_CallerCentarUpdateRegister(ctx
 				return ec.fieldContext_Registration_absence(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
 			case "present":
 				return ec.fieldContext_Registration_present(ctx, field)
 			case "studentID":
 				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
 		},
@@ -2605,10 +2693,14 @@ func (ec *executionContext) fieldContext_Mutation_createRegistration(ctx context
 				return ec.fieldContext_Registration_absence(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
 			case "present":
 				return ec.fieldContext_Registration_present(ctx, field)
 			case "studentID":
 				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
 		},
@@ -2621,6 +2713,81 @@ func (ec *executionContext) fieldContext_Mutation_createRegistration(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createRegistration_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createRegistrationArray(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createRegistrationArray(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateRegistrationArray(rctx, fc.Args["input"].([]*model.RegistrationArrayInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Registration)
+	fc.Result = res
+	return ec.marshalNRegistration2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistration(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createRegistrationArray(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Registration_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Registration_createdAt(ctx, field)
+			case "lastComment":
+				return ec.fieldContext_Registration_lastComment(ctx, field)
+			case "absence":
+				return ec.fieldContext_Registration_absence(ctx, field)
+			case "leaderID":
+				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
+			case "present":
+				return ec.fieldContext_Registration_present(ctx, field)
+			case "studentID":
+				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createRegistrationArray_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2870,89 +3037,6 @@ func (ec *executionContext) fieldContext_Mutation_distributeRegistrationsToLeade
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_loginLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_loginLeader(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().LoginLeader(rctx, fc.Args["input"].(model.LoginLeaderInput))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(*model.Leader)
-	fc.Result = res
-	return ec.marshalNLeader2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐLeader(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_loginLeader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "Aggregations":
-				return ec.fieldContext_Leader_Aggregations(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Leader_createdAt(ctx, field)
-			case "day":
-				return ec.fieldContext_Leader_day(ctx, field)
-			case "email":
-				return ec.fieldContext_Leader_email(ctx, field)
-			case "id":
-				return ec.fieldContext_Leader_id(ctx, field)
-			case "location":
-				return ec.fieldContext_Leader_location(ctx, field)
-			case "name":
-				return ec.fieldContext_Leader_name(ctx, field)
-			case "types":
-				return ec.fieldContext_Leader_types(ctx, field)
-			case "phoneNumber":
-				return ec.fieldContext_Leader_phoneNumber(ctx, field)
-			case "refreshToken":
-				return ec.fieldContext_Leader_refreshToken(ctx, field)
-			case "students":
-				return ec.fieldContext_Leader_students(ctx, field)
-			case "token":
-				return ec.fieldContext_Leader_token(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Leader_updatedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Leader", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_loginLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_updateLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_updateLeader(ctx, field)
 	if err != nil {
@@ -3085,10 +3169,14 @@ func (ec *executionContext) fieldContext_Mutation_updateRegistration(ctx context
 				return ec.fieldContext_Registration_absence(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
 			case "present":
 				return ec.fieldContext_Registration_present(ctx, field)
 			case "studentID":
 				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
 		},
@@ -3153,10 +3241,14 @@ func (ec *executionContext) fieldContext_Mutation_updateRegistrationByLeader(ctx
 				return ec.fieldContext_Registration_absence(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
 			case "present":
 				return ec.fieldContext_Registration_present(ctx, field)
 			case "studentID":
 				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
 		},
@@ -3246,6 +3338,133 @@ func (ec *executionContext) fieldContext_Mutation_updateStudent(ctx context.Cont
 	if fc.Args, err = ec.field_Mutation_updateStudent_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_loginLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_loginLeader(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().LoginLeader(rctx, fc.Args["input"].(model.LoginLeaderInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Leader)
+	fc.Result = res
+	return ec.marshalNLeader2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐLeader(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_loginLeader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Aggregations":
+				return ec.fieldContext_Leader_Aggregations(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Leader_createdAt(ctx, field)
+			case "day":
+				return ec.fieldContext_Leader_day(ctx, field)
+			case "email":
+				return ec.fieldContext_Leader_email(ctx, field)
+			case "id":
+				return ec.fieldContext_Leader_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Leader_location(ctx, field)
+			case "name":
+				return ec.fieldContext_Leader_name(ctx, field)
+			case "types":
+				return ec.fieldContext_Leader_types(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Leader_phoneNumber(ctx, field)
+			case "refreshToken":
+				return ec.fieldContext_Leader_refreshToken(ctx, field)
+			case "students":
+				return ec.fieldContext_Leader_students(ctx, field)
+			case "token":
+				return ec.fieldContext_Leader_token(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Leader_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Leader", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_loginLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_logOut(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_logOut(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().LogOut(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_logOut(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -3407,10 +3626,14 @@ func (ec *executionContext) fieldContext_Query_currentWeekRegistrations(ctx cont
 				return ec.fieldContext_Registration_absence(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
 			case "present":
 				return ec.fieldContext_Registration_present(ctx, field)
 			case "studentID":
 				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
 		},
@@ -3704,10 +3927,14 @@ func (ec *executionContext) fieldContext_Query_registrationsByLeader(ctx context
 				return ec.fieldContext_Registration_absence(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
 			case "present":
 				return ec.fieldContext_Registration_present(ctx, field)
 			case "studentID":
 				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
 		},
@@ -3792,6 +4019,81 @@ func (ec *executionContext) fieldContext_Query_student(ctx context.Context, fiel
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_student_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_QueryStudentIds(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_QueryStudentIds(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().QueryStudentIds(rctx, fc.Args["studentIds"].([]*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Student)
+	fc.Result = res
+	return ec.marshalNStudent2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐStudent(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_QueryStudentIds(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "createdAt":
+				return ec.fieldContext_Student_createdAt(ctx, field)
+			case "day":
+				return ec.fieldContext_Student_day(ctx, field)
+			case "email":
+				return ec.fieldContext_Student_email(ctx, field)
+			case "id":
+				return ec.fieldContext_Student_id(ctx, field)
+			case "leaderID":
+				return ec.fieldContext_Student_leaderID(ctx, field)
+			case "name":
+				return ec.fieldContext_Student_name(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Student_phoneNumber(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Student_registrations(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Student_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Student", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_QueryStudentIds_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -3997,10 +4299,14 @@ func (ec *executionContext) fieldContext_Query_studentRegistrations(ctx context.
 				return ec.fieldContext_Registration_absence(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
 			case "present":
 				return ec.fieldContext_Registration_present(ctx, field)
 			case "studentID":
 				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
 		},
@@ -4345,14 +4651,11 @@ func (ec *executionContext) _Registration_leaderID(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(*string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Registration_leaderID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4363,6 +4666,75 @@ func (ec *executionContext) fieldContext_Registration_leaderID(ctx context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Registration_leader(ctx context.Context, field graphql.CollectedField, obj *model.Registration) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Registration_leader(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Leader, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Leader)
+	fc.Result = res
+	return ec.marshalOLeader2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐLeader(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Registration_leader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Registration",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Aggregations":
+				return ec.fieldContext_Leader_Aggregations(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Leader_createdAt(ctx, field)
+			case "day":
+				return ec.fieldContext_Leader_day(ctx, field)
+			case "email":
+				return ec.fieldContext_Leader_email(ctx, field)
+			case "id":
+				return ec.fieldContext_Leader_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Leader_location(ctx, field)
+			case "name":
+				return ec.fieldContext_Leader_name(ctx, field)
+			case "types":
+				return ec.fieldContext_Leader_types(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Leader_phoneNumber(ctx, field)
+			case "refreshToken":
+				return ec.fieldContext_Leader_refreshToken(ctx, field)
+			case "students":
+				return ec.fieldContext_Leader_students(ctx, field)
+			case "token":
+				return ec.fieldContext_Leader_token(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Leader_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Leader", field.Name)
 		},
 	}
 	return fc, nil
@@ -4451,6 +4823,67 @@ func (ec *executionContext) fieldContext_Registration_studentID(ctx context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Registration_student(ctx context.Context, field graphql.CollectedField, obj *model.Registration) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Registration_student(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Student, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Student)
+	fc.Result = res
+	return ec.marshalOStudent2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐStudent(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Registration_student(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Registration",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "createdAt":
+				return ec.fieldContext_Student_createdAt(ctx, field)
+			case "day":
+				return ec.fieldContext_Student_day(ctx, field)
+			case "email":
+				return ec.fieldContext_Student_email(ctx, field)
+			case "id":
+				return ec.fieldContext_Student_id(ctx, field)
+			case "leaderID":
+				return ec.fieldContext_Student_leaderID(ctx, field)
+			case "name":
+				return ec.fieldContext_Student_name(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Student_phoneNumber(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Student_registrations(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Student_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Student", field.Name)
 		},
 	}
 	return fc, nil
@@ -4807,10 +5240,14 @@ func (ec *executionContext) fieldContext_Student_registrations(ctx context.Conte
 				return ec.fieldContext_Registration_absence(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
 			case "present":
 				return ec.fieldContext_Registration_present(ctx, field)
 			case "studentID":
 				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
 		},
@@ -4955,10 +5392,14 @@ func (ec *executionContext) fieldContext_WeeklyResults_registrations(ctx context
 				return ec.fieldContext_Registration_absence(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
 			case "present":
 				return ec.fieldContext_Registration_present(ctx, field)
 			case "studentID":
 				return ec.fieldContext_Registration_studentID(ctx, field)
+			case "student":
+				return ec.fieldContext_Registration_student(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
 		},
@@ -6963,6 +7404,44 @@ func (ec *executionContext) unmarshalInputLoginLeaderInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRegistrationArrayInput(ctx context.Context, obj interface{}) (model.RegistrationArrayInput, error) {
+	var it model.RegistrationArrayInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"studentId", "createInput"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "studentId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("studentId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StudentID = data
+		case "createInput":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createInput"))
+			data, err := ec.unmarshalNCreateRegistrationInput2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCreateRegistrationInput(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CreateInput = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputSortInput(ctx context.Context, obj interface{}) (model.SortInput, error) {
 	var it model.SortInput
 	asMap := map[string]interface{}{}
@@ -7553,6 +8032,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createRegistrationArray":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createRegistrationArray(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createStudent":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createStudent(ctx, field)
@@ -7578,13 +8064,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_distributeRegistrationsToLeaders(ctx, field)
 			})
-		case "loginLeader":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_loginLeader(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "updateLeader":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateLeader(ctx, field)
@@ -7606,6 +8085,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateStudent":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateStudent(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "loginLeader":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_loginLeader(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "logOut":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_logOut(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -7810,6 +8303,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "QueryStudentIds":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_QueryStudentIds(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "students":
 			field := field
 
@@ -7971,9 +8486,8 @@ func (ec *executionContext) _Registration(ctx context.Context, sel ast.Selection
 			}
 		case "leaderID":
 			out.Values[i] = ec._Registration_leaderID(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
+		case "leader":
+			out.Values[i] = ec._Registration_leader(ctx, field, obj)
 		case "present":
 			out.Values[i] = ec._Registration_present(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -7984,6 +8498,8 @@ func (ec *executionContext) _Registration(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "student":
+			out.Values[i] = ec._Registration_student(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -8500,6 +9016,11 @@ func (ec *executionContext) unmarshalNCreateRegistrationInput2githubᚗcomᚋkob
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNCreateRegistrationInput2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCreateRegistrationInput(ctx context.Context, v interface{}) (*model.CreateRegistrationInput, error) {
+	res, err := ec.unmarshalInputCreateRegistrationInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCreateStudentInput2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCreateStudentInput(ctx context.Context, v interface{}) (model.CreateStudentInput, error) {
 	res, err := ec.unmarshalInputCreateStudentInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -8600,6 +9121,44 @@ func (ec *executionContext) unmarshalNLoginLeaderInput2githubᚗcomᚋkobbiᚋvb
 
 func (ec *executionContext) marshalNRegistration2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistration(ctx context.Context, sel ast.SelectionSet, v model.Registration) graphql.Marshaler {
 	return ec._Registration(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRegistration2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistration(ctx context.Context, sel ast.SelectionSet, v []*model.Registration) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalORegistration2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistration(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
 }
 
 func (ec *executionContext) marshalNRegistration2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Registration) graphql.Marshaler {
@@ -8731,6 +9290,44 @@ func (ec *executionContext) marshalNString2ᚕᚖstring(ctx context.Context, sel
 
 func (ec *executionContext) marshalNStudent2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐStudent(ctx context.Context, sel ast.SelectionSet, v model.Student) graphql.Marshaler {
 	return ec._Student(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNStudent2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐStudent(ctx context.Context, sel ast.SelectionSet, v []*model.Student) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOStudent2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐStudent(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
 }
 
 func (ec *executionContext) marshalNStudent2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐStudentᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Student) graphql.Marshaler {
@@ -9365,6 +9962,34 @@ func (ec *executionContext) marshalORegistration2ᚖgithubᚗcomᚋkobbiᚋvbcia
 		return graphql.Null
 	}
 	return ec._Registration(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalORegistrationArrayInput2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationArrayInput(ctx context.Context, v interface{}) ([]*model.RegistrationArrayInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*model.RegistrationArrayInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalORegistrationArrayInput2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationArrayInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalORegistrationArrayInput2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationArrayInput(ctx context.Context, v interface{}) (*model.RegistrationArrayInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputRegistrationArrayInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOSortInput2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐSortInput(ctx context.Context, v interface{}) (*model.SortInput, error) {

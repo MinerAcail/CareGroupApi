@@ -15,6 +15,7 @@ input CreateRegistrationInput {
   absence: Boolean
   lastComment: String
   present: Boolean
+  
 }
 
 input CreateStudentInput {
@@ -65,6 +66,7 @@ type Query {
   leadersByIds(id: [String]!): [Leader]
   registrationsByLeader(leaderID: String!): [Registration]
   student(id: String!): Student
+  QueryStudentIds(studentIds: [String]!): [Student]!
   students(sort: SortInput): [Student!]!
   studentsByLeader(leaderId: ID!): [Student!]! 
   studentRegistrations(studentId: String!): [Registration!]!
@@ -74,9 +76,11 @@ type Registration {
   createdAt: Time!
   lastComment: String!
   absence: Boolean!
-  leaderID: String!
+  leaderID: String
+  leader: Leader
   present: Boolean!
   studentID: String!
+  student: Student
 }
 
 type Student {
@@ -116,20 +120,26 @@ input SortInput {
   field: String!
   order: String!
 }
+input RegistrationArrayInput {
+  studentId: String!
+  createInput: CreateRegistrationInput!
+}
 
 type Mutation {
   CallerCentarUpdateRegister(input: CreateRegistrationInput!, leaderIDs: [String]!): [Registration!]!
   createLeader(input: CreateLeaderInput!): Leader!
   createRegistration(studentId: String!, input: CreateRegistrationInput!): Registration!
+  createRegistrationArray( input: [RegistrationArrayInput]): [Registration]!
   createStudent(input: CreateStudentInput!): Student!
   deleteStudent(studentId: String!): Boolean!
   daleteRegistration(registrationId: String!): Boolean!
   distributeRegistrationsToLeaders(leaderIds: [String!]!): [LeaderRegistrationsDistribution]
-  loginLeader(input: LoginLeaderInput!): Leader!
   updateLeader(input: updateLeaderInput!): Leader!
   updateRegistration(input: CreateRegistrationInput!, registrationId: String!): Registration!
   updateRegistrationByLeader(input: CreateRegistrationInput!, registrationID: String!, leaderID: String!): Registration
   updateStudent(input: updateStudentInput!, studentId: String!): Student!
+  loginLeader(input: LoginLeaderInput!): Leader!
+  logOut: Boolean!
 }
 input updateLeaderInput {
   name: String
