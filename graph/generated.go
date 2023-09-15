@@ -110,6 +110,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		CurrentWeekRegistrations func(childComplexity int) int
+		GetCaller                func(childComplexity int) int
 		GetRegistrations         func(childComplexity int) int
 		GetgroupBy               func(childComplexity int, groupByField string, tableName string) int
 		Leader                   func(childComplexity int, id string) int
@@ -141,6 +142,7 @@ type ComplexityRoot struct {
 		Email         func(childComplexity int) int
 		ID            func(childComplexity int) int
 		LeaderID      func(childComplexity int) int
+		Location      func(childComplexity int) int
 		Name          func(childComplexity int) int
 		PhoneNumber   func(childComplexity int) int
 		Registrations func(childComplexity int) int
@@ -180,6 +182,7 @@ type QueryResolver interface {
 	CurrentWeekRegistrations(ctx context.Context) ([]*model.Registration, error)
 	Leader(ctx context.Context, id string) (*model.Leader, error)
 	Leaders(ctx context.Context, sort *model.SortInput, groupBy []string) ([]*model.Leader, error)
+	GetCaller(ctx context.Context) ([]*model.Leader, error)
 	LeadersByIds(ctx context.Context, id []*string) ([]*model.Leader, error)
 	RegistrationsByLeader(ctx context.Context, leaderID string) ([]*model.Registration, error)
 	Student(ctx context.Context, id string) (*model.Student, error)
@@ -548,6 +551,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.CurrentWeekRegistrations(childComplexity), true
 
+	case "Query.GetCaller":
+		if e.complexity.Query.GetCaller == nil {
+			break
+		}
+
+		return e.complexity.Query.GetCaller(childComplexity), true
+
 	case "Query.GetRegistrations":
 		if e.complexity.Query.GetRegistrations == nil {
 			break
@@ -772,6 +782,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Student.LeaderID(childComplexity), true
+
+	case "Student.location":
+		if e.complexity.Student.Location == nil {
+			break
+		}
+
+		return e.complexity.Student.Location(childComplexity), true
 
 	case "Student.name":
 		if e.complexity.Student.Name == nil {
@@ -2161,6 +2178,8 @@ func (ec *executionContext) fieldContext_Leader_students(ctx context.Context, fi
 				return ec.fieldContext_Student_email(ctx, field)
 			case "id":
 				return ec.fieldContext_Student_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Student_location(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Student_leaderID(ctx, field)
 			case "name":
@@ -2841,6 +2860,8 @@ func (ec *executionContext) fieldContext_Mutation_createStudent(ctx context.Cont
 				return ec.fieldContext_Student_email(ctx, field)
 			case "id":
 				return ec.fieldContext_Student_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Student_location(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Student_leaderID(ctx, field)
 			case "name":
@@ -3314,6 +3335,8 @@ func (ec *executionContext) fieldContext_Mutation_updateStudent(ctx context.Cont
 				return ec.fieldContext_Student_email(ctx, field)
 			case "id":
 				return ec.fieldContext_Student_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Student_location(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Student_leaderID(ctx, field)
 			case "name":
@@ -3801,6 +3824,75 @@ func (ec *executionContext) fieldContext_Query_leaders(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_GetCaller(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetCaller(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetCaller(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Leader)
+	fc.Result = res
+	return ec.marshalOLeader2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐLeader(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetCaller(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "Aggregations":
+				return ec.fieldContext_Leader_Aggregations(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Leader_createdAt(ctx, field)
+			case "day":
+				return ec.fieldContext_Leader_day(ctx, field)
+			case "email":
+				return ec.fieldContext_Leader_email(ctx, field)
+			case "id":
+				return ec.fieldContext_Leader_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Leader_location(ctx, field)
+			case "name":
+				return ec.fieldContext_Leader_name(ctx, field)
+			case "types":
+				return ec.fieldContext_Leader_types(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Leader_phoneNumber(ctx, field)
+			case "refreshToken":
+				return ec.fieldContext_Leader_refreshToken(ctx, field)
+			case "students":
+				return ec.fieldContext_Leader_students(ctx, field)
+			case "token":
+				return ec.fieldContext_Leader_token(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Leader_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Leader", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_leadersByIds(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_leadersByIds(ctx, field)
 	if err != nil {
@@ -3997,6 +4089,8 @@ func (ec *executionContext) fieldContext_Query_student(ctx context.Context, fiel
 				return ec.fieldContext_Student_email(ctx, field)
 			case "id":
 				return ec.fieldContext_Student_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Student_location(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Student_leaderID(ctx, field)
 			case "name":
@@ -4072,6 +4166,8 @@ func (ec *executionContext) fieldContext_Query_QueryStudentIds(ctx context.Conte
 				return ec.fieldContext_Student_email(ctx, field)
 			case "id":
 				return ec.fieldContext_Student_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Student_location(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Student_leaderID(ctx, field)
 			case "name":
@@ -4147,6 +4243,8 @@ func (ec *executionContext) fieldContext_Query_students(ctx context.Context, fie
 				return ec.fieldContext_Student_email(ctx, field)
 			case "id":
 				return ec.fieldContext_Student_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Student_location(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Student_leaderID(ctx, field)
 			case "name":
@@ -4222,6 +4320,8 @@ func (ec *executionContext) fieldContext_Query_studentsByLeader(ctx context.Cont
 				return ec.fieldContext_Student_email(ctx, field)
 			case "id":
 				return ec.fieldContext_Student_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Student_location(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Student_leaderID(ctx, field)
 			case "name":
@@ -4872,6 +4972,8 @@ func (ec *executionContext) fieldContext_Registration_student(ctx context.Contex
 				return ec.fieldContext_Student_email(ctx, field)
 			case "id":
 				return ec.fieldContext_Student_id(ctx, field)
+			case "location":
+				return ec.fieldContext_Student_location(ctx, field)
 			case "leaderID":
 				return ec.fieldContext_Student_leaderID(ctx, field)
 			case "name":
@@ -5055,6 +5157,50 @@ func (ec *executionContext) fieldContext_Student_id(ctx context.Context, field g
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Student_location(ctx context.Context, field graphql.CollectedField, obj *model.Student) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Student_location(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Location, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Student_location(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Student",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -8246,6 +8392,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetCaller":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetCaller(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "leadersByIds":
 			field := field
 
@@ -8582,6 +8747,11 @@ func (ec *executionContext) _Student(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "location":
+			out.Values[i] = ec._Student_location(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "leaderID":
 			out.Values[i] = ec._Student_leaderID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

@@ -45,6 +45,7 @@ type Student struct {
 	Name          string          `json:"name"`
 	Email         *string         `json:"email,omitempty"`
 	PhoneNumber   string          `json:"phoneNumber"`
+	Location      string          `json:"location"`
 	Day           string          `json:"day"`
 	LeaderID      string          `json:"leaderID"`
 	Registrations []*Registration `json:"registrations,omitempty"`

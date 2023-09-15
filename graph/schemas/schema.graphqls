@@ -62,7 +62,10 @@ type Query {
   GetRegistrations: [WeeklyResults!]!
   currentWeekRegistrations: [Registration!]!
   leader(id: String!): Leader
+
   leaders(sort: SortInput, _GroupBy: [String!]): [Leader]
+  GetCaller: [Leader]
+
   leadersByIds(id: [String]!): [Leader]
   registrationsByLeader(leaderID: String!): [Registration]
   student(id: String!): Student
@@ -88,6 +91,8 @@ type Student {
   day: String!
   email: String
   id: String!
+  location: String!
+
   leaderID: String!
   name: String!
   phoneNumber: String!

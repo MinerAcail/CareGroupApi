@@ -198,8 +198,8 @@ func (r *mutationResolver) CreateRegistrationArray(ctx context.Context, input []
 			registration.LastComment = *registrationInput.CreateInput.LastComment
 		}
 
-		if registrationInput.CreateInput.Absence != nil { 
-			
+		if registrationInput.CreateInput.Absence != nil {
+
 			registration.Absence = *registrationInput.CreateInput.Absence
 		}
 
@@ -716,6 +716,18 @@ func (r *queryResolver) Leaders(ctx context.Context, sort *model.SortInput, grou
 	}
 
 	// Return the list of leaders with populated students
+	return leaders, nil
+}
+
+// GetCaller is the resolver for the GetCaller field.
+func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Leader, error) {
+	var leaders []*model.Leader
+
+	// Query the database to retrieve leaders with Types equal to "Caller" or "Admin"
+	if err := r.DB.Where("types IN (?)", []string{"Caller"}).Find(&leaders).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch leaders: %w", err)
+	}
+
 	return leaders, nil
 }
 
