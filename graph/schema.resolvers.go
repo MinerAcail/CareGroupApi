@@ -8,7 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -20,143 +20,577 @@ import (
 	"gorm.io/gorm"
 )
 
-// Aggregations is the resolver for the Aggregations field.
-func (r *leaderResolver) Aggregations(ctx context.Context, obj *model.Leader) (*model.LeaderAggregations, error) {
-	// Calculate the aggregations for the leader
-
-	totalStudents := len(obj.Students)
-
-	// Calculate max students per leader
-	maxStudentsPerLeader := 0
-	for _, student := range obj.Students {
-		if len(student.Registrations) > maxStudentsPerLeader {
-			maxStudentsPerLeader = len(student.Registrations)
-		}
-	}
-
-	return &model.LeaderAggregations{
-		TotalLeaders:             1, // Since we're aggregating for one leader at a time
-		AverageStudentsPerLeader: float64(totalStudents) / float64(1),
-		MaxStudentsPerLeader:     maxStudentsPerLeader,
-	}, nil
-}
-
 // ID is the resolver for the id field.
-func (r *leaderResolver) ID(ctx context.Context, obj *model.Leader) (string, error) {
+func (r *churchResolver) ID(ctx context.Context, obj *model.Church) (string, error) {
 	id := obj.ID.String()
 	return id, nil
 }
 
-// CallerCentarUpdateRegister is the resolver for the CallerCentarUpdateRegister field.
-func (r *mutationResolver) CallerCentarUpdateRegister(ctx context.Context, input model.CreateRegistrationInput, leaderIDs []*string) ([]*model.Registration, error) {
-	// Retrieve the current week's registrations
-	/* currentWeekRegistrations, err := r.getCurrentWeekRegistrations()
-	if err != nil {
-		return nil, err
-	}
-	for _, reg := range currentWeekRegistrations {
-		log.Printf("Registration ID: %s, CallerID: %v", reg.ID, reg.CallerID)
-	} */
-	// Shuffle the registrations
-	// shuffledRegistrations := shuffleRegistrations(currentWeekRegistrations)
-
-	updatedRegistrations := []*model.Registration{}
-
-	/* // Distribute shuffled registrations to leaders
-	for _, leaderID := range leaderIDs {
-		leader, err := r.getLeaderByID(*leaderID)
-		if err != nil {
-			return nil, err
-		}
-
-		// Calculate how many registrations this leader should receive
-		registrationsPerLeader := len(shuffledRegistrations) / len(leaderIDs)
-		remainingRegistrations := len(shuffledRegistrations) % len(leaderIDs)
-
-		// Calculate the range of registrations for this leader
-		startIdx := len(updatedRegistrations)
-		endIdx := startIdx + registrationsPerLeader
-		if len(updatedRegistrations)+registrationsPerLeader > len(shuffledRegistrations) {
-			endIdx += remainingRegistrations
-		}
-
-		// Assign the registrations to this leader
-		for j := startIdx; j < endIdx; j++ {
-			shuffledRegistrations[j].CallerID = append(shuffledRegistrations[j].CallerID, *leaderID)
-			updatedRegistrations = append(updatedRegistrations, shuffledRegistrations[j])
-		}
-	}
-
-	// Save the distributed registrations to the database
-	if err := r.DB.Save(updatedRegistrations).Error; err != nil {
-		return nil, err
-	} */
-
-	// Return the list of updated registrations
-	return updatedRegistrations, nil
+// ID is the resolver for the id field.
+func (r *memberResolver) ID(ctx context.Context, obj *model.Member) (string, error) {
+	id := obj.ID.String()
+	return id, nil
 }
 
-// CreateLeader is the resolver for the createLeader field.
-func (r *mutationResolver) CreateLeader(ctx context.Context, input model.CreateLeaderInput) (*model.Leader, error) {
-	// Check if  email already exists
-	Leaders := &model.Leader{}
-	// Call the checking Duplicate Records function if already in db
-	if err := schemas.CheckDuplicateRecords(r.DB, Leaders, input.Name, *input.Email, input.PhoneNumber); err != nil {
+// CreateMember is the resolver for the createMember field.
+func (r *mutationResolver) CreateMember(ctx context.Context, input *model.CreateMemberInput) (*model.Member, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	// Hashing Password to the DB  using the input Passowrd
-
-	password, err := helpers.HashPassword(input.Password)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
+	// Check if email already exists
+	members := &model.Member{}
+	// Call the checking Duplicate Records function if already in db
+	if err := schemas.CheckDuplicateRecords(r.DB, members, input.Name, input.Email, *input.PhoneNumber); err != nil {
+		return nil, err
 	}
 
-	// Generate and assign tokens to the Leader object
+	// Find the leader for the new member's day using FindLeaderWithSameDay
+	leader, err := schemas.FindLeaderWithSameDay(r.DB, input.Day, input.ChurchID)
+	if err != nil {
+		return nil, err
+	}
+	// Convert leader .ID to a string before assigning it to LeaderID
+	leaderID := leader.ID.String()
 
-	leader := &model.Leader{
+	member := &model.Member{
 		Name:        input.Name,
 		Email:       input.Email,
 		PhoneNumber: input.PhoneNumber,
 		Day:         input.Day,
-		Password:    password,
-		Types:       input.Types,
+		Location:    input.Location,
+		SubChurchID: &input.ChurchID,
+		LeaderID:    &leaderID, // Assign the LeaderID to the selected leader's ID
 	}
 
-	// Save the leader to the database using your preferred ORM
-	if err := r.DB.Create(leader).Error; err != nil {
-		return nil, fmt.Errorf("failed to save leader to the database: %w", schemas.ErrDatabase)
+	// Save the member to the database using your preferred ORM-
+	if err := r.DB.Create(member).Error; err != nil {
+		return nil, fmt.Errorf("failed to save member to the database: %w", schemas.ErrDatabase)
 	}
+	// Call UpdateReferenceIDCounts to ensure the counts are up-to-date.
+	if err := schemas.UpdateReferenceIDCounts(r.DB, input.ChurchID); err != nil {
+		// Handle the error, such as logging or returning an error response.
+		return nil, err
+	}
+	return member, nil
+}
 
-	token, err := helpers.GenerateToken(input.Types, (leader.ID).String())
+// CreateMemberBysubLeader is the resolver for the createMemberBysubLeader field.
+func (r *mutationResolver) CreateMemberBysubLeader(ctx context.Context, input *model.CreateMemberInputBySub) (*model.Member, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate tokens: %w", err)
+		return nil, err
+	}
+	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("leaderID not found in request context")
+	}
+	// Query the leader
+	leader := &model.Member{}
+	if err := r.DB.Where("id = ?", leaderID).First(leader).Error; err != nil {
+		return nil, fmt.Errorf("failed to find leader: %w", err)
+	}
+	// Check if  email already exists
+	members := &model.Member{}
+	// Call the checking Duplicate Records function if already in db
+	if err := schemas.CheckDuplicateRecords(r.DB, members, input.Name, input.Email, *input.PhoneNumber); err != nil {
+		return nil, err
 	}
 
-	// Update the leader's token with the generated token
-	leader.Token = token
+	member := &model.Member{
+		Name:        input.Name,
+		Email:       input.Email,
+		PhoneNumber: input.PhoneNumber,
+		Day:         input.Day,
+		Location:    input.Location,
+		SubChurchID: &leader.SubChurch.ChurchID,
+	}
+	// Save the member to the database using your preferred ORM
+	if err := r.DB.Create(member).Error; err != nil {
+		return nil, fmt.Errorf("failed to save member to the database: %w", schemas.ErrDatabase)
+	}
+	return member, nil
+}
 
-	// Save the updated leader with the token to the database
+// UpdateMember is the resolver for the updateMember field.
+func (r *mutationResolver) UpdateMember(ctx context.Context, input model.UpdateMemberInput, memberID string) (*model.Member, error) {
+	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	Member := &model.Member{}
+	// Retrieve the Member from the database based on the provided ID
+	if err := r.DB.Where("id = ?", memberID).First(Member).Error; err != nil {
+		return nil, err
+	}
+	// Check if the provided email is already used by another member
+	if err := r.DB.Where("email = ?", input.Email).Not("id = ?", memberID).First(&model.Member{}).Error; err == nil {
+		return nil, fmt.Errorf("email already exists")
+	}
+
+	// Check if the provided phone number is already used by another member
+	if err := r.DB.Where("phone_number = ?", input.PhoneNumber).Not("id = ?", memberID).First(&model.Member{}).Error; err == nil {
+		return nil, fmt.Errorf("phone number already exists")
+	}
+	// Update the Member's fields with the input values
+	if input.Name != nil {
+		Member.Name = *input.Name
+	}
+	if input.Email != nil {
+		Member.Email = *input.Email
+	}
+	if input.PhoneNumber != nil {
+		Member.PhoneNumber = input.PhoneNumber
+	}
+	if input.Day != nil {
+		Member.Day = *input.Day
+	}
+	if input.Location != nil {
+		Member.Location = input.Location
+	}
+
+	// Save the Member leader to the database
+	if err := r.DB.Save(Member).Error; err != nil {
+		return nil, err
+	}
+
+	// Return the updated Member
+	return Member, nil
+}
+
+// UpdateLeader is the resolver for the updateLeader field.
+func (r *mutationResolver) UpdateLeader(ctx context.Context, input model.UpdateLeaderProfileInput, memberID string) (*model.Member, error) {
+	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("leaderID not found in request context")
+	}
+	// Check if the authenticated user is the same as the member being updated.
+	if leaderID != memberID {
+		return nil, fmt.Errorf("unauthorized: you can only update your own profile")
+	}
+	// Fetch the leader from the database using memberID.
+	leader := &model.Member{}
+	if err := r.DB.First(leader, "id = ?", leaderID).Error; err != nil {
+		return nil, fmt.Errorf("leader not found: %w", err)
+	}
+
+	// Verify the provided password against the hashed password in the database
+	if err := helpers.VerifyPassword(*leader.Password, *input.Oldpassword); err != nil {
+		return nil, fmt.Errorf("incorrect password, Can't make changes without you old Password")
+	}
+
+	// Update the leader's profile with the provided input fields.
+	if input.Name != nil {
+		leader.Name = *input.Name
+	}
+	if input.Email != nil {
+		leader.Email = *input.Email
+	}
+	if input.PhoneNumber != nil {
+		leader.PhoneNumber = input.PhoneNumber
+	}
+
+	if input.Password != nil {
+		// Hash and update the password if a new password is provided.
+		password, err := helpers.HashPassword(*input.Password)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash password: %w", err)
+		}
+		leader.Password = &password
+	}
+
+	if input.Location != nil {
+		leader.Location = input.Location
+	}
+
+	// Save the updated leader to the database.
 	if err := r.DB.Save(leader).Error; err != nil {
-		return nil, fmt.Errorf("failed to save leader's token to the database: %w", err)
+		return nil, fmt.Errorf("failed to save updated leader: %w", err)
 	}
 
 	return leader, nil
 }
 
-// CreateRegistration is the resolver for the createRegistration field.
-func (r *mutationResolver) CreateRegistration(ctx context.Context, studentID string, input model.CreateRegistrationInput) (*model.Registration, error) {
-	// Check if studentID is a valid UUID
-	_, err := uuid.Parse(studentID)
+// CreateChurch is the resolver for the createChurch field.
+func (r *mutationResolver) CreateChurch(ctx context.Context, name string, email string, password *string) (*model.Church, error) {
+	// Check if an email already exists
+	existingChurch := &model.Church{}
+	err := r.DB.Where("email = ?", email).First(existingChurch).Error
+	if err == nil {
+		return nil, fmt.Errorf("email already exists")
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	// Hash the password
+	hpassword, err := helpers.HashPassword(*password)
 	if err != nil {
-		return nil, fmt.Errorf("invalid studentID: %w", err)
+		return nil, fmt.Errorf("failed to hash password: %v", err)
+	}
+	Types := "Admin"
+
+	// Create a new church record
+	newChurch := &model.Church{
+		Name:     name,
+		Password: &hpassword,
+		Email:    &email,
+		Types:    &Types,
+	}
+
+	if err := r.DB.Create(newChurch).Error; err != nil {
+		return nil, fmt.Errorf("failed to create church: %v", err)
+	}
+
+	// Generate a token
+	token, err := helpers.GenerateToken(Types, newChurch.ID.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %v", err)
+	}
+	newChurch.Token = &token
+
+	return newChurch, nil
+}
+
+// DeleteChurch is the resolver for the deleteChurch field.
+func (r *mutationResolver) DeleteChurch(ctx context.Context, mainChurchID string) (bool, error) {
+	UUID, err := uuid.Parse(mainChurchID)
+	if err != nil {
+		return false, fmt.Errorf("invalid ID: %w", err)
+	}
+
+	church := &model.Church{}
+
+	if err := r.DB.Where("id = ?", UUID).First(&church).Error; err != nil {
+		return false, err
+	}
+
+	// Delete the church from the database
+	if err := r.DB.Delete(church).Error; err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// DeleteMember is the resolver for the deleteMember field.
+func (r *mutationResolver) DeleteMember(ctx context.Context, memberID string) (bool, error) {
+	member := &model.Member{}
+
+	if err := r.DB.Where("id = ?", memberID).First(&member).Error; err != nil {
+		return false, err
+	}
+
+	// Delete the member from the database
+	if err := r.DB.Delete(member).Error; err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// DeleteSubChurch is the resolver for the deleteSubChurch field.
+func (r *mutationResolver) DeleteSubChurch(ctx context.Context, subChurchID string) (bool, error) {
+	subChurch := &model.SubChurch{}
+
+	if err := r.DB.Where("id = ?", subChurchID).First(&subChurch).Error; err != nil {
+		return false, err
+	}
+
+	// Delete the subChurch from the database
+	if err := r.DB.Delete(subChurch).Error; err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// DeleteRegistration is the resolver for the deleteRegistration field.
+func (r *mutationResolver) DeleteRegistration(ctx context.Context, registrationID string) (bool, error) {
+	// // Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	// err := middleware.ExtractCTXinfo(ctx)
+	// if err != nil {
+	// 	return false, err
+	// }
+	UUID, err := uuid.Parse(registrationID)
+	if err != nil {
+		return false, fmt.Errorf("invalid leaderID: %w", err)
+	}
+
+	registration := &model.Registration{}
+
+	if err := r.DB.Where("id = ?", UUID).First(&registration).Error; err != nil {
+		return false, err
+	}
+
+	// Delete the registration from the database
+	if err := r.DB.Delete(registration).Error; err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// CreateSubChurch is the resolver for the createSubChurch field.
+func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *string) (*model.Church, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	// err := middleware.ExtractCTXinfo(ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	mainChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("main ChurchID not found in request context")
+	}
+
+	// Find the main church by ID
+	mainChurch := &model.Church{}
+	if err := r.DB.First(mainChurch, "id = ?", mainChurchID).Error; err != nil {
+		return nil, fmt.Errorf("failed to find main church: %w", err)
+	}
+	// Convert subChurchName to uppercase
+	uppercasedSubChurchName := ""
+	if subChurchName != nil {
+		uppercasedSubChurchName = strings.ToUpper(*subChurchName)
+	}
+	// Check if the sub-church already exists
+	existingSubChurch := &model.SubChurch{}
+	if err := r.DB.Where("name = ? AND church_id = ?", uppercasedSubChurchName, mainChurchID).First(existingSubChurch).Error; err == nil {
+		return nil, fmt.Errorf("sub-church with the same name already exists")
+	}
+
+	// Create the sub-church and associate it with the main church
+	subChurch := &model.SubChurch{
+		Name:     uppercasedSubChurchName,
+		ChurchID: mainChurchID,
+	}
+	
+
+	if err := r.DB.Create(subChurch).Error; err != nil {
+		return nil, fmt.Errorf("failed to create sub-church: %w", err)
+	}
+	
+	// Append the sub-church to the main church's SubChurches slice
+	mainChurch.SubChurches = append(mainChurch.SubChurches, subChurch)
+	// Define the days of the week
+	leaderDaysOfWeek := []string{"Monday", "Tuesday", "Wednesday"}
+	subLeaderDaysOfWeek := []string{"Thursday", "Friday", "Saturday", "Sunday"}
+
+	// Create 3 leaders
+	leaderIndex := 0
+	leadertype := "Leader"
+	leaderpassword := "pass"
+	leaderemail := "leader@gmail.com"
+
+	// Generate random phone numbers
+	randomPhoneNumber := func() string {
+		return fmt.Sprintf("05%02d%03d", rand.Intn(100), rand.Intn(1000))
+	}
+
+	password, err := helpers.HashPassword(leaderpassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
+	}
+
+	for i := 0; i < 3; i++ {
+		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
+		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
+
+		leader := &model.Member{
+			Name: fmt.Sprintf("%s Leader %d", uppercasedSubChurchName, i+1),
+			Email:       leaderemail,
+			Types:       &leadertype,
+			PhoneNumber: &phoneNumber,
+			Password:    &password, // Set the leader's password here
+			Day:         leaderDaysOfWeek[leaderIndex],
+			SubChurchID: &subChurchIDStr,
+			// Set other leader properties as needed
+		}
+
+		if err := r.DB.Create(leader).Error; err != nil {
+			return nil, fmt.Errorf("failed to create leader: %w", err)
+		}
+
+		leaderIndex = (leaderIndex + 1) % len(leaderDaysOfWeek) // Rotate through days of the week
+		token, err := helpers.GenerateToken(leadertype, (leader.ID.String()))
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate tokens: %w", err)
+		}
+
+		leader.Token = &token // Set the leader's token here
+	}
+	// Create 4 sub-leaders
+	subLeaderIndex := 0
+	subLeaderSubLeader := "SubLeader"
+	for i := 0; i < 4; i++ {
+		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
+		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
+
+		subLeader := &model.Member{
+			Name:        fmt.Sprintf("%s SubLeader %d", uppercasedSubChurchName, i+1),
+			Types:       &subLeaderSubLeader,
+			PhoneNumber: &phoneNumber,
+			Password:    &password, // Set the sub-leader's password here
+			Email:       leaderemail,
+			Day:         subLeaderDaysOfWeek[subLeaderIndex],
+			SubChurchID: &subChurchIDStr,
+			// Set other sub-leader properties as needed
+		}
+
+		if err := r.DB.Create(subLeader).Error; err != nil {
+			return nil, fmt.Errorf("failed to create sub-leader: %w", err)
+		}
+
+		subLeaderIndex = (subLeaderIndex + 1) % len(subLeaderDaysOfWeek) // Rotate through days of the week
+		token, err := helpers.GenerateToken(leadertype, (subLeader.ID.String()))
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate tokens: %w", err)
+		}
+
+		subLeader.Token = &token // Set the leader's token here
+	}
+
+	return mainChurch, nil
+}
+
+// AssignLeader is the resolver for the assignLeader field.
+func (r *mutationResolver) AssignLeader(ctx context.Context, input *model.AssignLeaderInput) (*model.Member, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Fetch the member by ID from the database.
+	member := &model.Member{}
+	if err := r.DB.First(member, "id = ?", input.MemberID).Error; err != nil {
+		return nil, err // Handle the error if the member is not found.
+	}
+	// Validate the input.Types field.
+	if input.Types != nil && (*input.Types == "Admin") {
+		return nil, fmt.Errorf("cannot assign Admin role") // Return an error if the input.Types is "Admin."
+	}
+	// Validate the input.Types field.
+	if input.Types != nil && (*input.Types != "SubLeader" && *input.Types != "Caller" && *input.Types != "Leader") {
+		return nil, fmt.Errorf("invalid leadership role: %s", *input.Types)
+	}
+	// Hashing Password to the DB  using the input Passowrd
+
+	password, err := helpers.HashPassword(*input.Password)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
+	}
+
+	// Update the member's leadership information based on the input.
+	member.Password = &password
+	member.Types = input.Types
+	token, err := helpers.GenerateToken(*input.Types, (member.ID.String()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate tokens: %w", err)
+	}
+	member.Token = &token
+
+	// Save the updated member to the database.
+	if err := r.DB.Save(member).Error; err != nil {
+		return nil, err // Handle the error if there's an issue saving the member.
+	}
+
+	return member, nil
+}
+
+// RemoveLeader is the resolver for the removeLeader field.
+func (r *mutationResolver) RemoveLeader(ctx context.Context, memberID string) (*model.Member, error) {
+	// Fetch the member by ID from the database.
+	member := &model.Member{}
+	if err := r.DB.First(member, "id = ?", memberID).Error; err != nil {
+		return nil, err // Handle the error if the member is not found.
+	}
+
+	// Check if the member is currently assigned as a leader.
+	if member.Types != nil {
+		// If the member is a leader, remove the leadership role.
+		member.Types = nil
+		member.Token = nil    // Optionally, clear the token to invalidate it.
+		member.Password = nil // Optionally, clear the password to invalidate it.
+
+		// Save the updated member to the database.
+		if err := r.DB.Save(member).Error; err != nil {
+			return nil, err // Handle the error if there's an issue saving the member.
+		}
+
+		return member, nil
+	}
+
+	return nil, fmt.Errorf("member is not currently assigned as a leader")
+}
+
+// CreateSubChurchesWithMainChurch is the resolver for the createSubChurchesWithMainChurch field.
+func (r *mutationResolver) CreateSubChurchesWithMainChurch(ctx context.Context, mainChurchID string, subChurchNames []string) (*model.Church, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("leaderID not found in request context")
+	// }
+
+	// Find the main church by ID
+	mainChurch := &model.Church{}
+	if err := r.DB.First(mainChurch, "id = ?", mainChurchID).Error; err != nil {
+		return nil, fmt.Errorf("failed to find main church: %w", err)
+	}
+
+	// Create sub-churches and associate them with the main church
+	subChurches := make([]model.SubChurch, len(subChurchNames))
+	for i, subChurchName := range subChurchNames {
+		subChurches[i] = model.SubChurch{
+			Name:     subChurchName,
+			ChurchID: mainChurchID,
+		}
+	}
+	if err := r.DB.Create(&subChurches).Error; err != nil {
+		return nil, fmt.Errorf("failed to create sub-churches: %w", err)
+	}
+
+	return mainChurch, nil
+}
+
+// CreateRegistration is the resolver for the createRegistration field.
+func (r *mutationResolver) CreateRegistration(ctx context.Context, memberID string, input model.CreateRegistrationInput) (*model.Registration, error) {
+	// Check if memberID is a valid UUID
+	_, err := uuid.Parse(memberID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid memberID: %w", err)
+	}
+
+	// Query the database to check for existing registrations within the past 24 hours
+	var lastRegistrationTime time.Time
+	if err := r.DB.Model(&model.Registration{}).
+		Select("created_at").
+		Where("member_id = ?", memberID).
+		Order("created_at DESC").
+		First(&lastRegistrationTime).
+		Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+
+	// Calculate the time difference between now and the last registration
+	timeSinceLastRegistration := time.Since(lastRegistrationTime)
+
+	// Define the rate limit (24 hours)
+	rateLimit := 24 * time.Hour
+
+	// Check if the last registration was within the rate limit
+	if timeSinceLastRegistration < rateLimit {
+		return nil, fmt.Errorf("rate limit exceeded, you can create a registration again in %v", rateLimit-timeSinceLastRegistration)
 	}
 
 	// Create a new Registration object using the input data
 	registration := &model.Registration{
-		StudentID: studentID,
+		MemberID: memberID,
 	}
-
 	if input.LastComment != nil {
 		registration.LastComment = *input.LastComment
 	}
@@ -180,26 +614,68 @@ func (r *mutationResolver) CreateRegistration(ctx context.Context, studentID str
 
 // CreateRegistrationArray is the resolver for the createRegistrationArray field.
 func (r *mutationResolver) CreateRegistrationArray(ctx context.Context, input []*model.RegistrationArrayInput) ([]*model.Registration, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	createdRegistrations := []*model.Registration{}
+	exceededRateLimitMembers := []string{} // Track members who exceeded the rate limit of 24 hours a  Leader can't create a register within 24 hours
 
 	for _, registrationInput := range input {
-		// Check if studentID is a valid UUID
-		_, err := uuid.Parse(registrationInput.StudentID)
+		// Check if MemberID is a valid UUID
+		_, err := uuid.Parse(registrationInput.MemberID)
 		if err != nil {
-			return nil, fmt.Errorf("invalid studentID: %w", err)
+			return nil, fmt.Errorf("invalid MemberID: %w", err)
+		}
+
+		// Query the database to check if the member exists
+		var member model.Member
+		if err := r.DB.Model(&model.Member{}).
+			Where("id = ?", registrationInput.MemberID).
+			First(&member).
+			Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+
+		// Ensure that the member exists
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("member with ID %s does not exist", registrationInput.MemberID)
+		}
+
+		// Query the database to check for existing registrations within the past 24 hours
+		var lastRegistrationTime time.Time
+		if err := r.DB.Model(&model.Registration{}).
+			Select("created_at").
+			Where("member_id = ?", registrationInput.MemberID).
+			Order("created_at DESC").
+			First(&lastRegistrationTime).
+			Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+
+		// Calculate the time difference between now and the last registration
+		timeSinceLastRegistration := time.Since(lastRegistrationTime)
+
+		// Define the rate limit (24 hours)
+		rateLimit := 24 * time.Hour
+
+		// Check if the last registration was within the rate limit
+		if timeSinceLastRegistration < rateLimit {
+			exceededRateLimitMembers = append(exceededRateLimitMembers, member.Name) // Track the name of the member
+			continue                                                                 // Skip creating a registration for this member
 		}
 
 		// Create a new Registration object using the input data
 		registration := &model.Registration{
-			StudentID: registrationInput.StudentID,
+			MemberID: registrationInput.MemberID,
 		}
-
 		if registrationInput.CreateInput.LastComment != nil {
 			registration.LastComment = *registrationInput.CreateInput.LastComment
 		}
 
 		if registrationInput.CreateInput.Absence != nil {
-
 			registration.Absence = *registrationInput.CreateInput.Absence
 		}
 
@@ -215,181 +691,33 @@ func (r *mutationResolver) CreateRegistrationArray(ctx context.Context, input []
 		createdRegistrations = append(createdRegistrations, registration)
 	}
 
+	// Check if any members exceeded the rate limit and include their names in the error message
+	if len(exceededRateLimitMembers) > 0 {
+		return nil, fmt.Errorf(" %v Cannot create registrations within the specified time frame", exceededRateLimitMembers)
+	}
+
 	// Return the created registrations
 	return createdRegistrations, nil
 }
 
-// CreateStudent is the resolver for the createStudent field.
-func (r *mutationResolver) CreateStudent(ctx context.Context, input model.CreateStudentInput) (*model.Student, error) {
-	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
-	leaderID, ok := ctx.Value(middleware.LeaderIDContextKey).(string)
-	if !ok {
-		return nil, fmt.Errorf("LeaderID not found in request context")
-	}
-	students := &model.Student{}
-	// Call the checking Duplicate Records function if already in db
-	if err := schemas.CheckDuplicateRecords(r.DB, students, input.Name, *input.Email, input.PhoneNumber); err != nil {
-		return nil, err
-	}
-
-	student := &model.Student{
-		Name:        input.Name,
-		Email:       input.Email,
-		PhoneNumber: input.PhoneNumber,
-		Day:         input.Day,
-		LeaderID:    leaderID, // Set the LeaderID field using the extracted value.
-	}
-
-	err := r.DB.Create(student).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// Eager load the associated Leader using Preload
-	err = r.DB.Model(student).Preload("Registrations").Find(student).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return student, nil
-}
-
-// DeleteStudent is the resolver for the deleteStudent field.
-func (r *mutationResolver) DeleteStudent(ctx context.Context, studentID string) (bool, error) {
-	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
-	err := middleware.ExtractCTXinfo(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	// Retrieve the student from the database based on the provided studentID
-	student := &model.Student{}
-	if err := r.DB.Where("id = ?", studentID).First(student).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return false, fmt.Errorf("student with ID %s not found", studentID)
-		}
-		return false, err
-	}
-
-	// Delete the student from the database
-	if err := r.DB.Delete(student).Error; err != nil {
-		return false, err
-	}
-
-	// Return success
-	return true, nil
-}
-
-// DaleteRegistration is the resolver for the daleteRegistration field.
-func (r *mutationResolver) DaleteRegistration(ctx context.Context, registrationID string) (bool, error) {
-	registration := &model.Registration{}
-
-	if err := r.DB.Where("id = ?", registrationID).First(&registration).Error; err != nil {
-		return false, err
-	}
-
-	// Delete the registration from the database
-	if err := r.DB.Delete(registration).Error; err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-// DistributeRegistrationsToLeaders is the resolver for the distributeRegistrationsToLeaders field.
-func (r *mutationResolver) DistributeRegistrationsToLeaders(ctx context.Context, leaderIds []string) ([]*model.LeaderRegistrationsDistribution, error) {
-	// Fetch the current week's registrations
-	currentWeekRegistrations, err := r.Query().CurrentWeekRegistrations(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Shuffle the leader IDs using your shuffling algorithm
-	schemas.ShuffleLeaders(leaderIds)
-
-	// Create a map to store registration IDs for each leader
-	leaderRegistrationMap := make(map[string][]string)
-
-	// Distribute registration IDs among shuffled leader IDs
-	for i, reg := range currentWeekRegistrations {
-		leaderIndex := i % len(leaderIds)
-		leaderID := leaderIds[leaderIndex]
-		leaderRegistrationMap[leaderID] = append(leaderRegistrationMap[leaderID], reg.ID.String())
-
-		// Update the registration's leader_id
-		reg.LeaderID = &leaderID // Update this line with the correct field name from your Registration model
-		if err := r.DB.Save(&reg).Error; err != nil {
-			return nil, err
-		}
-	}
-
-	// Create the final response structure
-	var leaderDistribution []*model.LeaderRegistrationsDistribution
-	for leaderID, regIDs := range leaderRegistrationMap {
-		leaderDist := &model.LeaderRegistrationsDistribution{
-			LeaderID:        leaderID,
-			RegistrationIDs: regIDs,
-		}
-		leaderDistribution = append(leaderDistribution, leaderDist)
-	}
-
-	return leaderDistribution, nil
-}
-
-// UpdateLeader is the resolver for the updateLeader field.
-func (r *mutationResolver) UpdateLeader(ctx context.Context, input model.UpdateLeaderInput) (*model.Leader, error) {
-	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
-	err := middleware.ExtractCTXinfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	leaderID, ok := ctx.Value(middleware.LeaderIDContextKey).(string)
-	if !ok {
-		return nil, fmt.Errorf("leaderID not found in request context")
-	}
-
-	// Retrieve the leader from the database based on the provided ID
-	leader := &model.Leader{}
-	if err := r.DB.Where("id = ?", leaderID).First(leader).Error; err != nil {
-		return nil, err
-	}
-	// Call the checking Duplicate Records function if already in db
-	if err := schemas.CheckDuplicateRecords(r.DB, leader, *input.Name, *input.Email, *input.PhoneNumber); err != nil {
-		return nil, err
-	}
-
-	// Update the leader's fields with the input values
-	if input.Name != nil {
-		leader.Name = *input.Name
-	}
-	if input.Email != nil {
-		leader.Email = input.Email
-	}
-	if input.PhoneNumber != nil {
-		leader.PhoneNumber = *input.PhoneNumber
-	}
-	if input.Day != nil {
-		leader.Day = *input.Day
-	}
-	if input.Types != nil {
-		leader.Types = *input.Types
-	}
-
-	// Save the updated leader to the database
-	if err := r.DB.Save(leader).Error; err != nil {
-		return nil, err
-	}
-
-	// Return the updated leader
-	return leader, nil
-}
-
 // UpdateRegistration is the resolver for the updateRegistration field.
 func (r *mutationResolver) UpdateRegistration(ctx context.Context, input model.CreateRegistrationInput, registrationID string) (*model.Registration, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
 	// Fetch the existing registration from the database
+	uuid, err := uuid.Parse(registrationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid registrationID: %w", err)
+	}
 	registration := &model.Registration{}
 
-	if err := r.DB.Where("id = ?", registrationID).First(&registration).Error; err != nil {
+	if err := r.DB.Where("id = ?", uuid).First(&registration).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("registration not found")
+		}
 		return nil, err
 	}
 
@@ -415,13 +743,35 @@ func (r *mutationResolver) UpdateRegistration(ctx context.Context, input model.C
 
 // UpdateRegistrationByLeader is the resolver for the updateRegistrationByLeader field.
 func (r *mutationResolver) UpdateRegistrationByLeader(ctx context.Context, input model.CreateRegistrationInput, registrationID string, leaderID string) (*model.Registration, error) {
-	register := &model.Registration{}
-
-	if err := r.DB.Where("id =?", registrationID).Find(&register).Preload("Student").Error; err != nil {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
 		return nil, err
 	}
+	// Validate registrationID and leaderID as valid UUIDs
+	registrationUUID, err := uuid.Parse(registrationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid registrationID: %w", err)
+	}
+
+	_, err = uuid.Parse(leaderID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid leaderID: %w", err)
+	}
+
+	// Fetch the registration from the database
+	register := &model.Registration{}
+
+	if err := r.DB.Where("id = ?", registrationUUID).First(&register).Error; err != nil {
+		// Handle the case when the registration is not found
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("registration not found")
+		}
+		return nil, err
+	}
+
 	// Check if the registration is associated with the provided leader ID
-	if *register.LeaderID != leaderID {
+	if register.LeaderID != nil && *register.LeaderID != leaderID {
 		return nil, fmt.Errorf("registration is not associated with the provided leader")
 	}
 
@@ -433,6 +783,7 @@ func (r *mutationResolver) UpdateRegistrationByLeader(ctx context.Context, input
 	if input.Present != nil {
 		register.Present = *input.Present
 	}
+
 	if input.LastComment != nil && *input.LastComment != "" {
 		register.LastComment = *input.LastComment
 	}
@@ -445,70 +796,144 @@ func (r *mutationResolver) UpdateRegistrationByLeader(ctx context.Context, input
 	return register, nil
 }
 
-// UpdateStudent is the resolver for the updateStudent field.
-func (r *mutationResolver) UpdateStudent(ctx context.Context, input model.UpdateStudentInput, studentID string) (*model.Student, error) {
-	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
+// DistributeRegistrationsToLeaders is the resolver for the distributeRegistrationsToLeaders field.
+func (r *mutationResolver) DistributeRegistrationsToLeaders(ctx context.Context, leaderIds []string) ([]*model.LeaderRegistrationsDistribution, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
 	err := middleware.ExtractCTXinfo(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	Student := &model.Student{}
-	// Retrieve the Student from the database based on the provided ID
-	if err := r.DB.Where("id = ?", studentID).First(Student).Error; err != nil {
-		return nil, err
-	}
-	// Check if the provided email is already used by another student
-	if err := r.DB.Where("email = ?", input.Email).Not("id = ?", studentID).First(&model.Student{}).Error; err == nil {
-		return nil, fmt.Errorf("email already exists")
-	}
-
-	// Check if the provided phone number is already used by another student
-	if err := r.DB.Where("phone_number = ?", input.PhoneNumber).Not("id = ?", studentID).First(&model.Student{}).Error; err == nil {
-		return nil, fmt.Errorf("phone number already exists")
-	}
-	// Update the Student's fields with the input values
-	if input.Name != nil {
-		Student.Name = *input.Name
-	}
-	if input.Email != nil {
-		Student.Email = input.Email
-	}
-	if input.PhoneNumber != nil {
-		Student.PhoneNumber = *input.PhoneNumber
-	}
-	if input.Day != nil {
-		Student.Day = *input.Day
-	}
-
-	// Save the Student leader to the database
-	if err := r.DB.Save(Student).Error; err != nil {
+	// Fetch the current week's registrations
+	currentWeekRegistrations, err := r.Query().CurrentWeekRegistrations(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	// Return the updated Student
-	return Student, nil
+	// Shuffle the leader IDs using your shuffling algorithm
+	schemas.ShuffleLeaders(leaderIds)
+
+	// Create a map to store registration IDs for each leader
+	leaderRegistrationMap := make(map[string][]string)
+
+	// Distribute registration IDs among shuffled leader IDs
+	for i, reg := range currentWeekRegistrations {
+		leaderIndex := i % len(leaderIds)
+		leaderID := leaderIds[leaderIndex]
+		leaderRegistrationMap[leaderID] = append(leaderRegistrationMap[leaderID], reg.ID.String())
+
+		// Convert leaderID (string) to uuid.UUID
+		_, err := uuid.Parse(leaderID)
+		if err != nil {
+			return nil, err // Handle the error appropriately
+		}
+
+		// Update the registration's LeaderID with the converted uuid.UUID
+		reg.LeaderID = &leaderID // Update this line
+		if err := r.DB.Save(&reg).Error; err != nil {
+			return nil, err
+		}
+	}
+
+	// Create the final response structure
+	var leaderDistribution []*model.LeaderRegistrationsDistribution
+	for leaderID, regIDs := range leaderRegistrationMap {
+		leaderDist := &model.LeaderRegistrationsDistribution{
+			LeaderID:        leaderID,
+			RegistrationIDs: regIDs,
+		}
+		leaderDistribution = append(leaderDistribution, leaderDist)
+	}
+
+	return leaderDistribution, nil
 }
 
-// LoginLeader is the resolver for the loginLeader field.
-func (r *mutationResolver) LoginLeader(ctx context.Context, input model.LoginLeaderInput) (*model.Leader, error) {
-	// Fetch the leader from the database based on the provided email
-	leader := &model.Leader{}
-	if err := r.DB.Where("phone_number = ?", input.PhoneNumber).First(leader).Error; err != nil {
+// Login is the resolver for the login field.
+func (r *mutationResolver) Login(ctx context.Context, input model.LoginLeaderInput) (model.Returns, error) {
+	clear := model.RemoveSpacesFromNumber(*input.Email)
+	if model.IsValidEmail(clear) {
+		// Fetch the leader from the database based on the provided email
+		leader := &model.Church{}
+		//	if err := r.DB.Where("phone_number = ?", input.PhoneNumber).First(leader).Error; err != nil {
+		//		return nil, fmt.Errorf("phone_number not found")
+		//	}
+		if err := r.DB.Where("email = ?", clear).First(leader).Error; err != nil {
+			return nil, fmt.Errorf("email not found")
+		}
+		// Verify the provided password against the hashed password in the database
+		if err := helpers.VerifyPassword(*leader.Password, input.Password); err != nil {
+			return nil, fmt.Errorf("invalid password")
+		}
+		// Generate a new token for the authenticated leader
+		token, err := helpers.GenerateToken(*leader.Types, leader.ID.String())
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate token")
+		}
+		// Update the leader's token with the newly generated token
+		leader.Token = &token
+
+		// Save the updated leader with the token to the database
+		if err := r.DB.Save(leader).Error; err != nil {
+			return nil, fmt.Errorf("failed to save leader's token to the database")
+		}
+
+		// Retrieve the CookieAccess object from the context
+		ca := middleware.GetCookieAccess(ctx)
+
+		// Set the generated token as a cookie using the CookieAccess object
+		ca.SetToken(token)
+
+		return leader, nil
+	} else if model.IsNumeric(clear) {
+		leader := &model.Member{}
+		if err := r.DB.Where("phone_number = ?", clear).First(leader).Error; err != nil {
+			return nil, fmt.Errorf("leader not found")
+		}
+		// Verify the provided password against the hashed password in the database
+		if err := helpers.VerifyPassword(*leader.Password, input.Password); err != nil {
+			return nil, fmt.Errorf("invalid password")
+		}
+		// Generate a new token for the authenticated leader
+		token, err := helpers.GenerateToken(*leader.Types, leader.ID.String())
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate token")
+		}
+		// Update the leader's token with the newly generated token
+		leader.Token = &token
+
+		// Save the updated leader with the token to the database
+		if err := r.DB.Save(leader).Error; err != nil {
+			return nil, fmt.Errorf("failed to save leader's token to the database")
+		}
+
+		// Retrieve the CookieAccess object from the context
+		ca := middleware.GetCookieAccess(ctx)
+
+		// Set the generated token as a cookie using the CookieAccess object
+		ca.SetToken(token)
+
+		return leader, nil
+	}
+	return nil, fmt.Errorf("invalid login input")
+}
+
+// Memberlogin is the resolver for the memberlogin field.
+func (r *mutationResolver) Memberlogin(ctx context.Context, input model.LoginLeaderInput) (model.Returns, error) {
+	leader := &model.Member{}
+	if err := r.DB.Where("phone_number = ?", input.Email).First(leader).Error; err != nil {
 		return nil, fmt.Errorf("leader not found")
 	}
-
 	// Verify the provided password against the hashed password in the database
-	if err := helpers.VerifyPassword(leader.Password, input.Password); err != nil {
+	if err := helpers.VerifyPassword(*leader.Password, input.Password); err != nil {
 		return nil, fmt.Errorf("invalid password")
 	}
+
 	// Generate a new token for the authenticated leader
-	token, err := helpers.GenerateToken(leader.Types, leader.ID.String())
+	token, err := helpers.GenerateToken(*leader.Types, leader.ID.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token")
 	}
 	// Update the leader's token with the newly generated token
-	leader.Token = token
+	leader.Token = &token
 
 	// Save the updated leader with the token to the database
 	if err := r.DB.Save(leader).Error; err != nil {
@@ -543,220 +968,198 @@ func (r *mutationResolver) LogOut(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// GetgroupBy is the resolver for the GetgroupBy field.
-func (r *queryResolver) GetgroupBy(ctx context.Context, groupByField string, tableName string) (*model.GroupByResults, error) {
-	err := middleware.ExtractCTXinfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var totalRecords int
-
-	// Query the total count of records
-	query := "SELECT COUNT(*) FROM " + tableName
-	row := r.DB.Raw(query).Row()
-	if err := row.Scan(&totalRecords); err != nil {
+// GetAllMainChurch is the resolver for the GetAllMainChurch field.
+func (r *queryResolver) GetAllMainChurch(ctx context.Context) ([]*model.Church, error) {
+	var churchs []*model.Church
+	if err := r.DB.Preload("SubChurches.Members").Find(&churchs).Error; err != nil {
 		return nil, err
 	}
 
-	var groupByResults []*model.GroupBy
-
-	// Construct the raw SQL query
-	query = fmt.Sprintf("SELECT %s, COUNT(*) FROM %s GROUP BY %s;", groupByField, tableName, groupByField)
-
-	// Execute the query
-	rows, err := r.DB.Raw(query).Rows()
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		// Initialize variables to store values from the current row
-		var key string
-		var count int
-		if err := rows.Scan(&key, &count); err != nil {
-			return nil, err
-		}
-		// Create a GroupBy object and append it to the results
-
-		groupByResult := &model.GroupBy{
-			Key:   &key,
-			Count: &count,
-		}
-		groupByResults = append(groupByResults, groupByResult)
-	}
-	// Check for scanning errors
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	// Create the final GroupByResults object
-	finalGroupByResults := &model.GroupByResults{
-		Total:          &totalRecords,
-		GroupByResults: groupByResults,
-	}
-
-	return finalGroupByResults, nil
+	return churchs, nil
 }
 
-// GetRegistrations is the resolver for the GetRegistrations field.
-func (r *queryResolver) GetRegistrations(ctx context.Context) ([]*model.WeeklyResults, error) {
-	var registrations []*model.Registration
-	if err := r.DB.Find(&registrations).Error; err != nil {
+// GetsubChurchByMainChurchID is the resolver for the GetsubChurchByMainChurchID field.
+func (r *queryResolver) GetAllsubChurchByMainChurchID(ctx context.Context, mainChurchID string) ([]*model.SubChurch, error) {
+	var subChurch []*model.SubChurch
+	if err := r.DB.Where("church_id = ?", mainChurchID).Preload("Members").Preload("Church").Find(&subChurch).Error; err != nil {
 		return nil, err
 	}
 
-	registrationsByWeek := make(map[int][]*model.Registration)
-
-	for _, reg := range registrations {
-		if reg.Absence { // Filter only registrations with absence true
-			weekNumber := schemas.GetWeekNumber(reg.CreatedAt)
-			registrationsByWeek[weekNumber] = append(registrationsByWeek[weekNumber], reg)
-		}
-	}
-
-	var monthlyResults []*model.WeeklyResults
-	for _, regs := range registrationsByWeek {
-		year, month, day := regs[0].CreatedAt.Date()
-		weekOfMonth := (day-1)/7 + 1
-		monthStr := month.String() + " " + strconv.Itoa(year) // Get the month string
-		monthlyResults = append(monthlyResults, &model.WeeklyResults{
-			Date: &model.DateInfo{
-				Month:       &monthStr, // Use a pointer to the month string
-				WeekOfMonth: &weekOfMonth,
-			},
-			Registrations: regs,
-		})
-	}
-
-	return monthlyResults, nil
+	return subChurch, nil
 }
 
-// CurrentWeekRegistrations is the resolver for the currentWeekRegistrations field.
-func (r *queryResolver) CurrentWeekRegistrations(ctx context.Context) ([]*model.Registration, error) {
-	var registrations []*model.Registration
-	if err := r.DB.Preload("Student").Find(&registrations).Error; err != nil {
+// GetAllMembersBySubChurchID is the resolver for the GetAllMembersBySubChurchID field.
+func (r *queryResolver) GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error) {
+	var members []*model.Member
+	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("SubChurch").Find(&members).Error; err != nil {
 		return nil, err
 	}
-	currentWeekNumber := schemas.GetWeekNumber(time.Now()) // Get the current week number
 
-	var currentWeekRegistrations []*model.Registration
-	for _, reg := range registrations {
-		if schemas.GetWeekNumber(reg.CreatedAt) == currentWeekNumber {
-			currentWeekRegistrations = append(currentWeekRegistrations, reg)
-		}
-	}
-	return currentWeekRegistrations, nil
+	return members, nil
 }
 
-// Leader is the resolver for the leader field.
-func (r *queryResolver) Leader(ctx context.Context, id string) (*model.Leader, error) {
-	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
-	err := middleware.ExtractCTXinfo(ctx)
-	if err != nil {
+// GetAllMembersByLeader is the resolver for the GetAllMembersByLeader field.
+func (r *queryResolver) GetAllMembersByLeader(ctx context.Context, leaderID string) ([]*model.Member, error) {
+	var members []*model.Member
+
+	// // First, fetch the leader's sub-church ID based on the leaderID.
+	// var leaderSubChurchID string
+	// if err := r.DB.Model(&model.Member{}).
+	// 	Where("id = ?", leaderID).
+	// 	Pluck("sub_church_id", &leaderSubChurchID).
+	// 	Error; err != nil {
+	// 	return nil, err
+	// }
+
+	// // Fetch the leader's day.
+	// var leaderDay string
+	// if err := r.DB.Model(&model.Member{}).
+	// 	Where("id = ?", leaderID).
+	// 	Pluck("day", &leaderDay).
+	// 	Error; err != nil {
+	// 	return nil, err
+	// }
+	// Query the database to find members with the specified leader ID.
+	if err := r.DB.Where("leader_id = ?", leaderID).Find(&members).Error; err != nil {
+		// Handle the error, such as logging or returning an error response.
 		return nil, err
 	}
-	// Retrieve the leader from the database based on the provided ID
-	leader := &model.Leader{}
-	// Assuming you have a GORM database connection named "db"
+	// Now, query members with the same day and in the same sub-church as the leader.
+	// if err := r.DB.
+	// 	Where("day = ? AND sub_church_id = ?", leaderDay, leaderSubChurchID).
+	// 	Find(&members).
+	// 	Error; err != nil {
+	// 	return nil, err
+	// }
 
-	if err := r.DB.Preload("Students.Registrations").Where("id = ?", id).First(&leader).Error; err != nil {
-		return nil, err
-	}
-
-	// Return the leader
-	return leader, nil
+	return members, nil
 }
 
-// Leaders is the resolver for the leaders field.
-func (r *queryResolver) Leaders(ctx context.Context, sort *model.SortInput, groupBy []string) ([]*model.Leader, error) {
-	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
-	err := middleware.ExtractCTXinfo(ctx)
-	if err != nil {
+// GetAllRegistersByMemberID is the resolver for the GetAllRegistersByMemberID field.
+func (r *queryResolver) GetAllRegistersByMemberID(ctx context.Context, memberID string) ([]*model.Registration, error) {
+	var Registrations []*model.Registration
+	if err := r.DB.Where("member_id = ?", memberID).Preload("Member").Find(&Registrations).Error; err != nil {
 		return nil, err
 	}
-	// Retrieve the list of leaders from the database
-	var leaders []*model.Leader
-
-	// Assuming you have a GORM database connection named "db"
-	query := r.DB.Preload("Students.Registrations")
-
-	// Apply grouping based on the specified fields in the groupBy argument
-	if len(groupBy) > 0 {
-		// Validate and add valid group fields to the GROUP BY clause
-		validGroupFields := make([]string, 0)
-		for _, groupField := range groupBy {
-			if schemas.IsValidGroupField(groupField) {
-				validGroupFields = append(validGroupFields, groupField)
-			} else {
-				// Handle error when the groupField is not valid or not supported for grouping
-				return nil, fmt.Errorf("invalid groupBy field: %s", groupField)
+	// Fetch LeaderNames based on LeaderIDs or set to "No Assign Caller" if LeaderID is nil
+	for _, reg := range Registrations {
+		if reg.LeaderID != nil {
+			leaderMember := &model.Member{} // Assuming Leader is also a Member
+			if err := r.DB.Where("id = ?", *reg.LeaderID).First(leaderMember).Error; err == nil {
+				reg.LeaderName = &leaderMember.Name // Assuming you have a Name field in the Member model
+			}
+		} else {
+			// Set LeaderName to "No Assign Caller" in the database when LeaderID is nil
+			if err := r.DB.Model(&reg).Update("LeaderName", "No Assign Caller").Error; err != nil {
+				// Handle the error if needed
 			}
 		}
-
-		if len(validGroupFields) > 0 {
-			// Include "id" column in the GROUP BY clause along with other valid group fields
-			groupByClause := "id, " + strings.Join(validGroupFields, ", ")
-
-			// Add the GROUP BY clause to the query
-			query = query.Group(groupByClause)
-		}
 	}
 
-	sortCondition, err := schemas.GetSortingCondition(sort)
-	if err != nil {
-		return nil, err
-	}
-	if sortCondition != "" {
-		query = query.Order(sortCondition)
-	}
+	return Registrations, nil
+}
 
-	if err := query.Find(&leaders).Error; err != nil {
+// LastFourCommentsForMember is the resolver for the LastFourCommentsForMember field.
+func (r *queryResolver) LastFourCommentsForMember(ctx context.Context, memberID string) ([]*string, error) {
+	// Query the database for the last 4 registrations
+	var Registrations []*model.Registration
+	if err := r.DB.
+		Where("member_id = ?", memberID).
+		Order("created_at DESC").
+		Limit(4). // Limit the result to the last 4 entries
+		Find(&Registrations).
+		Error; err != nil {
 		return nil, err
 	}
 
-	// Return the list of leaders with populated students
-	return leaders, nil
+	// Extract the last 4 `lastComment` values as pointers to strings
+	var comments []*string
+	for _, reg := range Registrations {
+		comment := reg.LastComment
+		comments = append(comments, &comment)
+	}
+
+	return comments, nil
+}
+
+// GetAllsubChurch is the resolver for the GetAllsubChurch field.
+func (r *queryResolver) GetAllsubChurch(ctx context.Context) ([]*model.SubChurch, error) {
+	var sub []*model.SubChurch
+	if err := r.DB.Preload("Members").Find(&sub).Error; err != nil {
+		fmt.Println("Error preloading associations:", err)
+		return nil, err
+	}
+
+	return sub, nil
 }
 
 // GetCaller is the resolver for the GetCaller field.
-func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Leader, error) {
-	var leaders []*model.Leader
+func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Member, error) {
+	var leaders []*model.Member
 
 	// Query the database to retrieve leaders with Types equal to "Caller" or "Admin"
-	if err := r.DB.Where("types IN (?)", []string{"Caller"}).Find(&leaders).Error; err != nil {
+	if err := r.DB.Where("types IN (?)", []string{"Leader"}).Find(&leaders).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch leaders: %w", err)
 	}
 
 	return leaders, nil
 }
 
-// LeadersByIds is the resolver for the leadersByIds field.
-func (r *queryResolver) LeadersByIds(ctx context.Context, id []*string) ([]*model.Leader, error) {
-	// Extract authentication context information using middleware (if needed).
+// Getmember is the resolver for the Getmember field.
+func (r *queryResolver) Getmember(ctx context.Context, id string) (*model.Member, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
 	err := middleware.ExtractCTXinfo(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	// Retrieve leaders from the database based on the provided IDs.
-	var leaders []*model.Leader
-	// Assuming you have a GORM database connection named "db"
-
-	if err := r.DB.Preload("Students.Registrations").Find(&leaders, "id IN (?)", id).Error; err != nil {
+	// Retrieve the student from the database based on the provided ID
+	member := &model.Member{}
+	if err := r.DB.First(member, id).Error; err != nil {
 		return nil, err
 	}
 
-	// Return the list of leaders.
-	return leaders, nil
+	// Return the member
+	return member, nil
+}
+
+// MembersByChurch is the resolver for the membersByChurch field.
+func (r *queryResolver) MembersByChurch(ctx context.Context, churchID string) ([]*model.Member, error) {
+	panic(fmt.Errorf("not implemented: MembersByChurch - membersByChurch"))
+}
+
+// GetsubChurchByID is the resolver for the GetsubChurchByID field.
+func (r *queryResolver) GetsubChurchByID(ctx context.Context, id string) (*model.SubChurch, error) {
+	panic(fmt.Errorf("not implemented: GetsubChurchByID - GetsubChurchByID"))
+}
+
+// GetChurchByID is the resolver for the GetChurchByID field.
+func (r *queryResolver) GetChurchByID(ctx context.Context, id string) (*model.Church, error) {
+	panic(fmt.Errorf("not implemented: GetChurchByID - GetChurchByID"))
+}
+
+// GetAllChurchByID is the resolver for the GetAllChurchByID field.
+func (r *queryResolver) GetAllChurchByID(ctx context.Context) ([]*model.Church, error) {
+	panic(fmt.Errorf("not implemented: GetAllChurchByID - GetAllChurchByID"))
+}
+
+// MembersBySubChurchID is the resolver for the MembersBySubChurchID field.
+func (r *queryResolver) MembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error) {
+	var members []*model.Member
+	if err := r.DB.
+		Where("sub_church_id = ?", subChurchID).Preload("Registrations").Preload("Church").Find(&members).Error; err != nil {
+		fmt.Println("Error preloading associations:", err)
+		return nil, err
+	}
+
+	return members, nil
 }
 
 // RegistrationsByLeader is the resolver for the registrationsByLeader field.
-func (r *queryResolver) RegistrationsByLeader(ctx context.Context, leaderID string) ([]*model.Registration, error) {
+func (r *queryResolver) RegistrationsByLeader(ctx context.Context, mleaderID string) ([]*model.Registration, error) {
 	var registrations []*model.Registration
 
 	// Preload the Leader and Student associations
-	if err := r.DB.Where("leader_id = ?", leaderID).Preload("Leader").Preload("Student").Find(&registrations).Error; err != nil {
+	if err := r.DB.Where("leader_id = ?", mleaderID).Preload("Leader").Preload("Member").Find(&registrations).Error; err != nil {
 		fmt.Println("Error preloading associations:", err)
 		return nil, err
 	}
@@ -764,94 +1167,49 @@ func (r *queryResolver) RegistrationsByLeader(ctx context.Context, leaderID stri
 	return registrations, nil
 }
 
-// Student is the resolver for the student field.
-func (r *queryResolver) Student(ctx context.Context, id string) (*model.Student, error) {
-	err := middleware.ExtractCTXinfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// Retrieve the student from the database based on the provided ID
-	student := &model.Student{}
-	if err := r.DB.First(student, id).Error; err != nil {
-		return nil, err
-	}
-
-	// Return the student
-	return student, nil
+// GetsubChurch is the resolver for the GetsubChurch field.
+func (r *queryResolver) GetsubChurch(ctx context.Context, id string) (*model.SubChurch, error) {
+	panic(fmt.Errorf("not implemented: GetsubChurch - GetsubChurch"))
 }
 
-// QueryStudentIds is the resolver for the QueryStudentIds field.
-func (r *queryResolver) QueryStudentIds(ctx context.Context, studentIds []*string) ([]*model.Student, error) {
-	// Create a slice to store the retrieved student records
-	var students []*model.Student
-
-	// Use Gorm to query the database based on the provided student IDs
-	if err := r.DB.Where("id IN (?)", studentIds).Find(&students).Error; err != nil {
-		return nil, err
-	}
-
-	// Return the retrieved student records
-	return students, nil
-}
-
-// Students is the resolver for the students field.
-func (r *queryResolver) Students(ctx context.Context, sort *model.SortInput) ([]*model.Student, error) {
-	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
-	err := middleware.ExtractCTXinfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Retrieve the list of students from the database
-	var students []*model.Student
-
-	query := r.DB.Model(&model.Student{}).Preload("Registrations")
-
-	sortCondition, err := schemas.GetSortingCondition(sort)
-	if err != nil {
-		return nil, err
-	}
-	if sortCondition != "" {
-		query = query.Order(sortCondition)
-	}
-
-	// Assuming you have a GORM database connection named "db"
-	err = query.Find(&students).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// Return the list of students with populated registrations
-	return students, nil
-}
-
-// StudentsByLeader is the resolver for the studentsByLeader field.
-func (r *queryResolver) StudentsByLeader(ctx context.Context, leaderID string) ([]*model.Student, error) {
-	err := middleware.ExtractCTXinfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// Retrieve the list of students by the provided leaderID from the database
-	var students []*model.Student
-	// Use Preload to fetch students with eager-loaded registrations
-	err = r.DB.Model(&model.Student{}).Where("leader_id = ?", leaderID).Preload("Registrations").Find(&students).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// Return the list of students
-	return students, nil
-}
-
-// StudentRegistrations is the resolver for the studentRegistrations field.
-func (r *queryResolver) StudentRegistrations(ctx context.Context, studentID string) ([]*model.Registration, error) {
-	// Fetch all registrations associated with the studentID from the database
+// CurrentWeekRegistrations is the resolver for the currentWeekRegistrations field.
+func (r *queryResolver) CurrentWeekRegistrations(ctx context.Context) ([]*model.Registration, error) {
 	var registrations []*model.Registration
-	if err := r.DB.Where("student_id = ?", studentID).Find(&registrations).Error; err != nil {
+	if err := r.DB.Preload("Member").Find(&registrations).Error; err != nil {
 		return nil, err
 	}
+	currentWeekNumber := schemas.GetWeekNumber(time.Now()) // Get the current week number
 
-	return registrations, nil
+	// Fetch LeaderNames based on LeaderIDs or set to "No Assign Caller" if LeaderID is nil
+	for _, reg := range registrations {
+		MStext := "No Assign Caller"
+		if schemas.GetWeekNumber(reg.CreatedAt) == currentWeekNumber {
+			if reg.LeaderID != nil {
+				leaderMember := &model.Member{} // Assuming Leader is also a Member
+				if err := r.DB.Where("id = ?", *reg.LeaderID).First(leaderMember).Error; err == nil {
+					reg.LeaderName = &leaderMember.Name // Assuming you have a Name field in the Member model
+				}
+			} else {
+				// Set LeaderName to "No Assign Caller" when LeaderID is nil
+				reg.LeaderName = &MStext
+			}
+		}
+	}
+
+	var currentWeekRegistrations []*model.Registration
+	for _, reg := range registrations {
+		if schemas.GetWeekNumber(reg.CreatedAt) == currentWeekNumber {
+			currentWeekRegistrations = append(currentWeekRegistrations, reg)
+		}
+	}
+	
+	return currentWeekRegistrations, nil
+
+}
+
+// GetRegistrations is the resolver for the GetRegistrations field.
+func (r *queryResolver) GetRegistrations(ctx context.Context) ([]*model.WeeklyResults, error) {
+	panic(fmt.Errorf("not implemented: GetRegistrations - GetRegistrations"))
 }
 
 // ID is the resolver for the id field.
@@ -861,13 +1219,16 @@ func (r *registrationResolver) ID(ctx context.Context, obj *model.Registration) 
 }
 
 // ID is the resolver for the id field.
-func (r *studentResolver) ID(ctx context.Context, obj *model.Student) (string, error) {
+func (r *subChurchResolver) ID(ctx context.Context, obj *model.SubChurch) (string, error) {
 	id := obj.ID.String()
 	return id, nil
 }
 
-// Leader returns LeaderResolver implementation.
-func (r *Resolver) Leader() LeaderResolver { return &leaderResolver{r} }
+// Church returns ChurchResolver implementation.
+func (r *Resolver) Church() ChurchResolver { return &churchResolver{r} }
+
+// Member returns MemberResolver implementation.
+func (r *Resolver) Member() MemberResolver { return &memberResolver{r} }
 
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
@@ -878,11 +1239,12 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 // Registration returns RegistrationResolver implementation.
 func (r *Resolver) Registration() RegistrationResolver { return &registrationResolver{r} }
 
-// Student returns StudentResolver implementation.
-func (r *Resolver) Student() StudentResolver { return &studentResolver{r} }
+// SubChurch returns SubChurchResolver implementation.
+func (r *Resolver) SubChurch() SubChurchResolver { return &subChurchResolver{r} }
 
-type leaderResolver struct{ *Resolver }
+type churchResolver struct{ *Resolver }
+type memberResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type registrationResolver struct{ *Resolver }
-type studentResolver struct{ *Resolver }
+type subChurchResolver struct{ *Resolver }

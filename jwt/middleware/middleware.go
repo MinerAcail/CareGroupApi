@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,17 +12,17 @@ import (
 	"github.com/kobbi/vbciapi/jwt/helpers"
 )
 
-// Now, let's define the leaderIDContextKey to use as the context key for LeaderID.
+// Now, let's define the IDContextKey to use as the context key for LeaderID.
 type contextKey string
 
-const LeaderIDContextKey contextKey = "leaderID"
+const IDContextKey contextKey = "leaderID"
+const SubIDContextKey contextKey = "subsID"
+const IDoptionalContextKey contextKey = "optional1"
 const LeaderTypeContextKey contextKey = "leaderTYPE"
 const cookieAccessKeyCtx contextKey = "cookieAccessKeyCtx"
 const CookieName contextKey = "SetToken"
 
-
 // ValidateToken validates the provided JWT token and returns the claims if the token is valid.
-
 
 // CookieAccess struct for managing cookies
 type CookieAccess struct {
@@ -40,7 +39,7 @@ func (ca *CookieAccess) SetToken(token string) {
 		HttpOnly: true,
 		Path:     "/",
 		Expires:  time.Now().Add(24 * time.Hour), // Adjust expiration as needed
-		
+
 	})
 }
 func (ca *CookieAccess) Logout() error {
@@ -53,10 +52,10 @@ func (ca *CookieAccess) Logout() error {
 	}
 
 	http.SetCookie(ca.Writer, cookie)
-	
 
 	return nil
 }
+
 // Function to set CookieAccess object in the request context
 func setValInCtx(ctx context.Context, val interface{}) context.Context {
 	return context.WithValue(ctx, cookieAccessKeyCtx, val)
@@ -80,10 +79,15 @@ func Middleware(next http.Handler) http.Handler {
 		tokenCookie, err := r.Cookie(string(CookieName))
 		if err == nil {
 			token := tokenCookie.Value
-			leaderID, leaderType, err := ParseToken(token)
+			leaderID, leaderType, optionalClaims, err := ParseToken(token)
 			if err == nil {
-				ctx = context.WithValue(ctx, LeaderIDContextKey, leaderID)
+				ctx = context.WithValue(ctx, IDContextKey, leaderID)
 				ctx = context.WithValue(ctx, LeaderTypeContextKey, leaderType)
+
+				// Set optional claims in the context using custom keys
+				for key, value := range optionalClaims {
+					ctx = context.WithValue(ctx, contextKey(key), value)
+				}
 			}
 		}
 
@@ -94,36 +98,44 @@ func Middleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
-func ParseToken(tokenStr string) (string, string, error) {
+
+func ParseToken(tokenStr string) (string, string, map[string]interface{}, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		return helpers.JwtSecret, nil
 	})
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		leaderID, ok := claims["leaderID"].(string)
 		if !ok {
-			return "", "", fmt.Errorf("leaderID not found in the token claims or has an unexpected type")
+			return "", "", nil, fmt.Errorf("leaderID not found in the token claims or has an unexpected type")
 		}
 
 		leaderType, ok := claims["types"].(string)
 		if !ok {
-			return "", "", fmt.Errorf("leaderType not found in the token claims or has an unexpected type")
+			return "", "", nil, fmt.Errorf("types not found in the token claims or has an unexpected type")
 		}
 
-		return leaderID, leaderType, nil
+		// Extract optional claims, if they exist
+		optionalClaims := make(map[string]interface{})
+		for key, value := range claims {
+			if key != "leaderID" && key != "types" {
+				optionalClaims[key] = value
+			}
+		}
+
+		return leaderID, leaderType, optionalClaims, nil
 	} else {
-		return "", "", fmt.Errorf("invalid token")
+		return "", "", nil, fmt.Errorf("invalid token")
 	}
 }
 
-
 func ExtractCTXinfo(ctx context.Context) error {
-	_, ok := ctx.Value(LeaderIDContextKey).(string)
+	_, ok := ctx.Value(IDContextKey).(string)
 	if !ok {
-		return fmt.Errorf("leaderID not found in request context")
+		return fmt.Errorf("ID not found in request context")
 	}
 	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
 	if !ok {
@@ -139,19 +151,28 @@ func ExtractCTXinfo(ctx context.Context) error {
 
 	return nil
 }
+func ExtractCTXinfo4AdminOnly(ctx context.Context) error {
+	_, ok := ctx.Value(IDContextKey).(string)
+	if !ok {
+		return fmt.Errorf("leaderID not found in request context")
+	}
+	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
+	if !ok {
+		return fmt.Errorf("leaderType not found in request context")
+	}
 
+	leaderType = strings.ToUpper(leaderType) // Convert leaderType to uppercase
 
+	// Check if the leaderType is not one of the allowed values
+	if leaderType != "ADMIN" {
+		return fmt.Errorf("%s is not allowed", leaderType)
+	}
 
-
-
-
-
-
-
-
+	return nil
+}
 
 // AuthenticationMiddleware is the middleware for authentication.
-func AuthenticationMiddleware(next http.Handler) http.Handler {
+/* func AuthenticationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
@@ -172,13 +193,13 @@ func AuthenticationMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Pass the LeaderID to the context for use in other handlers.
-		ctx := context.WithValue(r.Context(), LeaderIDContextKey, leaderID)
+		ctx := context.WithValue(r.Context(), IDContextKey, leaderID)
 		ctx = context.WithValue(ctx, LeaderTypeContextKey, leaderType)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
 	})
-}
+} */
 
 func ValidateTokens(signedToken string) (*helpers.TokenStruct, error) {
 	// Parse the JWT token with claims and validation function.
@@ -210,7 +231,7 @@ func ValidateTokens(signedToken string) (*helpers.TokenStruct, error) {
 	}
 
 	// Verify if the token has expired.
-	if claims.ExpiresAt < time.Now().UTC().Unix() {
+	if claims.ExpiresAt> time.Now().UTC().Unix() {
 		return nil, errors.New("token has expired")
 	}
 

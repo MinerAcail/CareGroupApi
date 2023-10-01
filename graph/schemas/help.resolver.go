@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"strings"
+	"sort"
 	"time"
+	"unsafe"
 
 	"github.com/kobbi/vbciapi/graph/model"
 	"gorm.io/gorm"
@@ -20,38 +21,39 @@ func Contains(list []string, item string) bool {
 	}
 	return false
 }
-func GetSortingCondition(sortInput *model.SortInput) (string, error) {
-	// Check for valid sorting fields to avoid SQL injection or incorrect sorting
-	validSortingFields := []string{"id", "name", "email", "phone_number", "day", "types", "created_at", "updated_at"}
 
-	if sortInput == nil {
-		return "", nil
-	}
-	if sortInput.Field == "" {
-		sortInput.Field = "name"
-	}
-	if sortInput.Order == "" {
-		return "", errors.New(" Invalid sorting input. Both 'field' and 'order' must be provided. ")
-	}
+// func GetSortingCondition(sortInput *model.SortInput) (string, error) {
+// 	// Check for valid sorting fields to avoid SQL injection or incorrect sorting
+// 	validSortingFields := []string{"id", "name", "email", "phone_number", "day", "types", "created_at", "updated_at"}
 
-	field := strings.ToLower(sortInput.Field)
-	order := strings.ToUpper(sortInput.Order)
+// 	if sortInput == nil {
+// 		return "", nil
+// 	}
+// 	if sortInput.Field == "" {
+// 		sortInput.Field = "name"
+// 	}
+// 	if sortInput.Order == "" {
+// 		return "", errors.New(" Invalid sorting input. Both 'field' and 'order' must be provided. ")
+// 	}
 
-	if order != "ASC" && order != "DESC" {
-		return "", errors.New(" Invalid sorting order. Must be either 'ASC' or 'DESC'. ")
-	}
+// 	field := strings.ToLower(sortInput.Field)
+// 	order := strings.ToUpper(sortInput.Order)
 
-	//CheckIf field contain any of the list Strings in validSortingFields
-	if !Contains(validSortingFields, field) {
-		return "", errors.New(" Invalid sorting field")
-	}
-	// Sort the leaders based on their names(sort.Field)
-	// Sort the leaders in ascending or descending order(order)
-	query := fmt.Sprintf("%s %s", field, order)
-	//the fmt.Sprintf add 2 string to 1 (sort.Field, order)=>(name DESC)
+// 	if order != "ASC" && order != "DESC" {
+// 		return "", errors.New(" Invalid sorting order. Must be either 'ASC' or 'DESC'. ")
+// 	}
 
-	return query, nil
-}
+// 	//CheckIf field contain any of the list Strings in validSortingFields
+// 	if !Contains(validSortingFields, field) {
+// 		return "", errors.New(" Invalid sorting field")
+// 	}
+// 	// Sort the leaders based on their names(sort.Field)
+// 	// Sort the leaders in ascending or descending order(order)
+// 	query := fmt.Sprintf("%s %s", field, order)
+// 	//the fmt.Sprintf add 2 string to 1 (sort.Field, order)=>(name DESC)
+
+// 	return query, nil
+// }
 
 /*
 order := "ASC"
@@ -98,6 +100,7 @@ func CheckDuplicateRecords(db *gorm.DB, model interface{}, inputName, inputEmail
 		return fmt.Errorf("email already exists")
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
+
 	}
 
 	// Check if a phone_number already exists
@@ -109,6 +112,91 @@ func CheckDuplicateRecords(db *gorm.DB, model interface{}, inputName, inputEmail
 	}
 
 	return nil
+}
+
+// Function to calculate and update ReferenceIDCount for leaders.
+func UpdateReferenceIDCounts(db *gorm.DB,subChurchID string) error {
+	// Query all leaders
+	var leaders []model.Member
+	if err := db.Where("types IN (?) ", []string{"Leader", "SubLeader"}).Find(&leaders).Error; err != nil {
+		return err
+	}
+
+
+
+	// Loop through leaders and calculate their ReferenceIDCount
+	for i := range leaders {
+		var count int64 // Change the type to int64
+
+		// Query the number of members associated with this leader
+		if err := db.Model(&model.Member{}).
+			Where("leader_id = ?", leaders[i].ID).
+			Count(&count).
+			Error; err != nil {
+			return err
+		}
+
+		// Update the ReferenceIDCount field
+		leaders[i].ReferenceIDCount = (*int)(unsafe.Pointer(&count)) // Convert int64 to *int
+		if err := db.Save(&leaders[i]).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func FindLeaderWithSameDay(db *gorm.DB, day string, subChurchID string) (*model.Member, error) {
+	// Call UpdateReferenceIDCounts to ensure the counts are up-to-date.
+	if err := UpdateReferenceIDCounts(db,subChurchID); err != nil {
+		// Handle the error, such as logging or returning an error response.
+		return nil, err
+	}
+	// Define a variable to hold the selected leader with the same day.
+	var selectedLeader model.Member
+
+	// Perform a database query to find leaders with the specified day.
+	var leadersWithSameDay []model.Member
+	if err := db.Where("types IN (?) AND day = ? AND sub_church_id = ?", []string{"Leader", "SubLeader"}, day,subChurchID).Find(&leadersWithSameDay).Error; err != nil {
+		// Handle errors here, such as if no leaders with the same day are found.
+		return nil, err
+	}
+	
+	// Check if there are multiple leaders with the same day.
+	if len(leadersWithSameDay) == 0 {
+		return nil, fmt.Errorf(" No leaders found with the same day")
+	}
+
+	// Sort the leaders first by ReferenceIDCount in ascending order.
+	sort.SliceStable(leadersWithSameDay, func(i, j int) bool {
+		// Dereference the pointers and then compare the integer values.
+		return *leadersWithSameDay[i].ReferenceIDCount < *leadersWithSameDay[j].ReferenceIDCount
+	})
+
+	// Now, sort them by lexicographically smallest name.
+	minReferenceIDCount := leadersWithSameDay[0].ReferenceIDCount
+	potentialLeaders := make([]model.Member, 0)
+	for _, leader := range leadersWithSameDay {
+		if leader.ReferenceIDCount == minReferenceIDCount {
+			potentialLeaders = append(potentialLeaders, leader)
+		} else {
+			// Since the leaders are sorted by ReferenceIDCount, we can break the loop when we find a leader with a higher count.
+			break
+		}
+	}
+
+	// If there are potential leaders with the same lowest ReferenceIDCount, sort them by lexicographically smallest name.
+	if len(potentialLeaders) > 0 {
+		selectedLeader = potentialLeaders[0]
+		for _, leader := range potentialLeaders {
+			if leader.Name < selectedLeader.Name {
+				selectedLeader = leader
+			}
+		}
+	}
+
+	// Return the selected leader with the same day.
+	return &selectedLeader, nil
 }
 
 var (

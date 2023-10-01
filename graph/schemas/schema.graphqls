@@ -1,55 +1,141 @@
 scalar Time
 
-
-input CreateLeaderInput {
-  day: String!
-  email: String
-  location: String
+type Member {
+  id: String!
   name: String!
-  password: String!
-  phoneNumber: String!
-  types: String!
+  email: String!
+  phoneNumber: String
+  location: String
+  day: String!
+  password: String
+  types: String
+  token: String
+  LeaderID: String
+  ReferenceIDCount: Int
+  registrations: [Registration] # Define a relationship to Registration
+  subChurch: SubChurch # Define a relationship to SubChurch
+  subChurchID: String
+  updatedAt: Time!
+  createdAt: Time!
+}
+
+type Registration {
+  id: String!
+  lastComment: String!
+  absence: Boolean!
+  present: Boolean!
+  createdAt: Time!
+  leaderName: String
+  leader: Member # Define a relationship to Member for leaderID
+  leaderID: String
+  member: Member # Define a relationship to Member for memberID
+  memberID: String!
+}
+
+type Church {
+  id: String!
+  name: String!
+  password: String
+  email: String
+  types: String
+  updatedAt: Time!
+  createdAt: Time!
+  token: String
+  subChurches: [SubChurch!]!
+}
+
+type SubChurch {
+  id: String!
+  name: String!
+  updatedAt: Time!
+  createdAt: Time!
+  church: Church
+  churchId: String!
+  leaders: [Member] # Define a relationship to Member for leaders
+  members: [Member] # Define a relationship to Member for members
+}
+
+union Returns = Church | SubChurch | Member
+
+type WeeklyResults {
+  date: DateInfo
+  registrations: [Registration]
+}
+type DateInfo {
+  month: String
+  weekOfMonth: Int
+}
+
+type Query {
+  GetAllMainChurch: [Church]
+  GetAllsubChurchByMainChurchID(mainChurchId: String!): [SubChurch]
+  GetAllMembersBySubChurchID(subChurchId: String!): [Member]
+  GetAllMembersByLeader(leaderID: String!): [Member]
+  GetAllRegistersByMemberID(MemberId: String!): [Registration]
+  LastFourCommentsForMember(memberID: String!): [String]
+  
+  GetAllsubChurch: [SubChurch]
+  GetCaller: [Member]
+
+  Getmember(id: String!): Member
+  membersByChurch(churchId: String!): [Member!]!
+  GetsubChurchByID(id: String!): SubChurch
+
+  GetChurchByID(id: String!): Church
+  GetAllChurchByID: [Church]
+  MembersBySubChurchID(subChurchId: String!): [Member!]!
+  # GetMemberBysubChurchID(ChurchId: String!): [Member]
+
+  registrationsByLeader(mleaderID: String!): [Registration]
+
+  GetsubChurch(id: String!): SubChurch
+  currentWeekRegistrations: [Registration!]!
+  GetRegistrations: [WeeklyResults!]!
 }
 
 input CreateRegistrationInput {
   absence: Boolean
   lastComment: String
   present: Boolean
-  
 }
 
-input CreateStudentInput {
-  day: String!
-  email: String
+input CreateMemberInput {
   name: String!
-  phoneNumber: String!
+  email: String!
+  phoneNumber: String
+  day: String!
+  location: String
+  address: String
+  leaderType: String
+  churchId: String!
 }
 
-input LoginLeaderInput {
+input CreateMemberInputBySub {
+  name: String!
+  email: String!
+  phoneNumber: String
+  day: String!
+  location: String
+  address: String
+}
+input assignLeaderInput {
+  memberId: String!
+  password: String
+  types: String
+}
+
+input LoginInput {
   password: String!
   phoneNumber: String!
 }
 
-type Leader {
-  Aggregations: LeaderAggregations!
-  createdAt: Time!
-  day: String!
-  email: String
-  id: String!
-  location: String!
-  name: String!
-  types: String!
-  phoneNumber: String!
-  refreshToken: String!
-  students: [Student!]!
-  token: String!
-  updatedAt: Time!
+type RegistrationsDistribution {
+  leaderID: String!
+  registrationIDs: [String!]!
 }
-
-type LeaderAggregations {
-  averageStudentsPerLeader: Float!
-  maxStudentsPerLeader: Int!
-  totalLeaders: Int!
+input RegistrationArrayInput {
+  memberId: String!
+  createInput: CreateRegistrationInput!
 }
 
 type LeaderRegistrationsDistribution {
@@ -57,107 +143,73 @@ type LeaderRegistrationsDistribution {
   registrationIDs: [String!]!
 }
 
-type Query {
-  GetgroupBy(groupByField: String!, tableName: String!): GroupByResults
-  GetRegistrations: [WeeklyResults!]!
-  currentWeekRegistrations: [Registration!]!
-  leader(id: String!): Leader
-
-  leaders(sort: SortInput, _GroupBy: [String!]): [Leader]
-  GetCaller: [Leader]
-
-  leadersByIds(id: [String]!): [Leader]
-  registrationsByLeader(leaderID: String!): [Registration]
-  student(id: String!): Student
-  QueryStudentIds(studentIds: [String]!): [Student]!
-  students(sort: SortInput): [Student!]!
-  studentsByLeader(leaderId: ID!): [Student!]! 
-  studentRegistrations(studentId: String!): [Registration!]!
-}
-type Registration {
-  id: String!
-  createdAt: Time!
-  lastComment: String!
-  absence: Boolean!
-  leaderID: String
-  leader: Leader
-  present: Boolean!
-  studentID: String!
-  student: Student
-}
-
-type Student {
-  createdAt: Time!
-  day: String!
+input updateMemberInput {
+  name: String
   email: String
-  id: String!
-  location: String!
-
-  leaderID: String!
-  name: String!
-  phoneNumber: String!
-  registrations: [Registration]
-  updatedAt: Time!
+  phoneNumber: String
+  day: String
+  location: String
 }
-
-type WeeklyResults {
-  date: DateInfo
-  registrations: [Registration]
-}
-
-type DateInfo {
-  month: String
-  weekOfMonth: Int
-}
-
-type GroupBy {
-  count: Int
-  key: String
-}
-
-type GroupByResults {
-  total: Int
-  groupByResults: [GroupBy]
-}
-
-
-input SortInput {
-  field: String!
-  order: String!
-}
-input RegistrationArrayInput {
-  studentId: String!
-  createInput: CreateRegistrationInput!
+input updateLeaderProfileInput {
+  name: String
+  email: String
+  phoneNumber: String
+  oldpassword: String
+  password: String
+  location: String
 }
 
 type Mutation {
-  CallerCentarUpdateRegister(input: CreateRegistrationInput!, leaderIDs: [String]!): [Registration!]!
-  createLeader(input: CreateLeaderInput!): Leader!
-  createRegistration(studentId: String!, input: CreateRegistrationInput!): Registration!
-  createRegistrationArray( input: [RegistrationArrayInput]): [Registration]!
-  createStudent(input: CreateStudentInput!): Student!
-  deleteStudent(studentId: String!): Boolean!
-  daleteRegistration(registrationId: String!): Boolean!
-  distributeRegistrationsToLeaders(leaderIds: [String!]!): [LeaderRegistrationsDistribution]
-  updateLeader(input: updateLeaderInput!): Leader!
-  updateRegistration(input: CreateRegistrationInput!, registrationId: String!): Registration!
-  updateRegistrationByLeader(input: CreateRegistrationInput!, registrationID: String!, leaderID: String!): Registration
-  updateStudent(input: updateStudentInput!, studentId: String!): Student!
-  loginLeader(input: LoginLeaderInput!): Leader!
+  createMember(input: CreateMemberInput): Member!
+  createMemberBysubLeader(input: CreateMemberInputBySub): Member!
+  updateMember(input: updateMemberInput!, memberId: String!): Member!
+  updateLeader(input: updateLeaderProfileInput!, memberId: String!): Member!
+
+  createChurch(name: String!, email: String!, password: String): Church!
+  deleteChurch(mainChurchId: String!): Boolean!
+  deleteMember(memberId: String!): Boolean!
+  deleteSubChurch(subChurchId: String!): Boolean!
+  deleteRegistration(registrationId: String!): Boolean!
+
+  createSubChurch(subChurchName: String): Church!
+
+  assignLeader(input: assignLeaderInput): Member!
+  removeLeader(memberId: String!): Member
+
+  createSubChurchesWithMainChurch(
+    mainChurchId: String!
+    subChurchNames: [String!]!
+  ): Church!
+
+  createRegistration(
+    memberId: String!
+    input: CreateRegistrationInput!
+  ): Registration!
+  createRegistrationArray(input: [RegistrationArrayInput]): [Registration]!
+
+  updateRegistration(
+    input: CreateRegistrationInput!
+    registrationId: String!
+  ): Registration!
+
+  updateRegistrationByLeader(
+    input: CreateRegistrationInput!
+    registrationID: String!
+    leaderID: String!
+  ): Registration
+
+  distributeRegistrationsToLeaders(
+    leaderIds: [String!]!
+  ): [LeaderRegistrationsDistribution]
+
+  login(input: LoginLeaderInput!): Returns
+  memberlogin(input: LoginLeaderInput!): Returns!
+
   logOut: Boolean!
 }
-input updateLeaderInput {
-  name: String
-  email: String
+
+input LoginLeaderInput {
+  password: String!
   phoneNumber: String
-  day: String
-  password: String
-  types: String
-  location: String
-}
-input updateStudentInput {
-  name: String
   email: String
-  phoneNumber: String
-  day: String
 }

@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-const defaultPort = "9090"
+const defaultPort = "9091"
 
 func main() {
 	config := &database.Config{
@@ -24,7 +24,7 @@ func main() {
 		Port:     "5432",
 		User:     "justtest",
 		Password: "0000",
-		DBName:   "testdb",
+		DBName:   "testdb1",
 		SSLMode:  "disable",
 	}
 
@@ -74,7 +74,7 @@ func main() {
 
 // PerformMigrations performs database migrations using Gorm's AutoMigrate function.
 func PerformMigrations(db *gorm.DB) error {
-	err := db.AutoMigrate(&model.Leader{}, &model.Student{}, &model.Registration{})
+	err := db.AutoMigrate(&model.Member{},&model.Church{},&model.SubChurch{}, &model.Registration{})
 	if err != nil {
 		return err
 	}

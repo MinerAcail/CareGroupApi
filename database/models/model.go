@@ -1,37 +1,50 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
-type Leader struct {
-	ID          int        `gorm:"primaryKey" json:"id"`
-	Name        string     `gorm:"not null" json:"name"`
-	Email       *string    `json:"email,omitempty"`
-	PhoneNumber string     `gorm:"not null" json:"phoneNumber"`
-	Day         string     `gorm:"not null" json:"day"`
-	Password    string     `gorm:"not null" json:"password"`
-	CreatedAt   time.Time  `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt   time.Time  `gorm:"autoUpdateTime" json:"updatedAt"`
-	Students    []*Student `gorm:"foreignKey:LeaderID" json:"students"`
-}
+
 
 type Registration struct {
-	ID           int       `gorm:"primaryKey" json:"id"`
-	LastComment string    `gorm:"not null" json:"lastComment"`
-	Absence      bool      `gorm:"not null" json:"absence"`
-	Present      bool      `gorm:"not null" json:"present"`
-	CreatedAt    time.Time `gorm:"autoCreateTime" json:"createdAt"`
-	StudentID    int       `gorm:"index" json:"studentId"`
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	LastComment string    `json:"lastComment"`
+	Absence     bool      `json:"absence"`
+	Present     bool      `json:"present"`
+	LeaderID    *string   `json:"leaderID,omitempty"`
+	MemberID    uint      `gorm:"index" json:"memberID"`
+	Member      Member    `gorm:"foreignKey:MemberID" json:"member,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
-type Student struct {
-	ID            int             `gorm:"primaryKey" json:"id"`
-	Name          string          `gorm:"not null" json:"name"`
-	Email         *string         `json:"email,omitempty"`
-	PhoneNumber   string          `gorm:"not null" json:"phoneNumber"`
-	Day           string          `gorm:"not null" json:"day"`
-	LeaderID      int             `gorm:"index" json:"leaderID"`
-	Leader        Leader          `gorm:"foreignKey:LeaderID" json:"leader"`
-	Registrations []*Registration `gorm:"foreignKey:StudentID" json:"registrations"`
-	CreatedAt     time.Time       `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt     time.Time       `gorm:"autoUpdateTime" json:"updatedAt"`
+type Church struct {
+	ID          uint         `gorm:"primaryKey" json:"id"`
+	Name        string       `json:"name"`
+	SubChurches []*SubChurch `json:"subChurches"`
+}
+
+
+type SubChurch struct {
+    ID       uint       `gorm:"primaryKey" json:"id"`
+    Name     string     `json:"name"`
+    ChurchID uint       `gorm:"index" json:"churchID"`
+    Church   Church     `gorm:"foreignKey:ChurchID" json:"church"`
+    Leaders  []*Member  `gorm:"many2many:subchurch_leaders;" json:"leaders"`
+    Members  []*Member  `gorm:"many2many:subchurch_members;" json:"members"`
+}
+
+type Member struct {
+    ID           uint         `gorm:"primaryKey" json:"id"`
+    Name         string       `json:"name"`
+    Email        string       `json:"email"`
+    PhoneNumber  *string      `json:"phoneNumber,omitempty"`
+    Location     *string      `json:"location,omitempty"`
+    Day          string       `json:"day"`
+    Types        string       `json:"types"`
+    Token        string       `json:"token"`
+    Registrations []*Registration `gorm:"foreignKey:MemberID" json:"registrations,omitempty"`
+    ChurchID     uint         `gorm:"index" json:"churchID"`
+    Church       Church       `gorm:"foreignKey:ChurchID" json:"church"`
+    UpdatedAt    time.Time    `json:"updatedAt"`
+    CreatedAt    time.Time    `json:"createdAt"`
 }

@@ -33,59 +33,81 @@ func VerifyPassword(hashedPassword string, inputPassword string) error {
 	return nil
 }
 
-func GenerateTokens(types string, id string) (string, error) {
-	// Access Token
 
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256,
-		&TokenStruct{
-			ID:    id,
-			Types: types,
-			StandardClaims: jwt.StandardClaims{
-				ExpiresAt: time.Now().Local().Add(time.Hour * time.Duration(24)).Unix(),
-				Id:        id,
-			},
-		})
+func GenerateToken(types string, leaderID string, optionalClaims ...jwt.MapClaims) (string, error) {
+    // Create a new JWT token with the signing method HS256 (HMAC SHA-256)
+    token := jwt.New(jwt.SigningMethodHS256)
 
-	signedToken, err := accessToken.SignedString(JwtSecret)
-	if err != nil {
-		return "", err
-	}
+    // Convert the token's claims to a map
+    claims := token.Claims.(jwt.MapClaims)
 
-	// Refresh Token
-	/* refreshTokenClaims := &TokenStruct{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Local().Add(time.Hour * time.Duration(168)).Unix(),
-		},
-	}
+    // Set the "types" and "leaderID" claims in the token
+    claims["types"] = types
+    claims["leaderID"] = leaderID
 
-	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims).SignedString([]byte(JwtSecret))
-	if err != nil {
-		return "", "", err
-	} */
+    // Set the "exp" (expiration) claim to the current time + 24 hours
+    claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 
-	return signedToken, nil
+    // Set optional claims if provided
+    for _, optionalClaim := range optionalClaims {
+        for key, value := range optionalClaim {
+            claims[key] = value
+        }
+    }
+
+    // Sign the token using a secret key (SecretKey)
+    tokenString, err := token.SignedString(JwtSecret)
+    if err != nil {
+        log.Fatal("Error in Generating key")
+        return "", err
+    }
+
+    // Return the signed token as a string
+    return tokenString, nil
 }
-func GenerateToken(types string, leaderID string) (string, error) {
-	// Create a new JWT token with the signing method HS256 (HMAC SHA-256)
-	token := jwt.New(jwt.SigningMethodHS256)
 
-	// Convert the token's claims to a map
-	claims := token.Claims.(jwt.MapClaims)
 
-	// Set the "types" and "leaderID" claims in the token
-	claims["types"] = types
-	claims["leaderID"] = leaderID
 
-	// Set the "exp" (expiration) claim to the current time + 24 hours
-	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 
-	// Sign the token using a secret key (SecretKey)
-	tokenString, err := token.SignedString(JwtSecret)
-	if err != nil {
-		log.Fatal("Error in Generating key")
-		return "", err
-	}
 
-	// Return the signed token as a string
-	return tokenString, nil
-}
+
+
+
+
+
+
+
+
+
+
+
+
+// func GenerateTokenO(leaderID string, optionalClaims ...jwt.MapClaims) (string, error) {
+// 	// Create a new JWT token with the signing method HS256 (HMAC SHA-256)
+// 	token := jwt.New(jwt.SigningMethodHS256)
+
+// 	// Convert the token's claims to a map
+// 	claims := token.Claims.(jwt.MapClaims)
+
+// 	// Set the "leaderID" claim in the token
+// 	claims["leaderID"] = leaderID
+
+// 	// Set any optional claims provided
+// 	if len(optionalClaims) > 0 {
+// 		for key, value := range optionalClaims[0] {
+// 			claims[key] = value
+// 		}
+// 	}
+
+// 	// Set the "exp" (expiration) claim to a reasonable future time (e.g., 24 hours)
+// 	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
+
+// 	// Sign the token using a secret key (JwtSecret)
+// 	tokenString, err := token.SignedString([]byte(JwtSecret))
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	// Return the signed token as a string
+// 	return tokenString, nil
+// }

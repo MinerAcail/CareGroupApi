@@ -2,14 +2,24 @@
 
 package model
 
-type CreateLeaderInput struct {
-	Day         string  `json:"day"`
-	Email       *string `json:"email,omitempty"`
-	Location    *string `json:"location,omitempty"`
+type CreateMemberInput struct {
 	Name        string  `json:"name"`
-	Password    string  `json:"password"`
-	PhoneNumber string  `json:"phoneNumber"`
-	Types       string  `json:"types"`
+	Email       string  `json:"email"`
+	PhoneNumber *string `json:"phoneNumber,omitempty"`
+	Day         string  `json:"day"`
+	Location    *string `json:"location,omitempty"`
+	Address     *string `json:"address,omitempty"`
+	LeaderType  *string `json:"leaderType,omitempty"`
+	ChurchID    string  `json:"churchId"`
+}
+
+type CreateMemberInputBySub struct {
+	Name        string  `json:"name"`
+	Email       string  `json:"email"`
+	PhoneNumber *string `json:"phoneNumber,omitempty"`
+	Day         string  `json:"day"`
+	Location    *string `json:"location,omitempty"`
+	Address     *string `json:"address,omitempty"`
 }
 
 type CreateRegistrationInput struct {
@@ -18,21 +28,9 @@ type CreateRegistrationInput struct {
 	Present     *bool   `json:"present,omitempty"`
 }
 
-type CreateStudentInput struct {
-	Day         string  `json:"day"`
-	Email       *string `json:"email,omitempty"`
-	Name        string  `json:"name"`
-	PhoneNumber string  `json:"phoneNumber"`
-}
-
 type DateInfo struct {
 	Month       *string `json:"month,omitempty"`
 	WeekOfMonth *int    `json:"weekOfMonth,omitempty"`
-}
-
-type GroupBy struct {
-	Count *int    `json:"count,omitempty"`
-	Key   *string `json:"key,omitempty"`
 }
 
 type LeaderRegistrationsDistribution struct {
@@ -40,19 +38,25 @@ type LeaderRegistrationsDistribution struct {
 	RegistrationIDs []string `json:"registrationIDs"`
 }
 
-type LoginLeaderInput struct {
+type LoginInput struct {
 	Password    string `json:"password"`
 	PhoneNumber string `json:"phoneNumber"`
 }
 
+type LoginLeaderInput struct {
+	Password    string  `json:"password"`
+	PhoneNumber *string `json:"phoneNumber,omitempty"`
+	Email       *string `json:"email,omitempty"`
+}
+
 type RegistrationArrayInput struct {
-	StudentID   string                   `json:"studentId"`
+	MemberID    string                   `json:"memberId"`
 	CreateInput *CreateRegistrationInput `json:"createInput"`
 }
 
-type SortInput struct {
-	Field string `json:"field"`
-	Order string `json:"order"`
+type RegistrationsDistribution struct {
+	LeaderID        string   `json:"leaderID"`
+	RegistrationIDs []string `json:"registrationIDs"`
 }
 
 type WeeklyResults struct {
@@ -60,19 +64,25 @@ type WeeklyResults struct {
 	Registrations []*Registration `json:"registrations,omitempty"`
 }
 
-type UpdateLeaderInput struct {
+type AssignLeaderInput struct {
+	MemberID string  `json:"memberId"`
+	Password *string `json:"password,omitempty"`
+	Types    *string `json:"types,omitempty"`
+}
+
+type UpdateLeaderProfileInput struct {
 	Name        *string `json:"name,omitempty"`
 	Email       *string `json:"email,omitempty"`
 	PhoneNumber *string `json:"phoneNumber,omitempty"`
-	Day         *string `json:"day,omitempty"`
+	Oldpassword *string `json:"oldpassword,omitempty"`
 	Password    *string `json:"password,omitempty"`
-	Types       *string `json:"types,omitempty"`
 	Location    *string `json:"location,omitempty"`
 }
 
-type UpdateStudentInput struct {
+type UpdateMemberInput struct {
 	Name        *string `json:"name,omitempty"`
 	Email       *string `json:"email,omitempty"`
 	PhoneNumber *string `json:"phoneNumber,omitempty"`
 	Day         *string `json:"day,omitempty"`
+	Location    *string `json:"location,omitempty"`
 }
