@@ -364,12 +364,11 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 		Name:     uppercasedSubChurchName,
 		ChurchID: mainChurchID,
 	}
-	
 
 	if err := r.DB.Create(subChurch).Error; err != nil {
 		return nil, fmt.Errorf("failed to create sub-church: %w", err)
 	}
-	
+
 	// Append the sub-church to the main church's SubChurches slice
 	mainChurch.SubChurches = append(mainChurch.SubChurches, subChurch)
 	// Define the days of the week
@@ -397,7 +396,7 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
 
 		leader := &model.Member{
-			Name: fmt.Sprintf("%s Leader %d", uppercasedSubChurchName, i+1),
+			Name:        fmt.Sprintf("%s Leader %d", uppercasedSubChurchName, i+1),
 			Email:       leaderemail,
 			Types:       &leadertype,
 			PhoneNumber: &phoneNumber,
@@ -777,13 +776,20 @@ func (r *mutationResolver) UpdateRegistrationByLeader(ctx context.Context, input
 
 	// Update the registration's attributes based on the input
 	if input.Absence != nil {
+		if *input.Absence {
+			// If Absence is set to true, set Present to false
+			register.Present = false
+		}
 		register.Absence = *input.Absence
 	}
 
 	if input.Present != nil {
+		if *input.Present {
+			// If Present is set to true, set Absence to false
+			register.Absence = false
+		}
 		register.Present = *input.Present
 	}
-
 	if input.LastComment != nil && *input.LastComment != "" {
 		register.LastComment = *input.LastComment
 	}
@@ -1202,7 +1208,7 @@ func (r *queryResolver) CurrentWeekRegistrations(ctx context.Context) ([]*model.
 			currentWeekRegistrations = append(currentWeekRegistrations, reg)
 		}
 	}
-	
+
 	return currentWeekRegistrations, nil
 
 }
