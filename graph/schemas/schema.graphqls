@@ -161,6 +161,8 @@ input updateLeaderProfileInput {
 
 type Mutation {
   createMember(input: CreateMemberInput): Member!
+    cleanUpPhoneNumbers: [String]
+
   createMemberBysubLeader(input: CreateMemberInputBySub): Member!
   updateMember(input: updateMemberInput!, memberId: String!): Member!
   updateLeader(input: updateLeaderProfileInput!, memberId: String!): Member!

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -197,6 +198,21 @@ func FindLeaderWithSameDay(db *gorm.DB, day string, subChurchID string) (*model.
 
 	// Return the selected leader with the same day.
 	return &selectedLeader, nil
+}
+
+
+func CleanPhoneNumber(phoneNumber string) string {
+    cleanedPhoneNumber := strings.ReplaceAll(phoneNumber, " ", "")
+    cleanedPhoneNumber = strings.TrimPrefix(cleanedPhoneNumber, "+233")
+    cleanedPhoneNumber = strings.TrimPrefix(cleanedPhoneNumber, "233")
+
+    // Check if the cleaned phone number has fewer than 10 digits
+    if len(cleanedPhoneNumber) < 10 {
+        // Add a leading "0" to make it 10 digits
+        cleanedPhoneNumber = "0" + cleanedPhoneNumber
+    }
+
+    return cleanedPhoneNumber
 }
 
 var (

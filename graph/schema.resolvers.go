@@ -54,11 +54,12 @@ func (r *mutationResolver) CreateMember(ctx context.Context, input *model.Create
 	}
 	// Convert leader .ID to a string before assigning it to LeaderID
 	leaderID := leader.ID.String()
+	PhoneNumber := schemas.CleanPhoneNumber(*input.PhoneNumber)
 
 	member := &model.Member{
 		Name:        input.Name,
 		Email:       input.Email,
-		PhoneNumber: input.PhoneNumber,
+		PhoneNumber: &PhoneNumber,
 		Day:         input.Day,
 		Location:    input.Location,
 		SubChurchID: &input.ChurchID,
@@ -75,6 +76,31 @@ func (r *mutationResolver) CreateMember(ctx context.Context, input *model.Create
 		return nil, err
 	}
 	return member, nil
+}
+
+// CleanUpPhoneNumbers is the resolver for the cleanUpPhoneNumbers field.
+func (r *mutationResolver) CleanUpPhoneNumbers(ctx context.Context) ([]*string, error) {
+	// Retrieve all phone numbers from the database
+	var phoneNumbers []string
+	if err := r.DB.Model(&model.Member{}).Pluck("phone_number", &phoneNumbers).Error; err != nil {
+		return nil, fmt.Errorf("failed to retrieve phone numbers: %w", err)
+	}
+
+	// Clean and update each phone number
+	cleanedPhoneNumbers := make([]*string, 0, len(phoneNumbers))
+	for _, phoneNumber := range phoneNumbers {
+		cleanedPhoneNumber := schemas.CleanPhoneNumber(phoneNumber)
+
+		// Update the cleaned phone number in the database
+		if err := r.DB.Model(&model.Member{}).Where("phone_number = ?", phoneNumber).Update("phone_number", cleanedPhoneNumber).Error; err != nil {
+			return nil, fmt.Errorf("failed to update phone number: %w", err)
+		}
+
+		// Append the cleaned phone number to the result list
+		cleanedPhoneNumbers = append(cleanedPhoneNumbers, &cleanedPhoneNumber)
+	}
+
+	return cleanedPhoneNumbers, nil
 }
 
 // CreateMemberBysubLeader is the resolver for the createMemberBysubLeader field.
@@ -99,11 +125,12 @@ func (r *mutationResolver) CreateMemberBysubLeader(ctx context.Context, input *m
 	if err := schemas.CheckDuplicateRecords(r.DB, members, input.Name, input.Email, *input.PhoneNumber); err != nil {
 		return nil, err
 	}
+	PhoneNumber := schemas.CleanPhoneNumber(*input.PhoneNumber)
 
 	member := &model.Member{
 		Name:        input.Name,
 		Email:       input.Email,
-		PhoneNumber: input.PhoneNumber,
+		PhoneNumber: &PhoneNumber,
 		Day:         input.Day,
 		Location:    input.Location,
 		SubChurchID: &leader.SubChurch.ChurchID,
@@ -132,9 +159,10 @@ func (r *mutationResolver) UpdateMember(ctx context.Context, input model.UpdateM
 	if err := r.DB.Where("email = ?", input.Email).Not("id = ?", memberID).First(&model.Member{}).Error; err == nil {
 		return nil, fmt.Errorf("email already exists")
 	}
+	PhoneNumber := schemas.CleanPhoneNumber(*input.PhoneNumber)
 
 	// Check if the provided phone number is already used by another member
-	if err := r.DB.Where("phone_number = ?", input.PhoneNumber).Not("id = ?", memberID).First(&model.Member{}).Error; err == nil {
+	if err := r.DB.Where("phone_number = ?", PhoneNumber).Not("id = ?", memberID).First(&model.Member{}).Error; err == nil {
 		return nil, fmt.Errorf("phone number already exists")
 	}
 	// Update the Member's fields with the input values
@@ -145,7 +173,7 @@ func (r *mutationResolver) UpdateMember(ctx context.Context, input model.UpdateM
 		Member.Email = *input.Email
 	}
 	if input.PhoneNumber != nil {
-		Member.PhoneNumber = input.PhoneNumber
+		Member.PhoneNumber = &PhoneNumber
 	}
 	if input.Day != nil {
 		Member.Day = *input.Day
@@ -183,6 +211,7 @@ func (r *mutationResolver) UpdateLeader(ctx context.Context, input model.UpdateL
 	if err := helpers.VerifyPassword(*leader.Password, *input.Oldpassword); err != nil {
 		return nil, fmt.Errorf("incorrect password, Can't make changes without you old Password")
 	}
+	PhoneNumber := schemas.CleanPhoneNumber(*input.PhoneNumber)
 
 	// Update the leader's profile with the provided input fields.
 	if input.Name != nil {
@@ -192,7 +221,7 @@ func (r *mutationResolver) UpdateLeader(ctx context.Context, input model.UpdateL
 		leader.Email = *input.Email
 	}
 	if input.PhoneNumber != nil {
-		leader.PhoneNumber = input.PhoneNumber
+		leader.PhoneNumber = &PhoneNumber
 	}
 
 	if input.Password != nil {
@@ -1210,7 +1239,6 @@ func (r *queryResolver) CurrentWeekRegistrations(ctx context.Context) ([]*model.
 	}
 
 	return currentWeekRegistrations, nil
-
 }
 
 // GetRegistrations is the resolver for the GetRegistrations field.

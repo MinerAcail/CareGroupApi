@@ -93,6 +93,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AssignLeader                     func(childComplexity int, input *model.AssignLeaderInput) int
+		CleanUpPhoneNumbers              func(childComplexity int) int
 		CreateChurch                     func(childComplexity int, name string, email string, password *string) int
 		CreateMember                     func(childComplexity int, input *model.CreateMemberInput) int
 		CreateMemberBysubLeader          func(childComplexity int, input *model.CreateMemberInputBySub) int
@@ -179,6 +180,7 @@ type MemberResolver interface {
 }
 type MutationResolver interface {
 	CreateMember(ctx context.Context, input *model.CreateMemberInput) (*model.Member, error)
+	CleanUpPhoneNumbers(ctx context.Context) ([]*string, error)
 	CreateMemberBysubLeader(ctx context.Context, input *model.CreateMemberInputBySub) (*model.Member, error)
 	UpdateMember(ctx context.Context, input model.UpdateMemberInput, memberID string) (*model.Member, error)
 	UpdateLeader(ctx context.Context, input model.UpdateLeaderProfileInput, memberID string) (*model.Member, error)
@@ -456,6 +458,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AssignLeader(childComplexity, args["input"].(*model.AssignLeaderInput)), true
+
+	case "Mutation.cleanUpPhoneNumbers":
+		if e.complexity.Mutation.CleanUpPhoneNumbers == nil {
+			break
+		}
+
+		return e.complexity.Mutation.CleanUpPhoneNumbers(childComplexity), true
 
 	case "Mutation.createChurch":
 		if e.complexity.Mutation.CreateChurch == nil {
@@ -3150,6 +3159,47 @@ func (ec *executionContext) fieldContext_Mutation_createMember(ctx context.Conte
 	if fc.Args, err = ec.field_Mutation_createMember_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_cleanUpPhoneNumbers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_cleanUpPhoneNumbers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CleanUpPhoneNumbers(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*string)
+	fc.Result = res
+	return ec.marshalOString2ᚕᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_cleanUpPhoneNumbers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -9753,6 +9803,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "cleanUpPhoneNumbers":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_cleanUpPhoneNumbers(ctx, field)
+			})
 		case "createMemberBysubLeader":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createMemberBysubLeader(ctx, field)
