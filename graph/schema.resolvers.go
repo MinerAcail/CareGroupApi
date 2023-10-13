@@ -371,22 +371,35 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 	if !ok {
 		return nil, fmt.Errorf("main ChurchID not found in request context")
 	}
-
-	// Find the main church by ID
-	mainChurch := &model.Church{}
-	if err := r.DB.First(mainChurch, "id = ?", mainChurchID).Error; err != nil {
-		return nil, fmt.Errorf("failed to find main church: %w", err)
-	}
 	// Convert subChurchName to uppercase
 	uppercasedSubChurchName := ""
 	if subChurchName != nil {
 		uppercasedSubChurchName = strings.ToUpper(*subChurchName)
 	}
+	mainChurch := &model.Church{}
+
+	// Find the main church by ID
+
+	if !branch {
+
+		if err := r.DB.First(mainChurch, "id = ?", mainChurchID).Error; err != nil {
+			return nil, fmt.Errorf("failed to find main church: %w", err)
+		}
+	} else {
+		var church model.SubChurch
+		if err := r.DB.First(&church, "id = ?", mainChurchID).Error; err != nil {
+			return nil, fmt.Errorf("failed to find main church in subChurch: %w", err)
+
+		}
+		mainChurchID = church.ChurchID
+	}
+
 	// Check if the sub-church already exists
-	existingSubChurch := &model.SubChurch{}
-	if err := r.DB.Where("name = ? AND church_id = ?", uppercasedSubChurchName, mainChurchID).First(existingSubChurch).Error; err == nil {
+	// existingSubChurch := &model.SubChurch{}
+	if err := r.DB.Where("name = ? AND church_id = ?", uppercasedSubChurchName, mainChurchID).First(&model.SubChurch{}).Error; err == nil {
 		return nil, fmt.Errorf("sub-church with the same name already exists")
 	}
+
 	Types := "subChurch"
 
 	randomPassword := helpers.GenerateRandomPassword(6)
