@@ -99,7 +99,7 @@ type ComplexityRoot struct {
 		CreateMemberBysubLeader          func(childComplexity int, input *model.CreateMemberInputBySub) int
 		CreateRegistration               func(childComplexity int, memberID string, input model.CreateRegistrationInput) int
 		CreateRegistrationArray          func(childComplexity int, input []*model.RegistrationArrayInput) int
-		CreateSubChurch                  func(childComplexity int, subChurchName *string) int
+		CreateSubChurch                  func(childComplexity int, subChurchName *string, branch bool) int
 		CreateSubChurchesWithMainChurch  func(childComplexity int, mainChurchID string, subChurchNames []string) int
 		DeleteChurch                     func(childComplexity int, mainChurchID string) int
 		DeleteMember                     func(childComplexity int, memberID string) int
@@ -148,6 +148,8 @@ type ComplexityRoot struct {
 		Member      func(childComplexity int) int
 		MemberID    func(childComplexity int) int
 		Present     func(childComplexity int) int
+		SubChurch   func(childComplexity int) int
+		SubChurchID func(childComplexity int) int
 	}
 
 	RegistrationsDistribution struct {
@@ -159,10 +161,14 @@ type ComplexityRoot struct {
 		Church    func(childComplexity int) int
 		ChurchID  func(childComplexity int) int
 		CreatedAt func(childComplexity int) int
+		Email     func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Leaders   func(childComplexity int) int
 		Members   func(childComplexity int) int
 		Name      func(childComplexity int) int
+		Password  func(childComplexity int) int
+		Token     func(childComplexity int) int
+		Types     func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
 	}
 
@@ -189,7 +195,7 @@ type MutationResolver interface {
 	DeleteMember(ctx context.Context, memberID string) (bool, error)
 	DeleteSubChurch(ctx context.Context, subChurchID string) (bool, error)
 	DeleteRegistration(ctx context.Context, registrationID string) (bool, error)
-	CreateSubChurch(ctx context.Context, subChurchName *string) (*model.Church, error)
+	CreateSubChurch(ctx context.Context, subChurchName *string, branch bool) (*model.Church, error)
 	AssignLeader(ctx context.Context, input *model.AssignLeaderInput) (*model.Member, error)
 	RemoveLeader(ctx context.Context, memberID string) (*model.Member, error)
 	CreateSubChurchesWithMainChurch(ctx context.Context, mainChurchID string, subChurchNames []string) (*model.Church, error)
@@ -536,7 +542,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.CreateSubChurch(childComplexity, args["subChurchName"].(*string)), true
+		return e.complexity.Mutation.CreateSubChurch(childComplexity, args["subChurchName"].(*string), args["branch"].(bool)), true
 
 	case "Mutation.createSubChurchesWithMainChurch":
 		if e.complexity.Mutation.CreateSubChurchesWithMainChurch == nil {
@@ -957,6 +963,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Registration.Present(childComplexity), true
 
+	case "Registration.subChurch":
+		if e.complexity.Registration.SubChurch == nil {
+			break
+		}
+
+		return e.complexity.Registration.SubChurch(childComplexity), true
+
+	case "Registration.subChurchID":
+		if e.complexity.Registration.SubChurchID == nil {
+			break
+		}
+
+		return e.complexity.Registration.SubChurchID(childComplexity), true
+
 	case "RegistrationsDistribution.leaderID":
 		if e.complexity.RegistrationsDistribution.LeaderID == nil {
 			break
@@ -992,6 +1012,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SubChurch.CreatedAt(childComplexity), true
 
+	case "SubChurch.email":
+		if e.complexity.SubChurch.Email == nil {
+			break
+		}
+
+		return e.complexity.SubChurch.Email(childComplexity), true
+
 	case "SubChurch.id":
 		if e.complexity.SubChurch.ID == nil {
 			break
@@ -1019,6 +1046,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SubChurch.Name(childComplexity), true
+
+	case "SubChurch.password":
+		if e.complexity.SubChurch.Password == nil {
+			break
+		}
+
+		return e.complexity.SubChurch.Password(childComplexity), true
+
+	case "SubChurch.token":
+		if e.complexity.SubChurch.Token == nil {
+			break
+		}
+
+		return e.complexity.SubChurch.Token(childComplexity), true
+
+	case "SubChurch.types":
+		if e.complexity.SubChurch.Types == nil {
+			break
+		}
+
+		return e.complexity.SubChurch.Types(childComplexity), true
 
 	case "SubChurch.updatedAt":
 		if e.complexity.SubChurch.UpdatedAt == nil {
@@ -1303,6 +1351,15 @@ func (ec *executionContext) field_Mutation_createSubChurch_args(ctx context.Cont
 		}
 	}
 	args["subChurchName"] = arg0
+	var arg1 bool
+	if tmp, ok := rawArgs["branch"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("branch"))
+		arg1, err = ec.unmarshalNBoolean2bool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["branch"] = arg1
 	return args, nil
 }
 
@@ -2171,6 +2228,14 @@ func (ec *executionContext) fieldContext_Church_subChurches(ctx context.Context,
 				return ec.fieldContext_SubChurch_id(ctx, field)
 			case "name":
 				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
 			case "createdAt":
@@ -2877,6 +2942,10 @@ func (ec *executionContext) fieldContext_Member_registrations(ctx context.Contex
 				return ec.fieldContext_Registration_leaderID(ctx, field)
 			case "member":
 				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
 			case "memberID":
 				return ec.fieldContext_Registration_memberID(ctx, field)
 			}
@@ -2926,6 +2995,14 @@ func (ec *executionContext) fieldContext_Member_subChurch(ctx context.Context, f
 				return ec.fieldContext_SubChurch_id(ctx, field)
 			case "name":
 				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
 			case "createdAt":
@@ -3780,7 +3857,7 @@ func (ec *executionContext) _Mutation_createSubChurch(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().CreateSubChurch(rctx, fc.Args["subChurchName"].(*string))
+		return ec.resolvers.Mutation().CreateSubChurch(rctx, fc.Args["subChurchName"].(*string), fc.Args["branch"].(bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4148,6 +4225,10 @@ func (ec *executionContext) fieldContext_Mutation_createRegistration(ctx context
 				return ec.fieldContext_Registration_leaderID(ctx, field)
 			case "member":
 				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
 			case "memberID":
 				return ec.fieldContext_Registration_memberID(ctx, field)
 			}
@@ -4225,6 +4306,10 @@ func (ec *executionContext) fieldContext_Mutation_createRegistrationArray(ctx co
 				return ec.fieldContext_Registration_leaderID(ctx, field)
 			case "member":
 				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
 			case "memberID":
 				return ec.fieldContext_Registration_memberID(ctx, field)
 			}
@@ -4302,6 +4387,10 @@ func (ec *executionContext) fieldContext_Mutation_updateRegistration(ctx context
 				return ec.fieldContext_Registration_leaderID(ctx, field)
 			case "member":
 				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
 			case "memberID":
 				return ec.fieldContext_Registration_memberID(ctx, field)
 			}
@@ -4376,6 +4465,10 @@ func (ec *executionContext) fieldContext_Mutation_updateRegistrationByLeader(ctx
 				return ec.fieldContext_Registration_leaderID(ctx, field)
 			case "member":
 				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
 			case "memberID":
 				return ec.fieldContext_Registration_memberID(ctx, field)
 			}
@@ -4706,6 +4799,14 @@ func (ec *executionContext) fieldContext_Query_GetAllsubChurchByMainChurchID(ctx
 				return ec.fieldContext_SubChurch_id(ctx, field)
 			case "name":
 				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
 			case "createdAt":
@@ -4962,6 +5063,10 @@ func (ec *executionContext) fieldContext_Query_GetAllRegistersByMemberID(ctx con
 				return ec.fieldContext_Registration_leaderID(ctx, field)
 			case "member":
 				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
 			case "memberID":
 				return ec.fieldContext_Registration_memberID(ctx, field)
 			}
@@ -5074,6 +5179,14 @@ func (ec *executionContext) fieldContext_Query_GetAllsubChurch(ctx context.Conte
 				return ec.fieldContext_SubChurch_id(ctx, field)
 			case "name":
 				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
 			case "createdAt":
@@ -5383,6 +5496,14 @@ func (ec *executionContext) fieldContext_Query_GetsubChurchByID(ctx context.Cont
 				return ec.fieldContext_SubChurch_id(ctx, field)
 			case "name":
 				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
 			case "createdAt":
@@ -5689,6 +5810,10 @@ func (ec *executionContext) fieldContext_Query_registrationsByLeader(ctx context
 				return ec.fieldContext_Registration_leaderID(ctx, field)
 			case "member":
 				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
 			case "memberID":
 				return ec.fieldContext_Registration_memberID(ctx, field)
 			}
@@ -5749,6 +5874,14 @@ func (ec *executionContext) fieldContext_Query_GetsubChurch(ctx context.Context,
 				return ec.fieldContext_SubChurch_id(ctx, field)
 			case "name":
 				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
 			case "createdAt":
@@ -5836,6 +5969,10 @@ func (ec *executionContext) fieldContext_Query_currentWeekRegistrations(ctx cont
 				return ec.fieldContext_Registration_leaderID(ctx, field)
 			case "member":
 				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
 			case "memberID":
 				return ec.fieldContext_Registration_memberID(ctx, field)
 			}
@@ -6476,6 +6613,114 @@ func (ec *executionContext) fieldContext_Registration_member(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Registration_subChurch(ctx context.Context, field graphql.CollectedField, obj *model.Registration) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Registration_subChurch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.SubChurch)
+	fc.Result = res
+	return ec.marshalOSubChurch2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐSubChurch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Registration_subChurch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Registration",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SubChurch_id(ctx, field)
+			case "name":
+				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SubChurch_createdAt(ctx, field)
+			case "church":
+				return ec.fieldContext_SubChurch_church(ctx, field)
+			case "churchId":
+				return ec.fieldContext_SubChurch_churchId(ctx, field)
+			case "leaders":
+				return ec.fieldContext_SubChurch_leaders(ctx, field)
+			case "members":
+				return ec.fieldContext_SubChurch_members(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SubChurch", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Registration_subChurchID(ctx context.Context, field graphql.CollectedField, obj *model.Registration) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Registration_subChurchID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Registration_subChurchID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Registration",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Registration_memberID(ctx context.Context, field graphql.CollectedField, obj *model.Registration) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Registration_memberID(ctx, field)
 	if err != nil {
@@ -6684,6 +6929,170 @@ func (ec *executionContext) _SubChurch_name(ctx context.Context, field graphql.C
 }
 
 func (ec *executionContext) fieldContext_SubChurch_name(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubChurch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubChurch_password(ctx context.Context, field graphql.CollectedField, obj *model.SubChurch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubChurch_password(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Password, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubChurch_password(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubChurch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubChurch_email(ctx context.Context, field graphql.CollectedField, obj *model.SubChurch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubChurch_email(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Email, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubChurch_email(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubChurch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubChurch_types(ctx context.Context, field graphql.CollectedField, obj *model.SubChurch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubChurch_types(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Types, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubChurch_types(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubChurch",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubChurch_token(ctx context.Context, field graphql.CollectedField, obj *model.SubChurch) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubChurch_token(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Token, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubChurch_token(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SubChurch",
 		Field:      field,
@@ -7140,6 +7549,10 @@ func (ec *executionContext) fieldContext_WeeklyResults_registrations(ctx context
 				return ec.fieldContext_Registration_leaderID(ctx, field)
 			case "member":
 				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
 			case "memberID":
 				return ec.fieldContext_Registration_memberID(ctx, field)
 			}
@@ -10437,6 +10850,10 @@ func (ec *executionContext) _Registration(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._Registration_leaderID(ctx, field, obj)
 		case "member":
 			out.Values[i] = ec._Registration_member(ctx, field, obj)
+		case "subChurch":
+			out.Values[i] = ec._Registration_subChurch(ctx, field, obj)
+		case "subChurchID":
+			out.Values[i] = ec._Registration_subChurchID(ctx, field, obj)
 		case "memberID":
 			out.Values[i] = ec._Registration_memberID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -10561,6 +10978,14 @@ func (ec *executionContext) _SubChurch(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "password":
+			out.Values[i] = ec._SubChurch_password(ctx, field, obj)
+		case "email":
+			out.Values[i] = ec._SubChurch_email(ctx, field, obj)
+		case "types":
+			out.Values[i] = ec._SubChurch_types(ctx, field, obj)
+		case "token":
+			out.Values[i] = ec._SubChurch_token(ctx, field, obj)
 		case "updatedAt":
 			out.Values[i] = ec._SubChurch_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

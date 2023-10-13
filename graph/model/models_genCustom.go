@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 )
+
 type LeaderWithRegistrations struct {
 	ID              string   `json:"id"`
 	RegistrationIds []string `json:"registrationIds"`
@@ -16,8 +17,8 @@ type LeaderAggregations struct {
 	MaxStudentsPerLeader     int     `json:"maxStudentsPerLeader"`
 }
 type LeaderStats struct {
-    LeaderID         uuid.UUID
-    ReferenceIDCount int
+	LeaderID         uuid.UUID
+	ReferenceIDCount int
 }
 type Church struct {
 	ID          uuid.UUID    `gorm:"type:uuid;default:uuid_generate_v4()"`
@@ -26,8 +27,8 @@ type Church struct {
 	Email       *string      `json:"email,omitempty"`
 	Types       *string      `json:"types,omitempty"`
 	UpdatedAt   time.Time    `json:"updatedAt"`
-	CreatedAt   time.Time    `json:"createdAt"`
 	Token       *string      `json:"token,omitempty"`
+	CreatedAt   time.Time    `json:"createdAt"`
 	SubChurches []*SubChurch `json:"subChurches,omitempty" `
 }
 type Member struct {
@@ -50,20 +51,26 @@ type Member struct {
 }
 
 type Registration struct {
-	ID          uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
-	LastComment string    `json:"lastComment"`
-	Absence     bool      `json:"absence"`
-	Present     bool      `json:"present"`
-	CreatedAt   time.Time `json:"createdAt"`
-	LeaderName  *string   `json:"leaderName,omitempty"`
-	Leader      *Member   `json:"leader,omitempty"`
-	LeaderID    *string   `json:"leaderID,omitempty"`
-	Member      *Member   `json:"member,omitempty"`
-	MemberID    string    `json:"memberID"`
+	ID          uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4()"`
+	LastComment string     `json:"lastComment"`
+	Absence     bool       `json:"absence"`
+	Present     bool       `json:"present"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	LeaderName  *string    `json:"leaderName,omitempty"`
+	Leader      *Member    `json:"leader,omitempty"`
+	LeaderID    *string    `json:"leaderID,omitempty"`
+	Member      *Member    `json:"member,omitempty"`
+	SubChurch   *SubChurch `json:"subChurch,omitempty"`
+	SubChurchID      *string         `json:"subChurchID,omitempty"`
+	MemberID    string     `json:"memberID"`
 }
 type SubChurch struct {
 	ID        uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
 	Name      string    `json:"name"`
+	Password  *string   `json:"password,omitempty"`
+	Email     *string   `json:"email,omitempty"`
+	Types     *string   `json:"types,omitempty"`
+	Token     *string   `json:"token,omitempty"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	CreatedAt time.Time `json:"createdAt"`
 	Church    *Church   `json:"church,omitempty"`

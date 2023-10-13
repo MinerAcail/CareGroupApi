@@ -361,7 +361,7 @@ func (r *mutationResolver) DeleteRegistration(ctx context.Context, registrationI
 }
 
 // CreateSubChurch is the resolver for the createSubChurch field.
-func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *string) (*model.Church, error) {
+func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *string, branch bool) (*model.Church, error) {
 	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
 	// err := middleware.ExtractCTXinfo(ctx)
 	// if err != nil {
@@ -387,50 +387,65 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 	if err := r.DB.Where("name = ? AND church_id = ?", uppercasedSubChurchName, mainChurchID).First(existingSubChurch).Error; err == nil {
 		return nil, fmt.Errorf("sub-church with the same name already exists")
 	}
+	Types := "subChurch"
 
+	randomPassword := helpers.GenerateRandomPassword(6)
+	// Hash the password
+	hpassword, err := helpers.HashPassword(randomPassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %v", err)
+	}
+	randomEmail := helpers.GenerateRandomEmail("envcare.com", randomPassword)
 	// Create the sub-church and associate it with the main church
 	subChurch := &model.SubChurch{
 		Name:     uppercasedSubChurchName,
 		ChurchID: mainChurchID,
+		Email:    &randomEmail,
+		Password: &hpassword,
+		Types:    &Types,
 	}
 
 	if err := r.DB.Create(subChurch).Error; err != nil {
 		return nil, fmt.Errorf("failed to create sub-church: %w", err)
 	}
 
+	// Generate a token
+	token, err := helpers.GenerateToken(Types, subChurch.ID.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %v", err)
+	}
+	subChurch.Token = &token
 	// Append the sub-church to the main church's SubChurches slice
 	mainChurch.SubChurches = append(mainChurch.SubChurches, subChurch)
 	// Define the days of the week
 	leaderDaysOfWeek := []string{"Monday", "Tuesday", "Wednesday"}
 	subLeaderDaysOfWeek := []string{"Thursday", "Friday", "Saturday", "Sunday"}
+	// Create only one member if the 'branch' parameter is true
+	if branch {
+		leadertype := "Leader"
+		leaderpassword := "pass"
+		leaderemail := "leader@gmail.com"
 
-	// Create 3 leaders
-	leaderIndex := 0
-	leadertype := "Leader"
-	leaderpassword := "pass"
-	leaderemail := "leader@gmail.com"
+		// Generate random phone numbers
+		randomPhoneNumber := func() string {
+			return fmt.Sprintf("05%02d%03d", rand.Intn(100), rand.Intn(1000))
+		}
 
-	// Generate random phone numbers
-	randomPhoneNumber := func() string {
-		return fmt.Sprintf("05%02d%03d", rand.Intn(100), rand.Intn(1000))
-	}
+		password, err := helpers.HashPassword(leaderpassword)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash password: %w", err)
+		}
 
-	password, err := helpers.HashPassword(leaderpassword)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
-	}
-
-	for i := 0; i < 3; i++ {
 		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
-		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
+		phoneNumber := randomPhoneNumber()      // Generate a random phone number for the leader
 
 		leader := &model.Member{
-			Name:        fmt.Sprintf("%s Leader %d", uppercasedSubChurchName, i+1),
+			Name:        fmt.Sprintf("%s Leader", uppercasedSubChurchName),
 			Email:       leaderemail,
 			Types:       &leadertype,
 			PhoneNumber: &phoneNumber,
 			Password:    &password, // Set the leader's password here
-			Day:         leaderDaysOfWeek[leaderIndex],
+			Day:         "none",
 			SubChurchID: &subChurchIDStr,
 			// Set other leader properties as needed
 		}
@@ -439,43 +454,86 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 			return nil, fmt.Errorf("failed to create leader: %w", err)
 		}
 
-		leaderIndex = (leaderIndex + 1) % len(leaderDaysOfWeek) // Rotate through days of the week
 		token, err := helpers.GenerateToken(leadertype, (leader.ID.String()))
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate tokens: %w", err)
 		}
 
 		leader.Token = &token // Set the leader's token here
-	}
-	// Create 4 sub-leaders
-	subLeaderIndex := 0
-	subLeaderSubLeader := "SubLeader"
-	for i := 0; i < 4; i++ {
-		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
-		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
+	} else {
+		// Create 3 leaders
+		leaderIndex := 0
+		leadertype := "Leader"
+		leaderpassword := "pass"
+		leaderemail := "leader@gmail.com"
 
-		subLeader := &model.Member{
-			Name:        fmt.Sprintf("%s SubLeader %d", uppercasedSubChurchName, i+1),
-			Types:       &subLeaderSubLeader,
-			PhoneNumber: &phoneNumber,
-			Password:    &password, // Set the sub-leader's password here
-			Email:       leaderemail,
-			Day:         subLeaderDaysOfWeek[subLeaderIndex],
-			SubChurchID: &subChurchIDStr,
-			// Set other sub-leader properties as needed
+		// Generate random phone numbers
+		randomPhoneNumber := func() string {
+			return fmt.Sprintf("05%02d%03d", rand.Intn(100), rand.Intn(1000))
 		}
 
-		if err := r.DB.Create(subLeader).Error; err != nil {
-			return nil, fmt.Errorf("failed to create sub-leader: %w", err)
-		}
-
-		subLeaderIndex = (subLeaderIndex + 1) % len(subLeaderDaysOfWeek) // Rotate through days of the week
-		token, err := helpers.GenerateToken(leadertype, (subLeader.ID.String()))
+		password, err := helpers.HashPassword(leaderpassword)
 		if err != nil {
-			return nil, fmt.Errorf("failed to generate tokens: %w", err)
+			return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
 		}
 
-		subLeader.Token = &token // Set the leader's token here
+		for i := 0; i < 3; i++ {
+			subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
+			phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
+
+			leader := &model.Member{
+				Name:        fmt.Sprintf("%s Leader %d", uppercasedSubChurchName, i+1),
+				Email:       leaderemail,
+				Types:       &leadertype,
+				PhoneNumber: &phoneNumber,
+				Password:    &password, // Set the leader's password here
+				Day:         leaderDaysOfWeek[leaderIndex],
+				SubChurchID: &subChurchIDStr,
+				// Set other leader properties as needed
+			}
+
+			if err := r.DB.Create(leader).Error; err != nil {
+				return nil, fmt.Errorf("failed to create leader: %w", err)
+			}
+
+			leaderIndex = (leaderIndex + 1) % len(leaderDaysOfWeek) // Rotate through days of the week
+			token, err := helpers.GenerateToken(leadertype, (leader.ID.String()))
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate tokens: %w", err)
+			}
+
+			leader.Token = &token // Set the leader's token here
+		}
+		// Create 4 sub-leaders
+		subLeaderIndex := 0
+		subLeaderSubLeader := "SubLeader"
+		for i := 0; i < 4; i++ {
+			subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
+			phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
+
+			subLeader := &model.Member{
+				Name:        fmt.Sprintf("%s SubLeader %d", uppercasedSubChurchName, i+1),
+				Types:       &subLeaderSubLeader,
+				PhoneNumber: &phoneNumber,
+				Password:    &password, // Set the sub-leader's password here
+				Email:       leaderemail,
+				Day:         subLeaderDaysOfWeek[subLeaderIndex],
+				SubChurchID: &subChurchIDStr,
+				// Set other sub-leader properties as needed
+			}
+
+			if err := r.DB.Create(subLeader).Error; err != nil {
+				return nil, fmt.Errorf("failed to create sub-leader: %w", err)
+			}
+
+			subLeaderIndex = (subLeaderIndex + 1) % len(subLeaderDaysOfWeek) // Rotate through days of the week
+			token, err := helpers.GenerateToken(leadertype, (subLeader.ID.String()))
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate tokens: %w", err)
+			}
+
+			subLeader.Token = &token // Set the leader's token here
+		}
 	}
 
 	return mainChurch, nil
@@ -888,36 +946,65 @@ func (r *mutationResolver) Login(ctx context.Context, input model.LoginLeaderInp
 	if model.IsValidEmail(clear) {
 		// Fetch the leader from the database based on the provided email
 		leader := &model.Church{}
-		//	if err := r.DB.Where("phone_number = ?", input.PhoneNumber).First(leader).Error; err != nil {
-		//		return nil, fmt.Errorf("phone_number not found")
-		//	}
-		if err := r.DB.Where("email = ?", clear).First(leader).Error; err != nil {
-			return nil, fmt.Errorf("email not found")
-		}
-		// Verify the provided password against the hashed password in the database
-		if err := helpers.VerifyPassword(*leader.Password, input.Password); err != nil {
-			return nil, fmt.Errorf("invalid password")
-		}
-		// Generate a new token for the authenticated leader
-		token, err := helpers.GenerateToken(*leader.Types, leader.ID.String())
-		if err != nil {
-			return nil, fmt.Errorf("failed to generate token")
-		}
-		// Update the leader's token with the newly generated token
-		leader.Token = &token
+		sub := &model.SubChurch{}
 
-		// Save the updated leader with the token to the database
-		if err := r.DB.Save(leader).Error; err != nil {
-			return nil, fmt.Errorf("failed to save leader's token to the database")
+		// Check if it's an admin leader
+		if err := r.DB.Where("email = ?", clear).First(leader).Error; err == nil {
+			if *leader.Types == "Admin" {
+				// Verify the provided password against the hashed password in the database
+				if err := helpers.VerifyPassword(*leader.Password, input.Password); err != nil {
+					return nil, fmt.Errorf("invalid password")
+				}
+				// Generate a new token for the authenticated leader
+				token, err := helpers.GenerateToken(*leader.Types, leader.ID.String())
+				if err != nil {
+					return nil, fmt.Errorf("failed to generate token")
+				}
+				// Update the leader's token with the newly generated token
+				leader.Token = &token
+
+				// Save the updated leader with the token to the database
+				if err := r.DB.Save(leader).Error; err != nil {
+					return nil, fmt.Errorf("failed to save leader's token to the database")
+				}
+
+				// Retrieve the CookieAccess object from the context
+				ca := middleware.GetCookieAccess(ctx)
+
+				// Set the generated token as a cookie using the CookieAccess object
+				ca.SetToken(token)
+
+				return leader, nil
+			}
+		} else if err := r.DB.Where("email = ?", clear).First(sub).Error; err == nil {
+			if *sub.Types == "subChurch" {
+				// Verify the provided password against the hashed password in the database
+				if err := helpers.VerifyPassword(*sub.Password, input.Password); err != nil {
+					return nil, fmt.Errorf("invalid password")
+				}
+				// Generate a new token for the authenticated sub
+				token, err := helpers.GenerateToken(*sub.Types, sub.ID.String())
+				if err != nil {
+					return nil, fmt.Errorf("failed to generate token")
+				}
+				// Update the sub's token with the newly generated token
+				sub.Token = &token
+
+				// Save the updated sub with the token to the database
+				if err := r.DB.Save(sub).Error; err != nil {
+					return nil, fmt.Errorf("failed to save sub's token to the database")
+				}
+
+				// Retrieve the CookieAccess object from the context
+				ca := middleware.GetCookieAccess(ctx)
+
+				// Set the generated token as a cookie using the CookieAccess object
+				ca.SetToken(token)
+
+				return sub, nil
+			}
 		}
-
-		// Retrieve the CookieAccess object from the context
-		ca := middleware.GetCookieAccess(ctx)
-
-		// Set the generated token as a cookie using the CookieAccess object
-		ca.SetToken(token)
-
-		return leader, nil
+		return nil, fmt.Errorf("email not found or invalid login input")
 	} else if model.IsNumeric(clear) {
 		leader := &model.Member{}
 		if err := r.DB.Where("phone_number = ?", clear).First(leader).Error; err != nil {
@@ -1194,7 +1281,7 @@ func (r *queryResolver) RegistrationsByLeader(ctx context.Context, mleaderID str
 	var registrations []*model.Registration
 
 	// Preload the Leader and Student associations
-	if err := r.DB.Where("leader_id = ?", mleaderID).Preload("Leader").Preload("Member").Find(&registrations).Error; err != nil {
+	if err := r.DB.Where("leader_id = ?", mleaderID).Preload("Leader").Preload("Member.SubChurch").Find(&registrations).Error; err != nil {
 		fmt.Println("Error preloading associations:", err)
 		return nil, err
 	}
@@ -1282,3 +1369,16 @@ type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type registrationResolver struct{ *Resolver }
 type subChurchResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *mutationResolver) CreatesubBranch(ctx context.Context, subBranchName *string) (*model.Church, error) {
+	panic(fmt.Errorf("not implemented: CreatesubBranch - createsubBranch"))
+}
+func (r *registrationResolver) SubChurch(ctx context.Context, obj *model.Registration) (*model.SubChurch, error) {
+	panic(fmt.Errorf("not implemented: SubChurch - subChurch"))
+}

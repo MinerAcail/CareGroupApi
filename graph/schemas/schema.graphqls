@@ -26,9 +26,11 @@ type Registration {
   present: Boolean!
   createdAt: Time!
   leaderName: String
-  leader: Member # Define a relationship to Member for leaderID
+  leader: Member 
   leaderID: String
-  member: Member # Define a relationship to Member for memberID
+  member: Member 
+  subChurch: SubChurch 
+  subChurchID: String
   memberID: String!
 }
 
@@ -47,12 +49,16 @@ type Church {
 type SubChurch {
   id: String!
   name: String!
+  password: String
+  email: String
+  types: String
+  token: String
   updatedAt: Time!
   createdAt: Time!
   church: Church
   churchId: String!
-  leaders: [Member] # Define a relationship to Member for leaders
-  members: [Member] # Define a relationship to Member for members
+  leaders: [Member]
+  members: [Member]
 }
 
 union Returns = Church | SubChurch | Member
@@ -73,7 +79,7 @@ type Query {
   GetAllMembersByLeader(leaderID: String!): [Member]
   GetAllRegistersByMemberID(MemberId: String!): [Registration]
   LastFourCommentsForMember(memberID: String!): [String]
-  
+
   GetAllsubChurch: [SubChurch]
   GetCaller: [Member]
 
@@ -84,7 +90,6 @@ type Query {
   GetChurchByID(id: String!): Church
   GetAllChurchByID: [Church]
   MembersBySubChurchID(subChurchId: String!): [Member!]!
-  # GetMemberBysubChurchID(ChurchId: String!): [Member]
 
   registrationsByLeader(mleaderID: String!): [Registration]
 
@@ -161,7 +166,7 @@ input updateLeaderProfileInput {
 
 type Mutation {
   createMember(input: CreateMemberInput): Member!
-    cleanUpPhoneNumbers: [String]
+  cleanUpPhoneNumbers: [String]
 
   createMemberBysubLeader(input: CreateMemberInputBySub): Member!
   updateMember(input: updateMemberInput!, memberId: String!): Member!
@@ -173,7 +178,8 @@ type Mutation {
   deleteSubChurch(subChurchId: String!): Boolean!
   deleteRegistration(registrationId: String!): Boolean!
 
-  createSubChurch(subChurchName: String): Church!
+  createSubChurch(subChurchName: String,branch: Boolean!): Church!
+  # createsubBranch(subBranchName: String): Church!
 
   assignLeader(input: assignLeaderInput): Member!
   removeLeader(memberId: String!): Member
