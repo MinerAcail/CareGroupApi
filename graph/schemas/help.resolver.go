@@ -1,6 +1,7 @@
 package schemas
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -10,6 +11,7 @@ import (
 	"unsafe"
 
 	"github.com/kobbi/vbciapi/graph/model"
+	"github.com/kobbi/vbciapi/jwt/middleware"
 	"gorm.io/gorm"
 )
 
@@ -114,16 +116,44 @@ func CheckDuplicateRecords(db *gorm.DB, model interface{}, inputName, inputEmail
 
 	return nil
 }
+func CheckMembersDuplicateRecords(db *gorm.DB,  inputName, inputEmail, inputPhoneNumber string) error {
+	member := &model.Member{}
+
+	// Check if a student with the same name and phone number already exists
+	err := db.Where("name = ? AND phone_number = ?", inputName, inputPhoneNumber).First(member).Error
+	if err == nil {
+		return fmt.Errorf("a Member with the same name and phone number already exists")
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	// Check if an email already exists
+	err = db.Where("email = ?", inputEmail).First(member).Error
+	if err == nil {
+		return fmt.Errorf("email already exists")
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+
+	}
+
+	// Check if a phone_number already exists
+	err = db.Where("phone_number = ?", inputPhoneNumber).First(member).Error
+	if err == nil {
+		return fmt.Errorf("phone_number already exists")
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	return nil
+}
 
 // Function to calculate and update ReferenceIDCount for leaders.
-func UpdateReferenceIDCounts(db *gorm.DB,subChurchID string) error {
+func UpdateReferenceIDCounts(db *gorm.DB, subChurchID string) error {
 	// Query all leaders
 	var leaders []model.Member
 	if err := db.Where("types IN (?) ", []string{"Leader", "SubLeader"}).Find(&leaders).Error; err != nil {
 		return err
 	}
-
-
 
 	// Loop through leaders and calculate their ReferenceIDCount
 	for i := range leaders {
@@ -146,10 +176,22 @@ func UpdateReferenceIDCounts(db *gorm.DB,subChurchID string) error {
 
 	return nil
 }
+func FindLeaderByID(db *gorm.DB, leaderID string) (*model.Member, error) {
+	var leader model.Member
+	if err := db.Where("id = ?", leaderID).First(&leader).Error; err != nil {
+		// Handle errors here, such as if the leader is not found.
+		return nil, err
+	}
+	return &leader, nil
+}
 
-func FindLeaderWithSameDay(db *gorm.DB, day string, subChurchID string) (*model.Member, error) {
+func FindLeaderWithSameDay(ctx context.Context, db *gorm.DB, day string, subChurchID string) (*model.Member, error) {
 	// Call UpdateReferenceIDCounts to ensure the counts are up-to-date.
-	if err := UpdateReferenceIDCounts(db,subChurchID); err != nil {
+	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("leaderID not found in request context")
+	}
+	if err := UpdateReferenceIDCounts(db, subChurchID); err != nil {
 		// Handle the error, such as logging or returning an error response.
 		return nil, err
 	}
@@ -158,14 +200,14 @@ func FindLeaderWithSameDay(db *gorm.DB, day string, subChurchID string) (*model.
 
 	// Perform a database query to find leaders with the specified day.
 	var leadersWithSameDay []model.Member
-	if err := db.Where("types IN (?) AND day = ? AND sub_church_id = ?", []string{"Leader", "SubLeader"}, day,subChurchID).Find(&leadersWithSameDay).Error; err != nil {
+	if err := db.Where("types IN (?) AND day = ? AND sub_church_id = ?", []string{"Leader", "SubLeader"}, day, subChurchID).Find(&leadersWithSameDay).Error; err != nil {
 		// Handle errors here, such as if no leaders with the same day are found.
 		return nil, err
 	}
-	
-	// Check if there are multiple leaders with the same day.
+
 	if len(leadersWithSameDay) == 0 {
-		return nil, fmt.Errorf(" No leaders found with the same day")
+		// No leaders found with the same day, return the leader identified by leaderID.
+		return FindLeaderByID(db, leaderID) // Replace FindLeaderByID with the actual function to retrieve a leader by ID.
 	}
 
 	// Sort the leaders first by ReferenceIDCount in ascending order.
@@ -199,20 +241,28 @@ func FindLeaderWithSameDay(db *gorm.DB, day string, subChurchID string) (*model.
 	// Return the selected leader with the same day.
 	return &selectedLeader, nil
 }
+func GetLeaderByChurchID(db *gorm.DB, churchID *string) (*model.Member, error) {
+    var leader model.Member
 
-
-func CleanPhoneNumber(phoneNumber string) string {
-    cleanedPhoneNumber := strings.ReplaceAll(phoneNumber, " ", "")
-    cleanedPhoneNumber = strings.TrimPrefix(cleanedPhoneNumber, "+233")
-    cleanedPhoneNumber = strings.TrimPrefix(cleanedPhoneNumber, "233")
-
-    // Check if the cleaned phone number has fewer than 10 digits
-    if len(cleanedPhoneNumber) < 10 {
-        // Add a leading "0" to make it 10 digits
-        cleanedPhoneNumber = "0" + cleanedPhoneNumber
+    if err := db.Where("types IN (?) AND sub_church_id = ?", []string{"Leader", "SubLeader"}, churchID).First(&leader).Error; err != nil {
+        return nil, err
     }
 
-    return cleanedPhoneNumber
+    return &leader, nil
+}
+
+func CleanPhoneNumber(phoneNumber string) string {
+	cleanedPhoneNumber := strings.ReplaceAll(phoneNumber, " ", "")
+	cleanedPhoneNumber = strings.TrimPrefix(cleanedPhoneNumber, "+233")
+	cleanedPhoneNumber = strings.TrimPrefix(cleanedPhoneNumber, "233")
+
+	// Check if the cleaned phone number has fewer than 10 digits
+	if len(cleanedPhoneNumber) < 10 {
+		// Add a leading "0" to make it 10 digits
+		cleanedPhoneNumber = "0" + cleanedPhoneNumber
+	}
+
+	return cleanedPhoneNumber
 }
 
 var (

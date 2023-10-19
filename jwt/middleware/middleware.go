@@ -154,17 +154,17 @@ func ExtractCTXinfo(ctx context.Context) error {
 func ExtractCTXinfo4AdminOnly(ctx context.Context) error {
 	_, ok := ctx.Value(IDContextKey).(string)
 	if !ok {
-		return fmt.Errorf("leaderID not found in request context")
+		return fmt.Errorf("leader not found in request context")
 	}
 	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
 	if !ok {
-		return fmt.Errorf("leaderType not found in request context")
+		return fmt.Errorf("leader Type not found in request context")
 	}
 
 	leaderType = strings.ToUpper(leaderType) // Convert leaderType to uppercase
 
 	// Check if the leaderType is not one of the allowed values
-	if leaderType != "ADMIN" {
+	if leaderType != "ADMIN" && leaderType != "SUBCHURCH" {
 		return fmt.Errorf("%s is not allowed", leaderType)
 	}
 

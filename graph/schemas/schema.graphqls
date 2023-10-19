@@ -1,4 +1,6 @@
 scalar Time
+scalar Upload
+
 
 type Member {
   id: String!
@@ -84,6 +86,9 @@ type Query {
   GetCaller: [Member]
 
   Getmember(id: String!): Member
+  Getmembers: [Member]
+  todaysMembers: [Member]
+
   membersByChurch(churchId: String!): [Member!]!
   GetsubChurchByID(id: String!): SubChurch
 
@@ -95,6 +100,7 @@ type Query {
 
   GetsubChurch(id: String!): SubChurch
   currentWeekRegistrations: [Registration!]!
+  WeekRegistrationsforSub: [Registration!]!
   GetRegistrations: [WeeklyResults!]!
 }
 
@@ -166,13 +172,17 @@ input updateLeaderProfileInput {
 
 type Mutation {
   createMember(input: CreateMemberInput): Member!
+  importMemberData(file: Upload!,ChurchID: String): [Member]
+  dataMembers: String
   cleanUpPhoneNumbers: [String]
 
   createMemberBysubLeader(input: CreateMemberInputBySub): Member!
   updateMember(input: updateMemberInput!, memberId: String!): Member!
   updateLeader(input: updateLeaderProfileInput!, memberId: String!): Member!
+  updatesubChurch(input: updateLeaderProfileInput!, subChurchId: String!): SubChurch!
 
-  createChurch(name: String!, email: String!, password: String): Church!
+
+  createChurch(name: String!, email: String!,password: String): Church!
   deleteChurch(mainChurchId: String!): Boolean!
   deleteMember(memberId: String!): Boolean!
   deleteSubChurch(subChurchId: String!): Boolean!
