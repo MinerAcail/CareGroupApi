@@ -20,6 +20,8 @@ import (
 	"github.com/kobbi/vbciapi/graph/schemas"
 	"github.com/kobbi/vbciapi/jwt/helpers"
 	"github.com/kobbi/vbciapi/jwt/middleware"
+	"github.com/kobbi/vbciapi/mypkg"
+	"github.com/lib/pq"
 	"github.com/tealeg/xlsx"
 	"gorm.io/gorm"
 )
@@ -34,6 +36,48 @@ func (r *churchResolver) ID(ctx context.Context, obj *model.Church) (string, err
 func (r *memberResolver) ID(ctx context.Context, obj *model.Member) (string, error) {
 	id := obj.ID.String()
 	return id, nil
+}
+
+// GetMyL is the resolver for the getMyL field.
+func (r *mutationResolver) GetMyL(ctx context.Context, id *string) (*model.MyType, error) {
+	// myArray := mypkg.Myarray{"item1", "item2", "item3"}
+	myArray := pq.StringArray{"item1", "item2", "item3"}
+
+	myType := &model.MyType{
+		MyArray: mypkg.Myarray(myArray),
+	}
+
+	if err := r.DB.Create(myType).Error; err != nil {
+		return nil, fmt.Errorf("failed to save to the database: %w", err)
+	}
+	return myType, nil
+}
+
+// PushMyL is the resolver for the PushMyL field.
+func (r *mutationResolver) PushMyL(ctx context.Context, id *string, newValue string) (*model.MyType, error) {
+	// Find the MyType object with the given ID
+	existingMyType := &model.MyType{}
+
+	// Retrieve the Member from the database based on the provided ID
+	if err := r.DB.Where("id = ?", id).First(existingMyType).Error; err != nil {
+		return nil, fmt.Errorf("failed to find MyType: %w", err)
+	}
+	myArray := mypkg.Myarray{newValue}
+
+	// Append the new value to the existing array
+	existingMyType.MyArray = append(existingMyType.MyArray, myArray...)
+
+	// Use GORM's Save method to update the MyType object in the database
+	if err := r.DB.Save(existingMyType).Error; err != nil {
+		return nil, fmt.Errorf("failed to save to the database: %w", err)
+	}
+
+	return existingMyType, nil
+}
+
+// GetMyArr is the resolver for the getMyArr field.
+func (r *mutationResolver) GetMyArr(ctx context.Context) (*model.MyArr, error) {
+	panic(fmt.Errorf("not implemented: GetMyArr - getMyArr"))
 }
 
 // CreateMember is the resolver for the createMember field.
@@ -80,6 +124,56 @@ func (r *mutationResolver) CreateMember(ctx context.Context, input *model.Create
 		return nil, err
 	}
 	return member, nil
+}
+
+// CreatePost is the resolver for the createPost field.
+func (r *mutationResolver) CreatePost(ctx context.Context, tags []string) (*model.Post, error) {
+	// Create a new Post
+	post := model.Post{
+		Tags: tags,
+	}
+
+	// Save the Post to the database using GORM
+	if err := r.DB.Create(&post).Error; err != nil {
+		return nil, err
+	}
+
+	return &post, nil
+}
+
+// UpdatePost is the resolver for the updatePost field.
+func (r *mutationResolver) UpdatePost(ctx context.Context, id *string, tags []string) (*model.Post, error) {
+	// Find the post in the database by its ID
+    var post model.Post
+    if err := r.DB.Where("id = ?", id).First(&post).Error; err != nil {
+        return nil, err
+    }
+
+    // Create a map to store the tags to remove for efficient lookup
+    tagsToRemoveMap := make(map[string]bool)
+    for _, tag := range tags {
+        tagsToRemoveMap[tag] = true
+    }
+
+    // Filter the existing tags, keeping only those not in the tagsToRemoveMap
+    var updatedTags []string
+    for _, existingTag := range post.Tags {
+        if !tagsToRemoveMap[existingTag] {
+            updatedTags = append(updatedTags, existingTag)
+        }
+    }
+
+    // Update the post's Tags field with the filtered tags
+    post.Tags = updatedTags
+
+    // Save the updated post back to the database
+    if err := r.DB.Save(&post).Error; err != nil {
+        return nil, err
+    }
+
+    return &post, nil
+
+
 }
 
 // ImportMemberData is the resolver for the importMemberData field.
@@ -139,14 +233,14 @@ func (r *mutationResolver) ImportMemberData(ctx context.Context, file graphql.Up
 		return nil, nil
 
 	}
-	
+
 	if len(leaders) >= 2 {
 		var leadersMap = make(map[string]*model.Member)
-	
+
 		for _, leader := range leaders {
 			leadersMap[leader.Day] = &leader
 		}
-	
+
 		// Ensure that there is a leader for each day of the week (Monday to Sunday)
 		for _, day := range []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"} {
 			if leadersMap[day] == nil {
@@ -330,25 +424,26 @@ func (r *mutationResolver) UpdateMember(ctx context.Context, input model.UpdateM
 	if err := r.DB.Where("id = ?", memberID).First(Member).Error; err != nil {
 		return nil, err
 	}
-	// Check if the provided email is already used by another member
-	if err := r.DB.Where("email = ?", input.Email).Not("id = ?", memberID).First(&model.Member{}).Error; err == nil {
-		return nil, fmt.Errorf("email already exists")
-	}
-	PhoneNumber := schemas.CleanPhoneNumber(*input.PhoneNumber)
 
-	// Check if the provided phone number is already used by another member
-	if err := r.DB.Where("phone_number = ?", PhoneNumber).Not("id = ?", memberID).First(&model.Member{}).Error; err == nil {
-		return nil, fmt.Errorf("phone number already exists")
+	// Check if the provided email is already used by another member
+	if input.Email != nil {
+		if err := r.DB.Where("email = ?", *input.Email).Not("id = ?", memberID).First(&model.Member{}).Error; err == nil {
+			return nil, fmt.Errorf("email already exists")
+		}
 	}
-	// Update the Member's fields with the input values
+
+	// Clean and update the phone number if provided
+	if input.PhoneNumber != nil {
+		PhoneNumber := schemas.CleanPhoneNumber(*input.PhoneNumber)
+		Member.PhoneNumber = &PhoneNumber
+	}
+
+	// Update the Member's fields with the input values if they are provided
 	if input.Name != nil {
 		Member.Name = *input.Name
 	}
 	if input.Email != nil {
 		Member.Email = *input.Email
-	}
-	if input.PhoneNumber != nil {
-		Member.PhoneNumber = &PhoneNumber
 	}
 	if input.Day != nil {
 		Member.Day = *input.Day
@@ -357,7 +452,7 @@ func (r *mutationResolver) UpdateMember(ctx context.Context, input model.UpdateM
 		Member.Location = input.Location
 	}
 
-	// Save the Member leader to the database
+	// Save the Member to the database
 	if err := r.DB.Save(Member).Error; err != nil {
 		return nil, err
 	}
@@ -674,9 +769,10 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 		phoneNumber := randomPhoneNumber()      // Generate a random phone number for the leader
 
 		leader := &model.Member{
-			Name:        fmt.Sprintf("%s Leader", uppercasedSubChurchName),
-			Email:       leaderemail,
-			Types:       &leadertype,
+			Name:  fmt.Sprintf("%s Leader", uppercasedSubChurchName),
+			Email: leaderemail,
+			Types: []string{leadertype},
+			// Types:       &leadertype,
 			PhoneNumber: &phoneNumber,
 			Password:    &password, // Set the leader's password here
 			Day:         "none",
@@ -716,9 +812,10 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 			phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
 
 			leader := &model.Member{
-				Name:        fmt.Sprintf("%s Leader %d", uppercasedSubChurchName, i+1),
-				Email:       leaderemail,
-				Types:       &leadertype,
+				Name:  fmt.Sprintf("%s Leader %d", uppercasedSubChurchName, i+1),
+				Email: leaderemail,
+				Types: []string{leadertype},
+				// Types:       &leadertype,
 				PhoneNumber: &phoneNumber,
 				Password:    &password, // Set the leader's password here
 				Day:         leaderDaysOfWeek[leaderIndex],
@@ -746,8 +843,9 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 			phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
 
 			subLeader := &model.Member{
-				Name:        fmt.Sprintf("%s SubLeader %d", uppercasedSubChurchName, i+1),
-				Types:       &subLeaderSubLeader,
+				Name:  fmt.Sprintf("%s SubLeader %d", uppercasedSubChurchName, i+1),
+				Types: []string{subLeaderSubLeader},
+				// Types:       &subLeaderSubLeader,
 				PhoneNumber: &phoneNumber,
 				Password:    &password, // Set the sub-leader's password here
 				Email:       leaderemail,
@@ -790,7 +888,7 @@ func (r *mutationResolver) AssignLeader(ctx context.Context, input *model.Assign
 		return nil, fmt.Errorf("cannot assign Admin role") // Return an error if the input.Types is "Admin."
 	}
 	// Validate the input.Types field.
-	if input.Types != nil && (*input.Types != "SubLeader" && *input.Types != "Caller" && *input.Types != "Leader") {
+	if input.Types != nil && (*input.Types != "SubLeader" && *input.Types != "CallAgent" && *input.Types != "Leader") {
 		return nil, fmt.Errorf("invalid leadership role: %s", *input.Types)
 	}
 	// Hashing Password to the DB  using the input Passowrd
@@ -802,12 +900,65 @@ func (r *mutationResolver) AssignLeader(ctx context.Context, input *model.Assign
 
 	// Update the member's leadership information based on the input.
 	member.Password = &password
-	member.Types = input.Types
+	// member.Types = input.Types
+	member.Types = append(member.Types, *input.Types)
+	// member.Types = input.Types
+
 	token, err := helpers.GenerateToken(*input.Types, (member.ID.String()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate tokens: %w", err)
 	}
 	member.Token = &token
+
+	// Save the updated member to the database.
+	if err := r.DB.Save(member).Error; err != nil {
+		return nil, err // Handle the error if there's an issue saving the member.
+	}
+
+	return member, nil
+}
+
+// AddAnotherType is the resolver for the addAnotherType field.
+func (r *mutationResolver) AddAnotherType(ctx context.Context, memberID string, types *string) (*model.Member, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the member by ID from the database.
+	member := &model.Member{}
+	if err := r.DB.First(member, "id = ?", memberID).Error; err != nil {
+		return nil, err // Handle the error if the member is not found.
+	}
+
+	// Validate the types field.
+	if types == nil {
+		return nil, fmt.Errorf("types cannot be empty")
+	}
+
+	// Check if the specified type is valid.
+	if *types == "Admin" {
+		return nil, fmt.Errorf("cannot assign Admin role")
+	}
+
+	// Check if the specified type is one of the valid leadership roles.
+	validRoles := []string{"SubLeader", "CallAgent", "Leader"}
+	isValidRole := false
+	for _, role := range validRoles {
+		if *types == role {
+			isValidRole = true
+			break
+		}
+	}
+	if !isValidRole {
+		return nil, fmt.Errorf("invalid leadership role: %s", *types)
+	}
+
+	// You can add additional logic to update the member's roles based on the new types.
+	// For example, append the new type to the existing roles.
+	member.Types = append(member.Types, *types)
+	// member.Types = types
 
 	// Save the updated member to the database.
 	if err := r.DB.Save(member).Error; err != nil {
@@ -939,7 +1090,15 @@ func (r *mutationResolver) CreateRegistrationArray(ctx context.Context, input []
 	if err != nil {
 		return nil, err
 	}
-
+	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("leaderID not found in request context")
+	}
+	// Retrieve the SubChurchID associated with the leaderID
+	subChurchID, err := schemas.GetSubChurchIDForLeader(r.DB, leaderID)
+	if err != nil {
+		return nil, err
+	}
 	createdRegistrations := []*model.Registration{}
 	exceededRateLimitMembers := []string{} // Track members who exceeded the rate limit of 24 hours a  Leader can't create a register within 24 hours
 
@@ -989,7 +1148,8 @@ func (r *mutationResolver) CreateRegistrationArray(ctx context.Context, input []
 
 		// Create a new Registration object using the input data
 		registration := &model.Registration{
-			MemberID: registrationInput.MemberID,
+			MemberID:    registrationInput.MemberID,
+			SubChurchID: &subChurchID,
 		}
 		if registrationInput.CreateInput.LastComment != nil {
 			registration.LastComment = *registrationInput.CreateInput.LastComment
@@ -1249,7 +1409,8 @@ func (r *mutationResolver) Login(ctx context.Context, input model.LoginLeaderInp
 			return nil, fmt.Errorf("invalid password")
 		}
 		// Generate a new token for the authenticated leader
-		token, err := helpers.GenerateToken(*leader.Types, leader.ID.String())
+		token, err := helpers.GenerateToken(leader.Types[0], leader.ID.String())
+		// token, err := helpers.GenerateToken(*leader.Types, leader.ID.String())
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate token")
 		}
@@ -1284,7 +1445,8 @@ func (r *mutationResolver) Memberlogin(ctx context.Context, input model.LoginLea
 	}
 
 	// Generate a new token for the authenticated leader
-	token, err := helpers.GenerateToken(*leader.Types, leader.ID.String())
+	token, err := helpers.GenerateToken(leader.Types[0], leader.ID.String())
+	// token, err := helpers.GenerateToken(*leader.Types, leader.ID.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token")
 	}
@@ -1322,6 +1484,29 @@ func (r *mutationResolver) LogOut(ctx context.Context) (bool, error) {
 
 	// Return true to indicate a successful logout
 	return true, nil
+}
+
+// ID is the resolver for the ID field.
+func (r *myArrResolver) ID(ctx context.Context, obj *model.MyArr) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
+
+// ID is the resolver for the ID field.
+func (r *myTypeResolver) ID(ctx context.Context, obj *model.MyType) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
+
+// ID is the resolver for the id field.
+func (r *postResolver) ID(ctx context.Context, obj *model.Post) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
+
+// Tags is the resolver for the tags field.
+func (r *postResolver) Tags(ctx context.Context, obj *model.Post) ([]string, error) {
+	return obj.Tags, nil
 }
 
 // GetAllMainChurch is the resolver for the GetAllMainChurch field.
@@ -1429,11 +1614,23 @@ func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Member, error) 
 	var leaders []*model.Member
 
 	// Query the database to retrieve leaders with Types equal to "Caller" or "Admin"
-	if err := r.DB.Where("types IN (?)", []string{"Leader"}).Find(&leaders).Error; err != nil {
+	if err := r.DB.Where("types IN (?)", []string{"CallAgent"}).Find(&leaders).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch leaders: %w", err)
 	}
 
 	return leaders, nil
+}
+
+// Post is the resolver for the post field.
+func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error) {
+	var post model.Post
+
+	// Use GORM to find the post by its ID
+	if err := r.DB.Where("id = ?", id).First(&post).Error; err != nil {
+		return nil, err
+	}
+
+	return &post, nil
 }
 
 // Getmember is the resolver for the Getmember field.
@@ -1451,6 +1648,17 @@ func (r *queryResolver) Getmember(ctx context.Context, id string) (*model.Member
 
 	// Return the member
 	return member, nil
+}
+
+// GetMyType is the resolver for the GetMyType field.
+func (r *queryResolver) GetMyType(ctx context.Context, id *string) (*model.MyType, error) {
+	// Fetch the MyType object from the database by its ID
+	var myType model.MyType
+	if err := r.DB.Where("id = ?", id).First(&myType).Error; err != nil {
+		return nil, err
+	}
+
+	return &myType, nil
 }
 
 // Getmembers is the resolver for the Getmembers field.
@@ -1527,6 +1735,20 @@ func (r *queryResolver) RegistrationsByLeader(ctx context.Context, mleaderID str
 	return registrations, nil
 }
 
+// CallRoom is the resolver for the CallRoom field.
+func (r *queryResolver) CallRoom(ctx context.Context, subChurchID string) ([]*model.Registration, error) {
+	var registrations []*model.Registration
+
+	// Preload the Leader and Student associations
+	// Preload the Leader and Student associations
+	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("Leader").Preload("Member.SubChurch").Find(&registrations).Error; err != nil {
+		fmt.Println("Error preloading associations:", err)
+		return nil, err
+	}
+
+	return registrations, nil
+}
+
 // GetsubChurch is the resolver for the GetsubChurch field.
 func (r *queryResolver) GetsubChurch(ctx context.Context, id string) (*model.SubChurch, error) {
 	panic(fmt.Errorf("not implemented: GetsubChurch - GetsubChurch"))
@@ -1538,11 +1760,47 @@ func (r *queryResolver) CurrentWeekRegistrations(ctx context.Context) ([]*model.
 	if err := r.DB.Preload("Member").Find(&registrations).Error; err != nil {
 		return nil, err
 	}
+
 	currentWeekNumber := schemas.GetWeekNumber(time.Now()) // Get the current week number
 
 	// Fetch LeaderNames based on LeaderIDs or set to "No Assign Caller" if LeaderID is nil
 	for _, reg := range registrations {
 		MStext := "No Assign Caller"
+		if schemas.GetWeekNumber(reg.CreatedAt) == currentWeekNumber {
+			if reg.LeaderID != nil {
+				leaderMember := &model.Member{} // Assuming Leader is also a Member
+				if err := r.DB.Where("id = ?", *reg.LeaderID).First(leaderMember).Error; err == nil {
+					reg.LeaderName = &leaderMember.Name // Assuming you have a Name field in the Member model
+				}
+			} else {
+				// Set LeaderName to "No Assign Caller" when LeaderID is nil
+				reg.LeaderName = &MStext
+			}
+		}
+	}
+
+	var currentWeekRegistrations []*model.Registration
+	for _, reg := range registrations {
+		if schemas.GetWeekNumber(reg.CreatedAt) == currentWeekNumber {
+			currentWeekRegistrations = append(currentWeekRegistrations, reg)
+		}
+	}
+
+	return currentWeekRegistrations, nil
+}
+
+// CurrentWeekRegistrationsforsub is the resolver for the currentWeekRegistrationsforsub field.
+func (r *queryResolver) CurrentWeekRegistrationsforsub(ctx context.Context, subChurchID string) ([]*model.Registration, error) {
+	var registrations []*model.Registration
+
+	if err := r.DB.Preload("Member").Where("sub_church_id = ?", subChurchID).Find(&registrations).Error; err != nil {
+		return nil, err
+	}
+	currentWeekNumber := schemas.GetWeekNumber(time.Now()) // Get the current week number
+
+	// Fetch LeaderNames based on LeaderIDs or set to "No Assign Caller" if LeaderID is nil
+	for _, reg := range registrations {
+		MStext := "Not Called"
 		if schemas.GetWeekNumber(reg.CreatedAt) == currentWeekNumber {
 			if reg.LeaderID != nil {
 				leaderMember := &model.Member{} // Assuming Leader is also a Member
@@ -1630,6 +1888,15 @@ func (r *Resolver) Member() MemberResolver { return &memberResolver{r} }
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
+// MyArr returns MyArrResolver implementation.
+func (r *Resolver) MyArr() MyArrResolver { return &myArrResolver{r} }
+
+// MyType returns MyTypeResolver implementation.
+func (r *Resolver) MyType() MyTypeResolver { return &myTypeResolver{r} }
+
+// Post returns PostResolver implementation.
+func (r *Resolver) Post() PostResolver { return &postResolver{r} }
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
@@ -1642,6 +1909,9 @@ func (r *Resolver) SubChurch() SubChurchResolver { return &subChurchResolver{r} 
 type churchResolver struct{ *Resolver }
 type memberResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
+type myArrResolver struct{ *Resolver }
+type myTypeResolver struct{ *Resolver }
+type postResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type registrationResolver struct{ *Resolver }
 type subChurchResolver struct{ *Resolver }
@@ -1652,9 +1922,6 @@ type subChurchResolver struct{ *Resolver }
 //   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //     it when you're done.
 //   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *mutationResolver) CreatesubBranch(ctx context.Context, subBranchName *string) (*model.Church, error) {
-	panic(fmt.Errorf("not implemented: CreatesubBranch - createsubBranch"))
-}
-func (r *registrationResolver) SubChurch(ctx context.Context, obj *model.Registration) (*model.SubChurch, error) {
-	panic(fmt.Errorf("not implemented: SubChurch - subChurch"))
+func (r *myTypeResolver) MyArray(ctx context.Context, obj *model.MyType) (mypkg.Myarray, error) {
+	return obj.MyArray, nil
 }

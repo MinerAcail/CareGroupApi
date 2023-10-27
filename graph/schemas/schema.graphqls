@@ -1,5 +1,6 @@
 scalar Time
 scalar Upload
+scalar Myarray
 
 
 type Member {
@@ -10,7 +11,7 @@ type Member {
   location: String
   day: String!
   password: String
-  types: String
+  types: [String!]!
   token: String
   LeaderID: String
   ReferenceIDCount: Int
@@ -20,7 +21,11 @@ type Member {
   updatedAt: Time!
   createdAt: Time!
 }
-
+type Person {
+  id: String!
+  name: String!
+  email: [String]!
+}
 type Registration {
   id: String!
   lastComment: String!
@@ -28,10 +33,10 @@ type Registration {
   present: Boolean!
   createdAt: Time!
   leaderName: String
-  leader: Member 
+  leader: Member
   leaderID: String
-  member: Member 
-  subChurch: SubChurch 
+  member: Member
+  subChurch: SubChurch
   subChurchID: String
   memberID: String!
 }
@@ -73,7 +78,18 @@ type DateInfo {
   month: String
   weekOfMonth: Int
 }
-
+type MyType {
+  ID: String!
+  MyArray: Myarray!
+}
+type MyArr {
+  ID: String!
+  MyArray: Myarray!
+}
+type Post {
+  id: String!
+  tags: [String!]!
+}
 type Query {
   GetAllMainChurch: [Church]
   GetAllsubChurchByMainChurchID(mainChurchId: String!): [SubChurch]
@@ -85,7 +101,10 @@ type Query {
   GetAllsubChurch: [SubChurch]
   GetCaller: [Member]
 
+  post(id: String!): Post
+
   Getmember(id: String!): Member
+  GetMyType(id: String): MyType
   Getmembers: [Member]
   todaysMembers: [Member]
 
@@ -97,9 +116,11 @@ type Query {
   MembersBySubChurchID(subChurchId: String!): [Member!]!
 
   registrationsByLeader(mleaderID: String!): [Registration]
+  CallRoom(subChurchId: String!): [Registration]
 
   GetsubChurch(id: String!): SubChurch
   currentWeekRegistrations: [Registration!]!
+  currentWeekRegistrationsforsub(subChurchId: String!): [Registration!]!
   WeekRegistrationsforSub: [Registration!]!
   GetRegistrations: [WeeklyResults!]!
 }
@@ -171,27 +192,36 @@ input updateLeaderProfileInput {
 }
 
 type Mutation {
+  getMyL(id: String): MyType
+  PushMyL(id: String,newValue: String!): MyType
+  getMyArr: MyArr
   createMember(input: CreateMemberInput): Member!
-  importMemberData(file: Upload!,ChurchID: String): [Member]
+  createPost( tags: [String!]!): Post
+  updatePost( id: String,tags: [String!]!): Post
+
+  importMemberData(file: Upload!, ChurchID: String): [Member]
   dataMembers: String
   cleanUpPhoneNumbers: [String]
 
   createMemberBysubLeader(input: CreateMemberInputBySub): Member!
   updateMember(input: updateMemberInput!, memberId: String!): Member!
   updateLeader(input: updateLeaderProfileInput!, memberId: String!): Member!
-  updatesubChurch(input: updateLeaderProfileInput!, subChurchId: String!): SubChurch!
+  updatesubChurch(
+    input: updateLeaderProfileInput!
+    subChurchId: String!
+  ): SubChurch!
 
-
-  createChurch(name: String!, email: String!,password: String): Church!
+  createChurch(name: String!, email: String!, password: String): Church!
   deleteChurch(mainChurchId: String!): Boolean!
   deleteMember(memberId: String!): Boolean!
   deleteSubChurch(subChurchId: String!): Boolean!
   deleteRegistration(registrationId: String!): Boolean!
 
-  createSubChurch(subChurchName: String,branch: Boolean!): Church!
+  createSubChurch(subChurchName: String, branch: Boolean!): Church!
   # createsubBranch(subBranchName: String): Church!
 
   assignLeader(input: assignLeaderInput): Member!
+  addAnotherType(memberId: String!, types: String): Member!
   removeLeader(memberId: String!): Member
 
   createSubChurchesWithMainChurch(

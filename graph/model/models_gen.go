@@ -49,6 +49,12 @@ type LoginLeaderInput struct {
 	Email       *string `json:"email,omitempty"`
 }
 
+type Person struct {
+	ID    string    `json:"id"`
+	Name  string    `json:"name"`
+	Email []*string `json:"email"`
+}
+
 type RegistrationArrayInput struct {
 	MemberID    string                   `json:"memberId"`
 	CreateInput *CreateRegistrationInput `json:"createInput"`

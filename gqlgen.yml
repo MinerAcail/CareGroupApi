@@ -85,3 +85,6 @@ models:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
       - github.com/99designs/gqlgen/graphql.Int32
+  Myarray:
+    model: github.com/kobbi/vbciapi/mypkg.Myarray  
+

@@ -1,12 +1,22 @@
 package model
 
 import (
+	"database/sql/driver"
 	"regexp"
+	"strings"
 	"time"
 
+	// "github.com/lib/pq"
 	"github.com/google/uuid"
+	"github.com/kobbi/vbciapi/mypkg"
+	"github.com/lib/pq"
+	// "github.com/kobbi/vbciapi/mypkg"
 )
 
+type Post struct {
+	ID   uuid.UUID      `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Tags pq.StringArray `gorm:"type:text[]"`
+}
 type LeaderWithRegistrations struct {
 	ID              string   `json:"id"`
 	RegistrationIds []string `json:"registrationIds"`
@@ -31,15 +41,45 @@ type Church struct {
 	CreatedAt   time.Time    `json:"createdAt"`
 	SubChurches []*SubChurch `json:"subChurches,omitempty" `
 }
+type MyType struct {
+	ID      uuid.UUID     `gorm:"type:uuid;default:uuid_generate_v4()"`
+	MyArray mypkg.Myarray `gorm:"type:text[]" json:"MyArray"`
+}
+
+type MyArrayType struct {
+	Myarray mypkg.Myarray
+}
+
+func (t *MyArrayType) Scan(value interface{}) error {
+	// Implement the Scan method to convert the database value into Myarray
+	if bytes, ok := value.([]byte); ok {
+		// Convert bytes to your custom Myarray type
+		t.Myarray = mypkg.Myarray(strings.Split(string(bytes), ","))
+	}
+	return nil
+}
+
+func (t MyArrayType) Value() (driver.Value, error) {
+	// Implement the Value method to convert Myarray into a database-compatible value
+	return strings.Join(t.Myarray, ","), nil
+}
+
+type MyArr struct {
+	ID      uuid.UUID     `gorm:"type:uuid;default:uuid_generate_v4()"`
+	MyArray mypkg.Myarray `gorm:"type:text[]" json:"MyArray"`
+}
+
 type Member struct {
-	ID               uuid.UUID       `gorm:"type:uuid;default:uuid_generate_v4()"`
-	Name             string          `json:"name"`
-	Email            string          `json:"email"`
-	PhoneNumber      *string         `json:"phoneNumber,omitempty"`
-	Location         *string         `json:"location,omitempty"`
-	Day              string          `json:"day"`
-	Password         *string         `json:"password,omitempty"`
-	Types            *string         `json:"types,omitempty"`
+	ID          uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Name        string    `json:"name"`
+	Email       string    `json:"email"`
+	PhoneNumber *string   `json:"phoneNumber,omitempty"`
+	Location    *string   `json:"location,omitempty"`
+	Day         string    `json:"day"`
+	Password    *string   `json:"password,omitempty"`
+	// Types            *string       `json:"types"`
+	Types pq.StringArray `gorm:"type:text[]" json:"types"`
+
 	Token            *string         `json:"token,omitempty"`
 	LeaderID         *string         `json:"LeaderID,omitempty"`
 	ReferenceIDCount *int            `json:"ReferenceIDCount,omitempty"`
@@ -61,7 +101,7 @@ type Registration struct {
 	LeaderID    *string    `json:"leaderID,omitempty"`
 	Member      *Member    `json:"member,omitempty"`
 	SubChurch   *SubChurch `json:"subChurch,omitempty"`
-	SubChurchID      *string         `json:"subChurchID,omitempty"`
+	SubChurchID *string    `json:"subChurchID,omitempty"`
 	MemberID    string     `json:"memberID"`
 }
 type SubChurch struct {

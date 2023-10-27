@@ -250,6 +250,20 @@ func GetLeaderByChurchID(db *gorm.DB, churchID *string) (*model.Member, error) {
 
     return &leader, nil
 }
+func GetSubChurchIDForLeader(db *gorm.DB, leaderID string) (string, error) {
+    var subChurchID string
+
+    // Assuming you have a 'leaders' table with a 'sub_church_id' column
+    err := db.Model(&model.Member{}).
+        Where("id = ?", leaderID).
+        Pluck("sub_church_id", &subChurchID).Error
+
+    if err != nil {
+        return "", err
+    }
+
+    return subChurchID, nil
+}
 
 func CleanPhoneNumber(phoneNumber string) string {
 	cleanedPhoneNumber := strings.ReplaceAll(phoneNumber, " ", "")

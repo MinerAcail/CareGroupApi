@@ -34,7 +34,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Perform database migrations
+	// Perform database migrationstype MyArray []string
+// type MyType struct {
+// 	ID      uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+// 	MyArray MyArray  `gorm:"type:VARCHAR(255)" json:"MyArray"`
+// }
 	err = PerformMigrations(db)
 	if err != nil {
 		// Handle the error
@@ -74,7 +78,7 @@ func main() {
 
 // PerformMigrations performs database migrations using Gorm's AutoMigrate function.
 func PerformMigrations(db *gorm.DB) error {
-	err := db.AutoMigrate(&model.Member{},&model.Church{},&model.SubChurch{}, &model.Registration{})
+	err := db.AutoMigrate(&model.Member{},&model.Church{},&model.SubChurch{},&model.MyType{}, &model.Registration{},&model.Post{})
 	if err != nil {
 		return err
 	}
