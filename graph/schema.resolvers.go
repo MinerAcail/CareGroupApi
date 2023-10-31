@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -36,6 +37,26 @@ func (r *churchResolver) ID(ctx context.Context, obj *model.Church) (string, err
 func (r *memberResolver) ID(ctx context.Context, obj *model.Member) (string, error) {
 	id := obj.ID.String()
 	return id, nil
+}
+
+// Types is the resolver for the types field.
+func (r *memberResolver) Types(ctx context.Context, obj *model.Member) ([]string, error) {
+	return obj.Types, nil
+}
+
+// RequestSubChurchMigration is the resolver for the requestSubChurchMigration field.
+func (r *mutationResolver) RequestSubChurchMigration(ctx context.Context, input model.SubChurchMigrationInput) (*model.MigrationRequest, error) {
+	panic(fmt.Errorf("not implemented: RequestSubChurchMigration - requestSubChurchMigration"))
+}
+
+// ApproveSubChurchMigration is the resolver for the approveSubChurchMigration field.
+func (r *mutationResolver) ApproveSubChurchMigration(ctx context.Context, requestID string) (*model.MigrationRequest, error) {
+	panic(fmt.Errorf("not implemented: ApproveSubChurchMigration - approveSubChurchMigration"))
+}
+
+// RejectSubChurchMigration is the resolver for the rejectSubChurchMigration field.
+func (r *mutationResolver) RejectSubChurchMigration(ctx context.Context, requestID string) (*model.MigrationRequest, error) {
+	panic(fmt.Errorf("not implemented: RejectSubChurchMigration - rejectSubChurchMigration"))
 }
 
 // GetMyL is the resolver for the getMyL field.
@@ -98,7 +119,7 @@ func (r *mutationResolver) CreateMember(ctx context.Context, input *model.Create
 	// Find the leader for the new member's day using FindLeaderWithSameDay
 	leader, err := schemas.FindLeaderWithSameDay(ctx, r.DB, input.Day, input.ChurchID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create member : ")
 	}
 	// Convert leader .ID to a string before assigning it to LeaderID
 	leaderID := leader.ID.String()
@@ -111,6 +132,82 @@ func (r *mutationResolver) CreateMember(ctx context.Context, input *model.Create
 		Day:         input.Day,
 		Location:    input.Location,
 		SubChurchID: &input.ChurchID,
+		LeaderID:    &leaderID, // Assign the LeaderID to the selected leader's ID
+	}
+
+	// Save the member to the database using your preferred ORM-
+	if err := r.DB.Create(member).Error; err != nil {
+		return nil, fmt.Errorf("failed to save member to the database: %w", schemas.ErrDatabase)
+	}
+	// Call UpdateReferenceIDCounts to ensure the counts are up-to-date.
+	if err := schemas.UpdateReferenceIDCounts(r.DB, input.ChurchID); err != nil {
+		// Handle the error, such as logging or returning an error response.
+		return nil, err
+	}
+	return member, nil
+}
+
+// CreateMemberbySubchurch is the resolver for the createMemberbySubchurch field.
+func (r *mutationResolver) CreateMemberbySubchurch(ctx context.Context, input *model.CreateMemberInput) (*model.Member, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	subChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("leaderID not found in request context")
+	}
+	// Check if email already exists
+	members := &model.Member{}
+	// Call the checking Duplicate Records function if already in db
+	if err := schemas.CheckDuplicateRecords(r.DB, members, input.Name, input.Email, *input.PhoneNumber); err != nil {
+		return nil, err
+	}
+	var leaders []model.Member
+
+	// if err := r.DB.Where("types IN (?) AND sub_church_id = ?", pq.Array([]string{"Leader", "SubLeader"}), churchID).Find(&leaders).Error; err != nil {
+	// 	fmt.Println("Database error:", err)
+	// 	return nil, err
+	// }
+	if err := r.DB.Where("sub_church_id = ? AND types && ?", subChurchID, pq.Array([]string{"Leader", "SubLeader"})).Find(&leaders).Error; err != nil {
+		// Handle the error, such as logging or returning an error response.
+		return nil, err
+	}
+
+	var lop *model.Member
+	if len(leaders) == 1 {
+		// // Get the leader for the given churchID
+		leader, err := schemas.GetLeaderByChurchID(r.DB, &subChurchID)
+		if err != nil {
+			return nil, err
+		}
+		lop = leader
+
+	} else if len(leaders) > 1 {
+
+		// // Get the leader for the given churchID
+		leader, err := schemas.FindLeaderWithSameDay(ctx, r.DB, input.Day, subChurchID)
+		if err != nil {
+			return nil, err
+		}
+		lop = leader
+	}
+
+	leaderID := lop.ID.String()
+	// Find the leader for the new member's day using FindLeaderWithSameDay
+
+	// Convert leader .ID to a string before assigning it to LeaderID
+	// leaderID := leader.ID.String()
+	PhoneNumber := schemas.CleanPhoneNumber(*input.PhoneNumber)
+
+	member := &model.Member{
+		Name:        input.Name,
+		Email:       input.Email,
+		PhoneNumber: &PhoneNumber,
+		Day:         input.Day,
+		Location:    input.Location,
+		SubChurchID: &subChurchID,
 		LeaderID:    &leaderID, // Assign the LeaderID to the selected leader's ID
 	}
 
@@ -144,36 +241,34 @@ func (r *mutationResolver) CreatePost(ctx context.Context, tags []string) (*mode
 // UpdatePost is the resolver for the updatePost field.
 func (r *mutationResolver) UpdatePost(ctx context.Context, id *string, tags []string) (*model.Post, error) {
 	// Find the post in the database by its ID
-    var post model.Post
-    if err := r.DB.Where("id = ?", id).First(&post).Error; err != nil {
-        return nil, err
-    }
+	var post model.Post
+	if err := r.DB.Where("id = ?", id).First(&post).Error; err != nil {
+		return nil, err
+	}
 
-    // Create a map to store the tags to remove for efficient lookup
-    tagsToRemoveMap := make(map[string]bool)
-    for _, tag := range tags {
-        tagsToRemoveMap[tag] = true
-    }
+	// Create a map to store the tags to remove for efficient lookup
+	tagsToRemoveMap := make(map[string]bool)
+	for _, tag := range tags {
+		tagsToRemoveMap[tag] = true
+	}
 
-    // Filter the existing tags, keeping only those not in the tagsToRemoveMap
-    var updatedTags []string
-    for _, existingTag := range post.Tags {
-        if !tagsToRemoveMap[existingTag] {
-            updatedTags = append(updatedTags, existingTag)
-        }
-    }
+	// Filter the existing tags, keeping only those not in the tagsToRemoveMap
+	var updatedTags []string
+	for _, existingTag := range post.Tags {
+		if !tagsToRemoveMap[existingTag] {
+			updatedTags = append(updatedTags, existingTag)
+		}
+	}
 
-    // Update the post's Tags field with the filtered tags
-    post.Tags = updatedTags
+	// Update the post's Tags field with the filtered tags
+	post.Tags = updatedTags
 
-    // Save the updated post back to the database
-    if err := r.DB.Save(&post).Error; err != nil {
-        return nil, err
-    }
+	// Save the updated post back to the database
+	if err := r.DB.Save(&post).Error; err != nil {
+		return nil, err
+	}
 
-    return &post, nil
-
-
+	return &post, nil
 }
 
 // ImportMemberData is the resolver for the importMemberData field.
@@ -227,13 +322,17 @@ func (r *mutationResolver) ImportMemberData(ctx context.Context, file graphql.Up
 	if nameIdx == -1 || emailIdx == -1 || phoneIdx == -1 || day == -1 || Locations == -1 {
 		return nil, fmt.Errorf(" One or more required columns are missing in the Excel file")
 	}
+
 	var leaders []model.Member
-	if err := r.DB.Where("types IN (?) AND sub_church_id = ?", []string{"Leader", "SubLeader"}, churchID).Find(&leaders).Error; err != nil {
-		fmt.Println("Database error:", err)
-		return nil, nil
 
+	// if err := r.DB.Where("types IN (?) AND sub_church_id = ?", pq.Array([]string{"Leader", "SubLeader"}), churchID).Find(&leaders).Error; err != nil {
+	// 	fmt.Println("Database error:", err)
+	// 	return nil, err
+	// }
+	if err := r.DB.Where("sub_church_id = ? AND types && ?", churchID, pq.Array([]string{"Leader", "SubLeader"})).Find(&leaders).Error; err != nil {
+		// Handle the error, such as logging or returning an error response.
+		return nil, err
 	}
-
 	if len(leaders) >= 2 {
 		var leadersMap = make(map[string]*model.Member)
 
@@ -289,6 +388,13 @@ func (r *mutationResolver) ImportMemberData(ctx context.Context, file graphql.Up
 
 			leaderID := lop.ID.String()
 
+			if leaderID == "" {
+				// Handle the case where lop is nil, e.g., return an error or take appropriate action.
+				return nil, fmt.Errorf("leaderID is nil")
+			}
+
+			// leaderID := lop.ID.String()
+
 			// // Call the checking Duplicate Records function if already in db
 			if err := schemas.CheckMembersDuplicateRecords(r.DB, name, email, phoneNumber); err != nil {
 				// Collect the record with duplicate data
@@ -335,7 +441,7 @@ func (r *mutationResolver) ImportMemberData(ctx context.Context, file graphql.Up
 // DataMembers is the resolver for the dataMembers field.
 func (r *mutationResolver) DataMembers(ctx context.Context) (*string, error) {
 	// member := &model.Member{}
-	targetDate := "10/18/2023"
+	targetDate := "10/31/2023"
 
 	// Delete members created on the target date
 	if err := r.DB.Where("DATE(created_at) = ?", targetDate).Delete(&model.Member{}).Error; err != nil {
@@ -678,11 +784,6 @@ func (r *mutationResolver) DeleteRegistration(ctx context.Context, registrationI
 
 // CreateSubChurch is the resolver for the createSubChurch field.
 func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *string, branch bool) (*model.Church, error) {
-	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
-	// err := middleware.ExtractCTXinfo(ctx)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	mainChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
 		return nil, fmt.Errorf("main ChurchID not found in request context")
@@ -694,24 +795,110 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 	}
 	mainChurch := &model.Church{}
 
-	// Find the main church by ID
+	// Find the main church by ID failed to find main church
+	var church model.Church
+	if err := r.DB.First(&church, "id = ?", mainChurchID).Error; err != nil {
+		return nil, fmt.Errorf("failed to find main church in subChurch: %w", err)
 
-	if !branch {
-
-		if err := r.DB.First(mainChurch, "id = ?", mainChurchID).Error; err != nil {
-			return nil, fmt.Errorf("failed to find main church: %w", err)
-		}
-	} else {
-		var church model.SubChurch
-		if err := r.DB.First(&church, "id = ?", mainChurchID).Error; err != nil {
-			return nil, fmt.Errorf("failed to find main church in subChurch: %w", err)
-
-		}
-		mainChurchID = church.ChurchID
 	}
 
 	// Check if the sub-church already exists
-	// existingSubChurch := &model.SubChurch{}
+	if err := r.DB.Where("name = ? AND church_id = ?", uppercasedSubChurchName, mainChurchID).First(&model.SubChurch{}).Error; err == nil {
+		return nil, fmt.Errorf("sub-church with the same name already exists")
+	}
+
+	Types := "subChurch"
+
+	randomPassword := helpers.GenerateRandomPassword(6)
+	// Hash the password
+	hpassword, err := helpers.HashPassword(randomPassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %v", err)
+	}
+	randomEmail := helpers.GenerateRandomEmail("envcare.com", randomPassword)
+	// Create the sub-church and associate it with the main church
+	subChurch := &model.SubChurch{
+		Name:     uppercasedSubChurchName,
+		ChurchID: mainChurchID,
+		Email:    &randomEmail,
+		Password: &hpassword,
+		Types:    &Types,
+	}
+
+	if err := r.DB.Create(subChurch).Error; err != nil {
+		return nil, fmt.Errorf("failed to create sub-church: %w", err)
+	}
+
+	// Generate a token
+	token, err := helpers.GenerateToken(Types, subChurch.ID.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate token: %v", err)
+	}
+	subChurch.Token = &token
+	// Append the sub-church to the main church's SubChurches slice
+	mainChurch.SubChurches = append(mainChurch.SubChurches, subChurch)
+
+	leadertype := []string{"Leader"}
+	leaderpassword := "pass"
+	leaderemail := "leader@gmail.com"
+
+	// Generate random phone numbers
+	randomPhoneNumber := func() string {
+		return fmt.Sprintf("05%02d%03d", rand.Intn(100), rand.Intn(1000))
+	}
+
+	password, err := helpers.HashPassword(leaderpassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
+	phoneNumber := randomPhoneNumber()      // Generate a random phone number for the leader
+
+	leader := &model.Member{
+		Name:  fmt.Sprintf("%s Leader", uppercasedSubChurchName),
+		Email: leaderemail,
+
+		Types:       leadertype,
+		PhoneNumber: &phoneNumber,
+		Password:    &password, // Set the leader's password here
+		Day:         "none",
+		SubChurchID: &subChurchIDStr,
+		// Set other leader properties as needed
+	}
+
+	if err := r.DB.Create(leader).Error; err != nil {
+		return nil, fmt.Errorf("failed to create leader: %w", err)
+	}
+
+	token, err = helpers.GenerateToken(leadertype[0], (leader.ID.String()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate tokens: %w", err)
+	}
+
+	leader.Token = &token // Set the leader's token here
+
+	return mainChurch, nil
+}
+
+// CreateMianChurch is the resolver for the createMianChurch field.
+func (r *mutationResolver) CreateMianChurch(ctx context.Context, subChurchName *string) (*model.Church, error) {
+	mainChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("main ChurchID not found in request context")
+	}
+	// Convert subChurchName to uppercase
+	uppercasedSubChurchName := ""
+	if subChurchName != nil {
+		uppercasedSubChurchName = strings.ToUpper(*subChurchName)
+	}
+	mainChurch := &model.Church{}
+
+	if err := r.DB.First(mainChurch, "id = ?", mainChurchID).Error; err != nil {
+		return nil, fmt.Errorf("failed to find main church: %w", err)
+	}
+
+	// Check if the sub-church already exists
 	if err := r.DB.Where("name = ? AND church_id = ?", uppercasedSubChurchName, mainChurchID).First(&model.SubChurch{}).Error; err == nil {
 		return nil, fmt.Errorf("sub-church with the same name already exists")
 	}
@@ -749,33 +936,34 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 	// Define the days of the week
 	leaderDaysOfWeek := []string{"Monday", "Tuesday", "Wednesday"}
 	subLeaderDaysOfWeek := []string{"Thursday", "Friday", "Saturday", "Sunday"}
-	// Create only one member if the 'branch' parameter is true
-	if branch {
-		leadertype := "Leader"
-		leaderpassword := "pass"
-		leaderemail := "leader@gmail.com"
+	// Create 3 leaders
+	leaderIndex := 0
+	leadertype := "Leader"
+	leaderpassword := "pass"
+	leaderemail := "leader@gmail.com"
 
-		// Generate random phone numbers
-		randomPhoneNumber := func() string {
-			return fmt.Sprintf("05%02d%03d", rand.Intn(100), rand.Intn(1000))
-		}
+	// Generate random phone numbers
+	randomPhoneNumber := func() string {
+		return fmt.Sprintf("05%02d%03d", rand.Intn(100), rand.Intn(1000))
+	}
 
-		password, err := helpers.HashPassword(leaderpassword)
-		if err != nil {
-			return nil, fmt.Errorf("failed to hash password: %w", err)
-		}
+	password, err := helpers.HashPassword(leaderpassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
+	}
 
+	for i := 0; i < 3; i++ {
 		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
-		phoneNumber := randomPhoneNumber()      // Generate a random phone number for the leader
+		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
 
 		leader := &model.Member{
-			Name:  fmt.Sprintf("%s Leader", uppercasedSubChurchName),
+			Name:  fmt.Sprintf("%s Leader %d", uppercasedSubChurchName, i+1),
 			Email: leaderemail,
 			Types: []string{leadertype},
 			// Types:       &leadertype,
 			PhoneNumber: &phoneNumber,
 			Password:    &password, // Set the leader's password here
-			Day:         "none",
+			Day:         leaderDaysOfWeek[leaderIndex],
 			SubChurchID: &subChurchIDStr,
 			// Set other leader properties as needed
 		}
@@ -784,94 +972,51 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 			return nil, fmt.Errorf("failed to create leader: %w", err)
 		}
 
+		leaderIndex = (leaderIndex + 1) % len(leaderDaysOfWeek) // Rotate through days of the week
 		token, err := helpers.GenerateToken(leadertype, (leader.ID.String()))
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate tokens: %w", err)
 		}
 
 		leader.Token = &token // Set the leader's token here
-	} else {
-		// Create 3 leaders
-		leaderIndex := 0
-		leadertype := "Leader"
-		leaderpassword := "pass"
-		leaderemail := "leader@gmail.com"
+	}
+	// Create 4 sub-leaders
+	subLeaderIndex := 0
+	subLeaderSubLeader := "SubLeader"
+	for i := 0; i < 4; i++ {
+		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
+		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
 
-		// Generate random phone numbers
-		randomPhoneNumber := func() string {
-			return fmt.Sprintf("05%02d%03d", rand.Intn(100), rand.Intn(1000))
+		subLeader := &model.Member{
+			Name:  fmt.Sprintf("%s SubLeader %d", uppercasedSubChurchName, i+1),
+			Types: []string{subLeaderSubLeader},
+
+			// Types:       &subLeaderSubLeader,
+			PhoneNumber: &phoneNumber,
+			Password:    &password, // Set the sub-leader's password here
+			Email:       leaderemail,
+			Day:         subLeaderDaysOfWeek[subLeaderIndex],
+			SubChurchID: &subChurchIDStr,
+			// Set other sub-leader properties as needed
 		}
 
-		password, err := helpers.HashPassword(leaderpassword)
+		if err := r.DB.Create(subLeader).Error; err != nil {
+			return nil, fmt.Errorf("failed to create sub-leader: %w", err)
+		}
+
+		subLeaderIndex = (subLeaderIndex + 1) % len(subLeaderDaysOfWeek) // Rotate through days of the week
+		token, err := helpers.GenerateToken(leadertype, (subLeader.ID.String()))
 		if err != nil {
-			return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
+			return nil, fmt.Errorf("failed to generate tokens: %w", err)
 		}
 
-		for i := 0; i < 3; i++ {
-			subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
-			phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
-
-			leader := &model.Member{
-				Name:  fmt.Sprintf("%s Leader %d", uppercasedSubChurchName, i+1),
-				Email: leaderemail,
-				Types: []string{leadertype},
-				// Types:       &leadertype,
-				PhoneNumber: &phoneNumber,
-				Password:    &password, // Set the leader's password here
-				Day:         leaderDaysOfWeek[leaderIndex],
-				SubChurchID: &subChurchIDStr,
-				// Set other leader properties as needed
-			}
-
-			if err := r.DB.Create(leader).Error; err != nil {
-				return nil, fmt.Errorf("failed to create leader: %w", err)
-			}
-
-			leaderIndex = (leaderIndex + 1) % len(leaderDaysOfWeek) // Rotate through days of the week
-			token, err := helpers.GenerateToken(leadertype, (leader.ID.String()))
-			if err != nil {
-				return nil, fmt.Errorf("failed to generate tokens: %w", err)
-			}
-
-			leader.Token = &token // Set the leader's token here
-		}
-		// Create 4 sub-leaders
-		subLeaderIndex := 0
-		subLeaderSubLeader := "SubLeader"
-		for i := 0; i < 4; i++ {
-			subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
-			phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
-
-			subLeader := &model.Member{
-				Name:  fmt.Sprintf("%s SubLeader %d", uppercasedSubChurchName, i+1),
-				Types: []string{subLeaderSubLeader},
-				// Types:       &subLeaderSubLeader,
-				PhoneNumber: &phoneNumber,
-				Password:    &password, // Set the sub-leader's password here
-				Email:       leaderemail,
-				Day:         subLeaderDaysOfWeek[subLeaderIndex],
-				SubChurchID: &subChurchIDStr,
-				// Set other sub-leader properties as needed
-			}
-
-			if err := r.DB.Create(subLeader).Error; err != nil {
-				return nil, fmt.Errorf("failed to create sub-leader: %w", err)
-			}
-
-			subLeaderIndex = (subLeaderIndex + 1) % len(subLeaderDaysOfWeek) // Rotate through days of the week
-			token, err := helpers.GenerateToken(leadertype, (subLeader.ID.String()))
-			if err != nil {
-				return nil, fmt.Errorf("failed to generate tokens: %w", err)
-			}
-
-			subLeader.Token = &token // Set the leader's token here
-		}
+		subLeader.Token = &token // Set the leader's token here
 	}
 
 	return mainChurch, nil
 }
 
-// AssignLeader is the resolver for the assignLeader field.
+// klllllllllllleader is the resolver for the assignLeader field.
 func (r *mutationResolver) AssignLeader(ctx context.Context, input *model.AssignLeaderInput) (*model.Member, error) {
 	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
 	err := middleware.ExtractCTXinfo(ctx)
@@ -883,6 +1028,14 @@ func (r *mutationResolver) AssignLeader(ctx context.Context, input *model.Assign
 	if err := r.DB.First(member, "id = ?", input.MemberID).Error; err != nil {
 		return nil, err // Handle the error if the member is not found.
 	}
+
+	// Check if the input type already exists in member.Types.
+	for _, existingType := range member.Types {
+		if existingType == *input.Types {
+			return nil, fmt.Errorf("member already has the '%s' type", *input.Types)
+		}
+	}
+
 	// Validate the input.Types field.
 	if input.Types != nil && (*input.Types == "Admin") {
 		return nil, fmt.Errorf("cannot assign Admin role") // Return an error if the input.Types is "Admin."
@@ -891,15 +1044,16 @@ func (r *mutationResolver) AssignLeader(ctx context.Context, input *model.Assign
 	if input.Types != nil && (*input.Types != "SubLeader" && *input.Types != "CallAgent" && *input.Types != "Leader") {
 		return nil, fmt.Errorf("invalid leadership role: %s", *input.Types)
 	}
-	// Hashing Password to the DB  using the input Passowrd
 
-	password, err := helpers.HashPassword(*input.Password)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
+	if member.Password == nil {
+		// Hash the input password if a password does not exist.
+		password, err := helpers.HashPassword(*input.Password)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
+		}
+		member.Password = &password
 	}
 
-	// Update the member's leadership information based on the input.
-	member.Password = &password
 	// member.Types = input.Types
 	member.Types = append(member.Types, *input.Types)
 	// member.Types = input.Types
@@ -966,6 +1120,39 @@ func (r *mutationResolver) AddAnotherType(ctx context.Context, memberID string, 
 	}
 
 	return member, nil
+}
+
+// UpdateLeaderTypes is the resolver for the updateLeaderTypes field.
+func (r *mutationResolver) UpdateLeaderTypes(ctx context.Context, id *string, tags []string) (*model.Member, error) {
+	// Find the post in the database by its ID
+	var Member model.Member
+	if err := r.DB.Where("id = ?", id).First(&Member).Error; err != nil {
+		return nil, err
+	}
+
+	// Create a map to store the tags to remove for efficient lookup
+	tagsToRemoveMap := make(map[string]bool)
+	for _, tag := range tags {
+		tagsToRemoveMap[tag] = true
+	}
+
+	// Filter the existing tags, keeping only those not in the tagsToRemoveMap
+	var updatedTags []string
+	for _, existingTag := range Member.Types {
+		if !tagsToRemoveMap[existingTag] {
+			updatedTags = append(updatedTags, existingTag)
+		}
+	}
+
+	// Update the Member's Tags field with the filtered tags
+	Member.Types = updatedTags
+
+	// Save the updated Member back to the database
+	if err := r.DB.Save(&Member).Error; err != nil {
+		return nil, err
+	}
+
+	return &Member, nil
 }
 
 // RemoveLeader is the resolver for the removeLeader field.
@@ -1512,7 +1699,7 @@ func (r *postResolver) Tags(ctx context.Context, obj *model.Post) ([]string, err
 // GetAllMainChurch is the resolver for the GetAllMainChurch field.
 func (r *queryResolver) GetAllMainChurch(ctx context.Context) ([]*model.Church, error) {
 	var churchs []*model.Church
-	if err := r.DB.Preload("SubChurches.Members").Find(&churchs).Error; err != nil {
+	if err := r.DB.Find(&churchs).Error; err != nil {
 		return nil, err
 	}
 
@@ -1522,7 +1709,7 @@ func (r *queryResolver) GetAllMainChurch(ctx context.Context) ([]*model.Church, 
 // GetsubChurchByMainChurchID is the resolver for the GetsubChurchByMainChurchID field.
 func (r *queryResolver) GetAllsubChurchByMainChurchID(ctx context.Context, mainChurchID string) ([]*model.SubChurch, error) {
 	var subChurch []*model.SubChurch
-	if err := r.DB.Where("church_id = ?", mainChurchID).Preload("Members").Preload("Church").Find(&subChurch).Error; err != nil {
+	if err := r.DB.Where("church_id = ?", mainChurchID).Preload("Church").Find(&subChurch).Error; err != nil {
 		return nil, err
 	}
 
@@ -1533,10 +1720,26 @@ func (r *queryResolver) GetAllsubChurchByMainChurchID(ctx context.Context, mainC
 func (r *queryResolver) GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error) {
 	var members []*model.Member
 	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("SubChurch").Find(&members).Error; err != nil {
-		return nil, err
+		log.Printf("Error executing SQL query: %v", err)
+		return nil, fmt.Errorf("Error executing SQL query: %w", err)
 	}
 
+	// Convert pq.StringArray to []string
+	for _, member := range members {
+		member.Types = []string(member.Types)
+	}
 	return members, nil
+}
+
+// GetAllSubChurchLeader is the resolver for the GetAllSubChurchLeader field.
+func (r *queryResolver) GetAllSubChurchLeader(ctx context.Context, subChurchID string) (*model.Member, error) {
+	var leader model.Member
+
+	if err := r.DB.Where("sub_church_id = ? AND types && ?", subChurchID, pq.Array([]string{"Leader"})).Find(&leader).Error; err != nil {
+		// Handle the error, such as logging or returning an error response.
+		return nil, err
+	}
+	return &leader, nil
 }
 
 // GetAllMembersByLeader is the resolver for the GetAllMembersByLeader field.
@@ -1544,6 +1747,19 @@ func (r *queryResolver) GetAllMembersByLeader(ctx context.Context, leaderID stri
 	var members []*model.Member
 
 	if err := r.DB.Where("leader_id = ?", leaderID).Preload("SubChurch").Find(&members).Error; err != nil {
+		// Handle the error, such as logging or returning an error response.
+		return nil, err
+	}
+
+	return members, nil
+}
+
+// GetAllSubLeaderByLeader is the resolver for the GetAllSubLeaderByLeader field.
+func (r *queryResolver) GetAllSubLeaderByLeader(ctx context.Context, leaderID string) ([]*model.Member, error) {
+	var members []*model.Member
+
+	// Use GORM to query the database.
+	if err := r.DB.Where("leader_id = ? AND types && ?", leaderID, pq.Array([]string{"SubLeader"})).Preload("SubChurch").Find(&members).Error; err != nil {
 		// Handle the error, such as logging or returning an error response.
 		return nil, err
 	}
@@ -1612,9 +1828,12 @@ func (r *queryResolver) GetAllsubChurch(ctx context.Context) ([]*model.SubChurch
 // GetCaller is the resolver for the GetCaller field.
 func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Member, error) {
 	var leaders []*model.Member
-
+	// pq.Array([]string{"Leader", "SubLeader"})
 	// Query the database to retrieve leaders with Types equal to "Caller" or "Admin"
-	if err := r.DB.Where("types IN (?)", []string{"CallAgent"}).Find(&leaders).Error; err != nil {
+	// if err := r.DB.Where("types IN (?)", []string{"CallAgent"}).Find(&leaders).Error; err != nil
+	// if err := r.DB.Where("?'CallAgent'", "types").Find(&leaders).Error; err != nil
+	if err := r.DB.Where("? = ANY(types)", "CallAgent").Find(&leaders).Error; err != nil {
+
 		return nil, fmt.Errorf("failed to fetch leaders: %w", err)
 	}
 
@@ -1635,19 +1854,14 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error
 
 // Getmember is the resolver for the Getmember field.
 func (r *queryResolver) Getmember(ctx context.Context, id string) (*model.Member, error) {
-	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
-	err := middleware.ExtractCTXinfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// Retrieve the student from the database based on the provided ID
-	member := &model.Member{}
-	if err := r.DB.First(member, id).Error; err != nil {
+	var post model.Member
+
+	// Use GORM to find the post by its ID
+	if err := r.DB.Where("id = ?", id).First(&post).Error; err != nil {
 		return nil, err
 	}
 
-	// Return the member
-	return member, nil
+	return &post, nil
 }
 
 // GetMyType is the resolver for the GetMyType field.
@@ -1726,7 +1940,7 @@ func (r *queryResolver) MembersBySubChurchID(ctx context.Context, subChurchID st
 func (r *queryResolver) RegistrationsByLeader(ctx context.Context, mleaderID string) ([]*model.Registration, error) {
 	var registrations []*model.Registration
 
-	// Preload the Leader and Student associations
+	// Preload the Leader and member associations
 	if err := r.DB.Where("leader_id = ?", mleaderID).Preload("Leader").Preload("Member.SubChurch").Find(&registrations).Error; err != nil {
 		fmt.Println("Error preloading associations:", err)
 		return nil, err
@@ -1739,8 +1953,8 @@ func (r *queryResolver) RegistrationsByLeader(ctx context.Context, mleaderID str
 func (r *queryResolver) CallRoom(ctx context.Context, subChurchID string) ([]*model.Registration, error) {
 	var registrations []*model.Registration
 
-	// Preload the Leader and Student associations
-	// Preload the Leader and Student associations
+	// Preload the Leader and member associations
+	// Preload the Leader and member associations
 	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("Leader").Preload("Member.SubChurch").Find(&registrations).Error; err != nil {
 		fmt.Println("Error preloading associations:", err)
 		return nil, err
@@ -1915,13 +2129,3 @@ type postResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type registrationResolver struct{ *Resolver }
 type subChurchResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//     it when you're done.
-//   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *myTypeResolver) MyArray(ctx context.Context, obj *model.MyType) (mypkg.Myarray, error) {
-	return obj.MyArray, nil
-}

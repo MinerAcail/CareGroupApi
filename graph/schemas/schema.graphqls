@@ -2,7 +2,6 @@ scalar Time
 scalar Upload
 scalar Myarray
 
-
 type Member {
   id: String!
   name: String!
@@ -94,7 +93,9 @@ type Query {
   GetAllMainChurch: [Church]
   GetAllsubChurchByMainChurchID(mainChurchId: String!): [SubChurch]
   GetAllMembersBySubChurchID(subChurchId: String!): [Member]
+  GetAllSubChurchLeader(subChurchId: String!): Member
   GetAllMembersByLeader(leaderID: String!): [Member]
+  GetAllSubLeaderByLeader(leaderID: String!): [Member]
   GetAllRegistersByMemberID(MemberId: String!): [Registration]
   LastFourCommentsForMember(memberID: String!): [String]
 
@@ -102,6 +103,7 @@ type Query {
   GetCaller: [Member]
 
   post(id: String!): Post
+  # amember(id: String!): member
 
   Getmember(id: String!): Member
   GetMyType(id: String): MyType
@@ -190,14 +192,39 @@ input updateLeaderProfileInput {
   password: String
   location: String
 }
+enum MigrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+input SubChurchMigrationInput {
+  memberId: String!
+  destinationChurchId: String!
+}
+
+type MigrationRequest {
+  id: String!
+  locationFrom: String!
+  locationEnd: String!
+  migratedTime: Time!
+  member: Member!
+  destinationChurch: SubChurch!
+  status: MigrationStatus!
+}
 
 type Mutation {
+  requestSubChurchMigration(input: SubChurchMigrationInput!): MigrationRequest!
+  approveSubChurchMigration(requestId: String!): MigrationRequest!
+  rejectSubChurchMigration(requestId: String!): MigrationRequest!
+
   getMyL(id: String): MyType
-  PushMyL(id: String,newValue: String!): MyType
+  PushMyL(id: String, newValue: String!): MyType
   getMyArr: MyArr
   createMember(input: CreateMemberInput): Member!
-  createPost( tags: [String!]!): Post
-  updatePost( id: String,tags: [String!]!): Post
+  createMemberbySubchurch(input: CreateMemberInput): Member!
+  createPost(tags: [String!]!): Post
+  updatePost(id: String, tags: [String!]!): Post
 
   importMemberData(file: Upload!, ChurchID: String): [Member]
   dataMembers: String
@@ -218,10 +245,14 @@ type Mutation {
   deleteRegistration(registrationId: String!): Boolean!
 
   createSubChurch(subChurchName: String, branch: Boolean!): Church!
+  createMianChurch(subChurchName: String): Church!
   # createsubBranch(subBranchName: String): Church!
 
   assignLeader(input: assignLeaderInput): Member!
   addAnotherType(memberId: String!, types: String): Member!
+  updateLeaderTypes(id: String, tags: [String!]!): Member
+  # updateLeaderTypes( id: String,tags: [String!]!): Member
+
   removeLeader(memberId: String!): Member
 
   createSubChurchesWithMainChurch(

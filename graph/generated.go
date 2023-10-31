@@ -95,13 +95,26 @@ type ComplexityRoot struct {
 		UpdatedAt        func(childComplexity int) int
 	}
 
+	MigrationRequest struct {
+		DestinationChurch func(childComplexity int) int
+		ID                func(childComplexity int) int
+		LocationEnd       func(childComplexity int) int
+		LocationFrom      func(childComplexity int) int
+		Member            func(childComplexity int) int
+		MigratedTime      func(childComplexity int) int
+		Status            func(childComplexity int) int
+	}
+
 	Mutation struct {
 		AddAnotherType                   func(childComplexity int, memberID string, types *string) int
+		ApproveSubChurchMigration        func(childComplexity int, requestID string) int
 		AssignLeader                     func(childComplexity int, input *model.AssignLeaderInput) int
 		CleanUpPhoneNumbers              func(childComplexity int) int
 		CreateChurch                     func(childComplexity int, name string, email string, password *string) int
 		CreateMember                     func(childComplexity int, input *model.CreateMemberInput) int
 		CreateMemberBysubLeader          func(childComplexity int, input *model.CreateMemberInputBySub) int
+		CreateMemberbySubchurch          func(childComplexity int, input *model.CreateMemberInput) int
+		CreateMianChurch                 func(childComplexity int, subChurchName *string) int
 		CreatePost                       func(childComplexity int, tags []string) int
 		CreateRegistration               func(childComplexity int, memberID string, input model.CreateRegistrationInput) int
 		CreateRegistrationArray          func(childComplexity int, input []*model.RegistrationArrayInput) int
@@ -120,8 +133,11 @@ type ComplexityRoot struct {
 		Login                            func(childComplexity int, input model.LoginLeaderInput) int
 		Memberlogin                      func(childComplexity int, input model.LoginLeaderInput) int
 		PushMyL                          func(childComplexity int, id *string, newValue string) int
+		RejectSubChurchMigration         func(childComplexity int, requestID string) int
 		RemoveLeader                     func(childComplexity int, memberID string) int
+		RequestSubChurchMigration        func(childComplexity int, input model.SubChurchMigrationInput) int
 		UpdateLeader                     func(childComplexity int, input model.UpdateLeaderProfileInput, memberID string) int
+		UpdateLeaderTypes                func(childComplexity int, id *string, tags []string) int
 		UpdateMember                     func(childComplexity int, input model.UpdateMemberInput, memberID string) int
 		UpdatePost                       func(childComplexity int, id *string, tags []string) int
 		UpdateRegistration               func(childComplexity int, input model.CreateRegistrationInput, registrationID string) int
@@ -159,6 +175,8 @@ type ComplexityRoot struct {
 		GetAllMembersByLeader          func(childComplexity int, leaderID string) int
 		GetAllMembersBySubChurchID     func(childComplexity int, subChurchID string) int
 		GetAllRegistersByMemberID      func(childComplexity int, memberID string) int
+		GetAllSubChurchLeader          func(childComplexity int, subChurchID string) int
+		GetAllSubLeaderByLeader        func(childComplexity int, leaderID string) int
 		GetAllsubChurch                func(childComplexity int) int
 		GetAllsubChurchByMainChurchID  func(childComplexity int, mainChurchID string) int
 		GetCaller                      func(childComplexity int) int
@@ -224,12 +242,18 @@ type ChurchResolver interface {
 }
 type MemberResolver interface {
 	ID(ctx context.Context, obj *model.Member) (string, error)
+
+	Types(ctx context.Context, obj *model.Member) ([]string, error)
 }
 type MutationResolver interface {
+	RequestSubChurchMigration(ctx context.Context, input model.SubChurchMigrationInput) (*model.MigrationRequest, error)
+	ApproveSubChurchMigration(ctx context.Context, requestID string) (*model.MigrationRequest, error)
+	RejectSubChurchMigration(ctx context.Context, requestID string) (*model.MigrationRequest, error)
 	GetMyL(ctx context.Context, id *string) (*model.MyType, error)
 	PushMyL(ctx context.Context, id *string, newValue string) (*model.MyType, error)
 	GetMyArr(ctx context.Context) (*model.MyArr, error)
 	CreateMember(ctx context.Context, input *model.CreateMemberInput) (*model.Member, error)
+	CreateMemberbySubchurch(ctx context.Context, input *model.CreateMemberInput) (*model.Member, error)
 	CreatePost(ctx context.Context, tags []string) (*model.Post, error)
 	UpdatePost(ctx context.Context, id *string, tags []string) (*model.Post, error)
 	ImportMemberData(ctx context.Context, file graphql.Upload, churchID *string) ([]*model.Member, error)
@@ -245,8 +269,10 @@ type MutationResolver interface {
 	DeleteSubChurch(ctx context.Context, subChurchID string) (bool, error)
 	DeleteRegistration(ctx context.Context, registrationID string) (bool, error)
 	CreateSubChurch(ctx context.Context, subChurchName *string, branch bool) (*model.Church, error)
+	CreateMianChurch(ctx context.Context, subChurchName *string) (*model.Church, error)
 	AssignLeader(ctx context.Context, input *model.AssignLeaderInput) (*model.Member, error)
 	AddAnotherType(ctx context.Context, memberID string, types *string) (*model.Member, error)
+	UpdateLeaderTypes(ctx context.Context, id *string, tags []string) (*model.Member, error)
 	RemoveLeader(ctx context.Context, memberID string) (*model.Member, error)
 	CreateSubChurchesWithMainChurch(ctx context.Context, mainChurchID string, subChurchNames []string) (*model.Church, error)
 	CreateRegistration(ctx context.Context, memberID string, input model.CreateRegistrationInput) (*model.Registration, error)
@@ -272,7 +298,9 @@ type QueryResolver interface {
 	GetAllMainChurch(ctx context.Context) ([]*model.Church, error)
 	GetAllsubChurchByMainChurchID(ctx context.Context, mainChurchID string) ([]*model.SubChurch, error)
 	GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error)
+	GetAllSubChurchLeader(ctx context.Context, subChurchID string) (*model.Member, error)
 	GetAllMembersByLeader(ctx context.Context, leaderID string) ([]*model.Member, error)
+	GetAllSubLeaderByLeader(ctx context.Context, leaderID string) ([]*model.Member, error)
 	GetAllRegistersByMemberID(ctx context.Context, memberID string) ([]*model.Registration, error)
 	LastFourCommentsForMember(ctx context.Context, memberID string) ([]*string, error)
 	GetAllsubChurch(ctx context.Context) ([]*model.SubChurch, error)
@@ -520,6 +548,55 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Member.UpdatedAt(childComplexity), true
 
+	case "MigrationRequest.destinationChurch":
+		if e.complexity.MigrationRequest.DestinationChurch == nil {
+			break
+		}
+
+		return e.complexity.MigrationRequest.DestinationChurch(childComplexity), true
+
+	case "MigrationRequest.id":
+		if e.complexity.MigrationRequest.ID == nil {
+			break
+		}
+
+		return e.complexity.MigrationRequest.ID(childComplexity), true
+
+	case "MigrationRequest.locationEnd":
+		if e.complexity.MigrationRequest.LocationEnd == nil {
+			break
+		}
+
+		return e.complexity.MigrationRequest.LocationEnd(childComplexity), true
+
+	case "MigrationRequest.locationFrom":
+		if e.complexity.MigrationRequest.LocationFrom == nil {
+			break
+		}
+
+		return e.complexity.MigrationRequest.LocationFrom(childComplexity), true
+
+	case "MigrationRequest.member":
+		if e.complexity.MigrationRequest.Member == nil {
+			break
+		}
+
+		return e.complexity.MigrationRequest.Member(childComplexity), true
+
+	case "MigrationRequest.migratedTime":
+		if e.complexity.MigrationRequest.MigratedTime == nil {
+			break
+		}
+
+		return e.complexity.MigrationRequest.MigratedTime(childComplexity), true
+
+	case "MigrationRequest.status":
+		if e.complexity.MigrationRequest.Status == nil {
+			break
+		}
+
+		return e.complexity.MigrationRequest.Status(childComplexity), true
+
 	case "Mutation.addAnotherType":
 		if e.complexity.Mutation.AddAnotherType == nil {
 			break
@@ -531,6 +608,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.AddAnotherType(childComplexity, args["memberId"].(string), args["types"].(*string)), true
+
+	case "Mutation.approveSubChurchMigration":
+		if e.complexity.Mutation.ApproveSubChurchMigration == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_approveSubChurchMigration_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ApproveSubChurchMigration(childComplexity, args["requestId"].(string)), true
 
 	case "Mutation.assignLeader":
 		if e.complexity.Mutation.AssignLeader == nil {
@@ -586,6 +675,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CreateMemberBysubLeader(childComplexity, args["input"].(*model.CreateMemberInputBySub)), true
+
+	case "Mutation.createMemberbySubchurch":
+		if e.complexity.Mutation.CreateMemberbySubchurch == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createMemberbySubchurch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateMemberbySubchurch(childComplexity, args["input"].(*model.CreateMemberInput)), true
+
+	case "Mutation.createMianChurch":
+		if e.complexity.Mutation.CreateMianChurch == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createMianChurch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateMianChurch(childComplexity, args["subChurchName"].(*string)), true
 
 	case "Mutation.createPost":
 		if e.complexity.Mutation.CreatePost == nil {
@@ -788,6 +901,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.PushMyL(childComplexity, args["id"].(*string), args["newValue"].(string)), true
 
+	case "Mutation.rejectSubChurchMigration":
+		if e.complexity.Mutation.RejectSubChurchMigration == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_rejectSubChurchMigration_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RejectSubChurchMigration(childComplexity, args["requestId"].(string)), true
+
 	case "Mutation.removeLeader":
 		if e.complexity.Mutation.RemoveLeader == nil {
 			break
@@ -800,6 +925,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RemoveLeader(childComplexity, args["memberId"].(string)), true
 
+	case "Mutation.requestSubChurchMigration":
+		if e.complexity.Mutation.RequestSubChurchMigration == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_requestSubChurchMigration_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RequestSubChurchMigration(childComplexity, args["input"].(model.SubChurchMigrationInput)), true
+
 	case "Mutation.updateLeader":
 		if e.complexity.Mutation.UpdateLeader == nil {
 			break
@@ -811,6 +948,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdateLeader(childComplexity, args["input"].(model.UpdateLeaderProfileInput), args["memberId"].(string)), true
+
+	case "Mutation.updateLeaderTypes":
+		if e.complexity.Mutation.UpdateLeaderTypes == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateLeaderTypes_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateLeaderTypes(childComplexity, args["id"].(*string), args["tags"].([]string)), true
 
 	case "Mutation.updateMember":
 		if e.complexity.Mutation.UpdateMember == nil {
@@ -1015,6 +1164,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetAllRegistersByMemberID(childComplexity, args["MemberId"].(string)), true
+
+	case "Query.GetAllSubChurchLeader":
+		if e.complexity.Query.GetAllSubChurchLeader == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetAllSubChurchLeader_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetAllSubChurchLeader(childComplexity, args["subChurchId"].(string)), true
+
+	case "Query.GetAllSubLeaderByLeader":
+		if e.complexity.Query.GetAllSubLeaderByLeader == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetAllSubLeaderByLeader_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetAllSubLeaderByLeader(childComplexity, args["leaderID"].(string)), true
 
 	case "Query.GetAllsubChurch":
 		if e.complexity.Query.GetAllsubChurch == nil {
@@ -1400,6 +1573,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputLoginLeaderInput,
 		ec.unmarshalInputRegistrationArrayInput,
+		ec.unmarshalInputSubChurchMigrationInput,
 		ec.unmarshalInputassignLeaderInput,
 		ec.unmarshalInputupdateLeaderProfileInput,
 		ec.unmarshalInputupdateMemberInput,
@@ -1567,6 +1741,21 @@ func (ec *executionContext) field_Mutation_addAnotherType_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_approveSubChurchMigration_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["requestId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["requestId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_assignLeader_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1642,6 +1831,36 @@ func (ec *executionContext) field_Mutation_createMember_args(ctx context.Context
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createMemberbySubchurch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *model.CreateMemberInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalOCreateMemberInput2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCreateMemberInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createMianChurch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["subChurchName"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchName"))
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subChurchName"] = arg0
 	return args, nil
 }
 
@@ -1891,6 +2110,21 @@ func (ec *executionContext) field_Mutation_memberlogin_args(ctx context.Context,
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_rejectSubChurchMigration_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["requestId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["requestId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_removeLeader_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1903,6 +2137,45 @@ func (ec *executionContext) field_Mutation_removeLeader_args(ctx context.Context
 		}
 	}
 	args["memberId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_requestSubChurchMigration_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.SubChurchMigrationInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNSubChurchMigrationInput2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐSubChurchMigrationInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateLeaderTypes_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 []string
+	if tmp, ok := rawArgs["tags"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tags"))
+		arg1, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tags"] = arg1
 	return args, nil
 }
 
@@ -2116,6 +2389,36 @@ func (ec *executionContext) field_Query_GetAllRegistersByMemberID_args(ctx conte
 		}
 	}
 	args["MemberId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_GetAllSubChurchLeader_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["subChurchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subChurchId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_GetAllSubLeaderByLeader_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["leaderID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("leaderID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["leaderID"] = arg0
 	return args, nil
 }
 
@@ -3245,7 +3548,7 @@ func (ec *executionContext) _Member_types(ctx context.Context, field graphql.Col
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Types, nil
+		return ec.resolvers.Member().Types(rctx, obj)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -3259,15 +3562,15 @@ func (ec *executionContext) _Member_types(ctx context.Context, field graphql.Col
 	}
 	res := resTmp.([]string)
 	fc.Result = res
-	return ec.marshalNString2ᚕstring(ctx, field.Selections, res)
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Member_types(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Member",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -3661,6 +3964,587 @@ func (ec *executionContext) fieldContext_Member_createdAt(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _MigrationRequest_id(ctx context.Context, field graphql.CollectedField, obj *model.MigrationRequest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MigrationRequest_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MigrationRequest_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MigrationRequest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MigrationRequest_locationFrom(ctx context.Context, field graphql.CollectedField, obj *model.MigrationRequest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MigrationRequest_locationFrom(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LocationFrom, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MigrationRequest_locationFrom(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MigrationRequest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MigrationRequest_locationEnd(ctx context.Context, field graphql.CollectedField, obj *model.MigrationRequest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MigrationRequest_locationEnd(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.LocationEnd, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MigrationRequest_locationEnd(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MigrationRequest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MigrationRequest_migratedTime(ctx context.Context, field graphql.CollectedField, obj *model.MigrationRequest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MigrationRequest_migratedTime(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MigratedTime, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MigrationRequest_migratedTime(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MigrationRequest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MigrationRequest_member(ctx context.Context, field graphql.CollectedField, obj *model.MigrationRequest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MigrationRequest_member(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Member, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Member)
+	fc.Result = res
+	return ec.marshalNMember2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MigrationRequest_member(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MigrationRequest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Member_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Member_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Member_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Member_phoneNumber(ctx, field)
+			case "location":
+				return ec.fieldContext_Member_location(ctx, field)
+			case "day":
+				return ec.fieldContext_Member_day(ctx, field)
+			case "password":
+				return ec.fieldContext_Member_password(ctx, field)
+			case "types":
+				return ec.fieldContext_Member_types(ctx, field)
+			case "token":
+				return ec.fieldContext_Member_token(ctx, field)
+			case "LeaderID":
+				return ec.fieldContext_Member_LeaderID(ctx, field)
+			case "ReferenceIDCount":
+				return ec.fieldContext_Member_ReferenceIDCount(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Member_registrations(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Member_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Member_subChurchID(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Member_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Member_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MigrationRequest_destinationChurch(ctx context.Context, field graphql.CollectedField, obj *model.MigrationRequest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MigrationRequest_destinationChurch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DestinationChurch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.SubChurch)
+	fc.Result = res
+	return ec.marshalNSubChurch2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐSubChurch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MigrationRequest_destinationChurch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MigrationRequest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SubChurch_id(ctx, field)
+			case "name":
+				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SubChurch_createdAt(ctx, field)
+			case "church":
+				return ec.fieldContext_SubChurch_church(ctx, field)
+			case "churchId":
+				return ec.fieldContext_SubChurch_churchId(ctx, field)
+			case "leaders":
+				return ec.fieldContext_SubChurch_leaders(ctx, field)
+			case "members":
+				return ec.fieldContext_SubChurch_members(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SubChurch", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MigrationRequest_status(ctx context.Context, field graphql.CollectedField, obj *model.MigrationRequest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MigrationRequest_status(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.MigrationStatus)
+	fc.Result = res
+	return ec.marshalNMigrationStatus2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MigrationRequest_status(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MigrationRequest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type MigrationStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_requestSubChurchMigration(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_requestSubChurchMigration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RequestSubChurchMigration(rctx, fc.Args["input"].(model.SubChurchMigrationInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MigrationRequest)
+	fc.Result = res
+	return ec.marshalNMigrationRequest2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_requestSubChurchMigration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MigrationRequest_id(ctx, field)
+			case "locationFrom":
+				return ec.fieldContext_MigrationRequest_locationFrom(ctx, field)
+			case "locationEnd":
+				return ec.fieldContext_MigrationRequest_locationEnd(ctx, field)
+			case "migratedTime":
+				return ec.fieldContext_MigrationRequest_migratedTime(ctx, field)
+			case "member":
+				return ec.fieldContext_MigrationRequest_member(ctx, field)
+			case "destinationChurch":
+				return ec.fieldContext_MigrationRequest_destinationChurch(ctx, field)
+			case "status":
+				return ec.fieldContext_MigrationRequest_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MigrationRequest", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_requestSubChurchMigration_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_approveSubChurchMigration(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_approveSubChurchMigration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ApproveSubChurchMigration(rctx, fc.Args["requestId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MigrationRequest)
+	fc.Result = res
+	return ec.marshalNMigrationRequest2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_approveSubChurchMigration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MigrationRequest_id(ctx, field)
+			case "locationFrom":
+				return ec.fieldContext_MigrationRequest_locationFrom(ctx, field)
+			case "locationEnd":
+				return ec.fieldContext_MigrationRequest_locationEnd(ctx, field)
+			case "migratedTime":
+				return ec.fieldContext_MigrationRequest_migratedTime(ctx, field)
+			case "member":
+				return ec.fieldContext_MigrationRequest_member(ctx, field)
+			case "destinationChurch":
+				return ec.fieldContext_MigrationRequest_destinationChurch(ctx, field)
+			case "status":
+				return ec.fieldContext_MigrationRequest_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MigrationRequest", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_approveSubChurchMigration_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_rejectSubChurchMigration(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_rejectSubChurchMigration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RejectSubChurchMigration(rctx, fc.Args["requestId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.MigrationRequest)
+	fc.Result = res
+	return ec.marshalNMigrationRequest2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_rejectSubChurchMigration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MigrationRequest_id(ctx, field)
+			case "locationFrom":
+				return ec.fieldContext_MigrationRequest_locationFrom(ctx, field)
+			case "locationEnd":
+				return ec.fieldContext_MigrationRequest_locationEnd(ctx, field)
+			case "migratedTime":
+				return ec.fieldContext_MigrationRequest_migratedTime(ctx, field)
+			case "member":
+				return ec.fieldContext_MigrationRequest_member(ctx, field)
+			case "destinationChurch":
+				return ec.fieldContext_MigrationRequest_destinationChurch(ctx, field)
+			case "status":
+				return ec.fieldContext_MigrationRequest_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MigrationRequest", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_rejectSubChurchMigration_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_getMyL(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_getMyL(ctx, field)
 	if err != nil {
@@ -3907,6 +4791,95 @@ func (ec *executionContext) fieldContext_Mutation_createMember(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createMember_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createMemberbySubchurch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createMemberbySubchurch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateMemberbySubchurch(rctx, fc.Args["input"].(*model.CreateMemberInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Member)
+	fc.Result = res
+	return ec.marshalNMember2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createMemberbySubchurch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Member_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Member_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Member_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Member_phoneNumber(ctx, field)
+			case "location":
+				return ec.fieldContext_Member_location(ctx, field)
+			case "day":
+				return ec.fieldContext_Member_day(ctx, field)
+			case "password":
+				return ec.fieldContext_Member_password(ctx, field)
+			case "types":
+				return ec.fieldContext_Member_types(ctx, field)
+			case "token":
+				return ec.fieldContext_Member_token(ctx, field)
+			case "LeaderID":
+				return ec.fieldContext_Member_LeaderID(ctx, field)
+			case "ReferenceIDCount":
+				return ec.fieldContext_Member_ReferenceIDCount(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Member_registrations(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Member_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Member_subChurchID(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Member_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Member_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createMemberbySubchurch_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4915,6 +5888,81 @@ func (ec *executionContext) fieldContext_Mutation_createSubChurch(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_createMianChurch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createMianChurch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateMianChurch(rctx, fc.Args["subChurchName"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Church)
+	fc.Result = res
+	return ec.marshalNChurch2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createMianChurch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Church_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Church_name(ctx, field)
+			case "password":
+				return ec.fieldContext_Church_password(ctx, field)
+			case "email":
+				return ec.fieldContext_Church_email(ctx, field)
+			case "types":
+				return ec.fieldContext_Church_types(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Church_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Church_createdAt(ctx, field)
+			case "token":
+				return ec.fieldContext_Church_token(ctx, field)
+			case "subChurches":
+				return ec.fieldContext_Church_subChurches(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Church", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createMianChurch_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_assignLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_assignLeader(ctx, field)
 	if err != nil {
@@ -5087,6 +6135,92 @@ func (ec *executionContext) fieldContext_Mutation_addAnotherType(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addAnotherType_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateLeaderTypes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateLeaderTypes(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateLeaderTypes(rctx, fc.Args["id"].(*string), fc.Args["tags"].([]string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Member)
+	fc.Result = res
+	return ec.marshalOMember2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateLeaderTypes(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Member_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Member_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Member_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Member_phoneNumber(ctx, field)
+			case "location":
+				return ec.fieldContext_Member_location(ctx, field)
+			case "day":
+				return ec.fieldContext_Member_day(ctx, field)
+			case "password":
+				return ec.fieldContext_Member_password(ctx, field)
+			case "types":
+				return ec.fieldContext_Member_types(ctx, field)
+			case "token":
+				return ec.fieldContext_Member_token(ctx, field)
+			case "LeaderID":
+				return ec.fieldContext_Member_LeaderID(ctx, field)
+			case "ReferenceIDCount":
+				return ec.fieldContext_Member_ReferenceIDCount(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Member_registrations(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Member_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Member_subChurchID(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Member_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Member_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateLeaderTypes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -6405,6 +7539,92 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchID(ctx co
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_GetAllSubChurchLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetAllSubChurchLeader(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetAllSubChurchLeader(rctx, fc.Args["subChurchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Member)
+	fc.Result = res
+	return ec.marshalOMember2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetAllSubChurchLeader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Member_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Member_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Member_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Member_phoneNumber(ctx, field)
+			case "location":
+				return ec.fieldContext_Member_location(ctx, field)
+			case "day":
+				return ec.fieldContext_Member_day(ctx, field)
+			case "password":
+				return ec.fieldContext_Member_password(ctx, field)
+			case "types":
+				return ec.fieldContext_Member_types(ctx, field)
+			case "token":
+				return ec.fieldContext_Member_token(ctx, field)
+			case "LeaderID":
+				return ec.fieldContext_Member_LeaderID(ctx, field)
+			case "ReferenceIDCount":
+				return ec.fieldContext_Member_ReferenceIDCount(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Member_registrations(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Member_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Member_subChurchID(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Member_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Member_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetAllSubChurchLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_GetAllMembersByLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_GetAllMembersByLeader(ctx, field)
 	if err != nil {
@@ -6485,6 +7705,92 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersByLeader(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_GetAllMembersByLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_GetAllSubLeaderByLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetAllSubLeaderByLeader(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetAllSubLeaderByLeader(rctx, fc.Args["leaderID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Member)
+	fc.Result = res
+	return ec.marshalOMember2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetAllSubLeaderByLeader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Member_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Member_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Member_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Member_phoneNumber(ctx, field)
+			case "location":
+				return ec.fieldContext_Member_location(ctx, field)
+			case "day":
+				return ec.fieldContext_Member_day(ctx, field)
+			case "password":
+				return ec.fieldContext_Member_password(ctx, field)
+			case "types":
+				return ec.fieldContext_Member_types(ctx, field)
+			case "token":
+				return ec.fieldContext_Member_token(ctx, field)
+			case "LeaderID":
+				return ec.fieldContext_Member_LeaderID(ctx, field)
+			case "ReferenceIDCount":
+				return ec.fieldContext_Member_ReferenceIDCount(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Member_registrations(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Member_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Member_subChurchID(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Member_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Member_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetAllSubLeaderByLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -11648,6 +12954,44 @@ func (ec *executionContext) unmarshalInputRegistrationArrayInput(ctx context.Con
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSubChurchMigrationInput(ctx context.Context, obj interface{}) (model.SubChurchMigrationInput, error) {
+	var it model.SubChurchMigrationInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"memberId", "destinationChurchId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "memberId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("memberId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MemberID = data
+		case "destinationChurchId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("destinationChurchId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DestinationChurchID = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputassignLeaderInput(ctx context.Context, obj interface{}) (model.AssignLeaderInput, error) {
 	var it model.AssignLeaderInput
 	asMap := map[string]interface{}{}
@@ -12121,10 +13465,41 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 		case "password":
 			out.Values[i] = ec._Member_password(ctx, field, obj)
 		case "types":
-			out.Values[i] = ec._Member_types(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Member_types(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "token":
 			out.Values[i] = ec._Member_token(ctx, field, obj)
 		case "LeaderID":
@@ -12170,6 +13545,75 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var migrationRequestImplementors = []string{"MigrationRequest"}
+
+func (ec *executionContext) _MigrationRequest(ctx context.Context, sel ast.SelectionSet, obj *model.MigrationRequest) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, migrationRequestImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MigrationRequest")
+		case "id":
+			out.Values[i] = ec._MigrationRequest_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "locationFrom":
+			out.Values[i] = ec._MigrationRequest_locationFrom(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "locationEnd":
+			out.Values[i] = ec._MigrationRequest_locationEnd(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "migratedTime":
+			out.Values[i] = ec._MigrationRequest_migratedTime(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "member":
+			out.Values[i] = ec._MigrationRequest_member(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "destinationChurch":
+			out.Values[i] = ec._MigrationRequest_destinationChurch(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._MigrationRequest_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -12189,6 +13633,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Mutation")
+		case "requestSubChurchMigration":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_requestSubChurchMigration(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "approveSubChurchMigration":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_approveSubChurchMigration(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rejectSubChurchMigration":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_rejectSubChurchMigration(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "getMyL":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_getMyL(ctx, field)
@@ -12204,6 +13669,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createMember":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createMember(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createMemberbySubchurch":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createMemberbySubchurch(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -12298,6 +13770,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "createMianChurch":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createMianChurch(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "assignLeader":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_assignLeader(ctx, field)
@@ -12312,6 +13791,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateLeaderTypes":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateLeaderTypes(ctx, field)
+			})
 		case "removeLeader":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeLeader(ctx, field)
@@ -12774,6 +14257,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetAllSubChurchLeader":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetAllSubChurchLeader(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "GetAllMembersByLeader":
 			field := field
 
@@ -12784,6 +14286,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_GetAllMembersByLeader(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetAllSubLeaderByLeader":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetAllSubLeaderByLeader(ctx, field)
 				return res
 			}
 
@@ -13962,6 +15483,30 @@ func (ec *executionContext) marshalNMember2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋg
 	return ec._Member(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNMigrationRequest2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx context.Context, sel ast.SelectionSet, v model.MigrationRequest) graphql.Marshaler {
+	return ec._MigrationRequest(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMigrationRequest2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx context.Context, sel ast.SelectionSet, v *model.MigrationRequest) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MigrationRequest(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNMigrationStatus2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationStatus(ctx context.Context, v interface{}) (model.MigrationStatus, error) {
+	var res model.MigrationStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNMigrationStatus2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationStatus(ctx context.Context, sel ast.SelectionSet, v model.MigrationStatus) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNMyarray2githubᚗcomᚋkobbiᚋvbciapiᚋmypkgᚐMyarray(ctx context.Context, v interface{}) (mypkg.Myarray, error) {
 	var res mypkg.Myarray
 	err := res.UnmarshalGQL(v)
@@ -14099,32 +15644,6 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) unmarshalNString2ᚕstring(ctx context.Context, v interface{}) ([]string, error) {
-	var vSlice []interface{}
-	if v != nil {
-		vSlice = graphql.CoerceList(v)
-	}
-	var err error
-	res := make([]string, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalOString2string(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) marshalNString2ᚕstring(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	for i := range v {
-		ret[i] = ec.marshalOString2string(ctx, sel, v[i])
-	}
-
-	return ret
-}
-
 func (ec *executionContext) unmarshalNString2ᚕstringᚄ(ctx context.Context, v interface{}) ([]string, error) {
 	var vSlice []interface{}
 	if v != nil {
@@ -14239,6 +15758,11 @@ func (ec *executionContext) marshalNSubChurch2ᚖgithubᚗcomᚋkobbiᚋvbciapi�
 		return graphql.Null
 	}
 	return ec._SubChurch(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSubChurchMigrationInput2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐSubChurchMigrationInput(ctx context.Context, v interface{}) (model.SubChurchMigrationInput, error) {
+	res, err := ec.unmarshalInputSubChurchMigrationInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNTime2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
@@ -14899,16 +16423,6 @@ func (ec *executionContext) marshalOReturns2githubᚗcomᚋkobbiᚋvbciapiᚋgra
 		return graphql.Null
 	}
 	return ec._Returns(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
-	res, err := graphql.UnmarshalString(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
-	res := graphql.MarshalString(v)
-	return res
 }
 
 func (ec *executionContext) unmarshalOString2ᚕᚖstring(ctx context.Context, v interface{}) ([]*string, error) {

@@ -2,6 +2,13 @@
 
 package model
 
+import (
+	"fmt"
+	"io"
+	"strconv"
+	"time"
+)
+
 type CreateMemberInput struct {
 	Name        string  `json:"name"`
 	Email       string  `json:"email"`
@@ -49,6 +56,16 @@ type LoginLeaderInput struct {
 	Email       *string `json:"email,omitempty"`
 }
 
+type MigrationRequest struct {
+	ID                string          `json:"id"`
+	LocationFrom      string          `json:"locationFrom"`
+	LocationEnd       string          `json:"locationEnd"`
+	MigratedTime      time.Time       `json:"migratedTime"`
+	Member            *Member         `json:"member"`
+	DestinationChurch *SubChurch      `json:"destinationChurch"`
+	Status            MigrationStatus `json:"status"`
+}
+
 type Person struct {
 	ID    string    `json:"id"`
 	Name  string    `json:"name"`
@@ -63,6 +80,11 @@ type RegistrationArrayInput struct {
 type RegistrationsDistribution struct {
 	LeaderID        string   `json:"leaderID"`
 	RegistrationIDs []string `json:"registrationIDs"`
+}
+
+type SubChurchMigrationInput struct {
+	MemberID            string `json:"memberId"`
+	DestinationChurchID string `json:"destinationChurchId"`
 }
 
 type WeeklyResults struct {
@@ -91,4 +113,49 @@ type UpdateMemberInput struct {
 	PhoneNumber *string `json:"phoneNumber,omitempty"`
 	Day         *string `json:"day,omitempty"`
 	Location    *string `json:"location,omitempty"`
+}
+
+type MigrationStatus string
+
+const (
+	MigrationStatusPending   MigrationStatus = "PENDING"
+	MigrationStatusApproved  MigrationStatus = "APPROVED"
+	MigrationStatusRejected  MigrationStatus = "REJECTED"
+	MigrationStatusCompleted MigrationStatus = "COMPLETED"
+)
+
+var AllMigrationStatus = []MigrationStatus{
+	MigrationStatusPending,
+	MigrationStatusApproved,
+	MigrationStatusRejected,
+	MigrationStatusCompleted,
+}
+
+func (e MigrationStatus) IsValid() bool {
+	switch e {
+	case MigrationStatusPending, MigrationStatusApproved, MigrationStatusRejected, MigrationStatusCompleted:
+		return true
+	}
+	return false
+}
+
+func (e MigrationStatus) String() string {
+	return string(e)
+}
+
+func (e *MigrationStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = MigrationStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid MigrationStatus", str)
+	}
+	return nil
+}
+
+func (e MigrationStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/kobbi/vbciapi/graph/model"
 	"github.com/kobbi/vbciapi/jwt/middleware"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -89,13 +90,14 @@ func ShuffleLeaders(leaders []string) {
 
 func CheckDuplicateRecords(db *gorm.DB, model interface{}, inputName, inputEmail, inputPhoneNumber string) error {
 
-	// Check if a student with the same name and phone number already exists
+	// Check if a member with the same name and phone number already exists
 	err := db.Where("name = ? AND phone_number = ?", inputName, inputPhoneNumber).First(&model).Error
 	if err == nil {
-		return fmt.Errorf("a student with the same name and phone number already exists")
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return err
+		return fmt.Errorf("a member with the same name and phone number already exists")
 	}
+	// else if !errors.Is(err, gorm.ErrRecordNotFound) {
+	// 	return err
+	// }
 
 	// Check if an email already exists
 	err = db.Where("email = ?", inputEmail).First(&model).Error
@@ -116,10 +118,10 @@ func CheckDuplicateRecords(db *gorm.DB, model interface{}, inputName, inputEmail
 
 	return nil
 }
-func CheckMembersDuplicateRecords(db *gorm.DB,  inputName, inputEmail, inputPhoneNumber string) error {
+func CheckMembersDuplicateRecords(db *gorm.DB, inputName, inputEmail, inputPhoneNumber string) error {
 	member := &model.Member{}
 
-	// Check if a student with the same name and phone number already exists
+	// Check if a member with the same name and phone number already exists
 	err := db.Where("name = ? AND phone_number = ?", inputName, inputPhoneNumber).First(member).Error
 	if err == nil {
 		return fmt.Errorf("a Member with the same name and phone number already exists")
@@ -151,7 +153,9 @@ func CheckMembersDuplicateRecords(db *gorm.DB,  inputName, inputEmail, inputPhon
 func UpdateReferenceIDCounts(db *gorm.DB, subChurchID string) error {
 	// Query all leaders
 	var leaders []model.Member
-	if err := db.Where("types IN (?) ", []string{"Leader", "SubLeader"}).Find(&leaders).Error; err != nil {
+
+	// if err := db.Where("types IN (?) ", []string{"Leader", "SubLeader"}).Find(&leaders).Error; err != nil {
+	if err := db.Where("types IN (?)", pq.Array([]string{"Leader", "SubLeader"})).Find(&leaders).Error; err != nil {
 		return err
 	}
 
@@ -200,8 +204,10 @@ func FindLeaderWithSameDay(ctx context.Context, db *gorm.DB, day string, subChur
 
 	// Perform a database query to find leaders with the specified day.
 	var leadersWithSameDay []model.Member
-	if err := db.Where("types IN (?) AND day = ? AND sub_church_id = ?", []string{"Leader", "SubLeader"}, day, subChurchID).Find(&leadersWithSameDay).Error; err != nil {
-		// Handle errors here, such as if no leaders with the same day are found.
+	
+
+	if err := db.Where("sub_church_id = ? AND types && ?", subChurchID, pq.Array([]string{"SubLeader"})).Find(&leadersWithSameDay).Error; err != nil {
+		// Handle the error, such as logging or returning an error response.
 		return nil, err
 	}
 
@@ -242,27 +248,42 @@ func FindLeaderWithSameDay(ctx context.Context, db *gorm.DB, day string, subChur
 	return &selectedLeader, nil
 }
 func GetLeaderByChurchID(db *gorm.DB, churchID *string) (*model.Member, error) {
-    var leader model.Member
+	var leader model.Member
 
-    if err := db.Where("types IN (?) AND sub_church_id = ?", []string{"Leader", "SubLeader"}, churchID).First(&leader).Error; err != nil {
-        return nil, err
-    }
+	// if err := db.Where("types IN (?) AND sub_church_id = ?",  pq.Array([]string{"Leader", "SubLeader"}), churchID).First(&leader).Error; err != nil {
+	// 	return nil, err
+	// fixing array query
+	// }
+	if err := db.Where("sub_church_id = ? AND types && ?", churchID, pq.Array([]string{"Leader"})).Find(&leader).Error; err != nil {
+		// Handle the error, such as logging or returning an error response.
+		return nil, err
+	}
+	// if err := r.DB.Where("sub_church_id = ? AND types && ?", churchID, pq.Array([]string{"Leader"})).Find(&leader).Error; err != nil {
+	// 	// Handle the error, such as logging or returning an error response.
+	// 	return nil, err
+	// }
 
-    return &leader, nil
+	// // Check if leader.ID is zero (assuming it's of type [16]byte)
+	// if leader.ID == [16]byte{} {
+	// 	// Handle the case where leader is not found, e.g., return an error or take appropriate action.
+	// 	return nil, fmt.Errorf("leader is nil")
+	// }
+
+	return &leader, nil
 }
 func GetSubChurchIDForLeader(db *gorm.DB, leaderID string) (string, error) {
-    var subChurchID string
+	var subChurchID string
 
-    // Assuming you have a 'leaders' table with a 'sub_church_id' column
-    err := db.Model(&model.Member{}).
-        Where("id = ?", leaderID).
-        Pluck("sub_church_id", &subChurchID).Error
+	// Assuming you have a 'leaders' table with a 'sub_church_id' column
+	err := db.Model(&model.Member{}).
+		Where("id = ?", leaderID).
+		Pluck("sub_church_id", &subChurchID).Error
 
-    if err != nil {
-        return "", err
-    }
+	if err != nil {
+		return "", err
+	}
 
-    return subChurchID, nil
+	return subChurchID, nil
 }
 
 func CleanPhoneNumber(phoneNumber string) string {

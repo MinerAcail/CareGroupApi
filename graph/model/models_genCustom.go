@@ -78,7 +78,7 @@ type Member struct {
 	Day         string    `json:"day"`
 	Password    *string   `json:"password,omitempty"`
 	// Types            *string       `json:"types"`
-	Types pq.StringArray `gorm:"type:text[]" json:"types"`
+	Types pq.StringArray `gorm:"type:text[]" `
 
 	Token            *string         `json:"token,omitempty"`
 	LeaderID         *string         `json:"LeaderID,omitempty"`

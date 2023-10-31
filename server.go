@@ -34,11 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Perform database migrationstype MyArray []string
-// type MyType struct {
-// 	ID      uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
-// 	MyArray MyArray  `gorm:"type:VARCHAR(255)" json:"MyArray"`
-// }
+
 	err = PerformMigrations(db)
 	if err != nil {
 		// Handle the error
@@ -59,12 +55,12 @@ func main() {
 
 	// Configure CORS
 	corsConfig := cors.New(cors.Options{
-		// { "http://localhost:5173", "http://yourdomain.com", "https://anotherdomain.com"},
-		AllowedOrigins:   []string{"http://localhost:5173"}, // You can configure specific origins here
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
+		AllowedOrigins: []string{"http://localhost:5173"}, // Set to a slice of allowed origins
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,
 	})
+	
 	router.Use(corsConfig.Handler) // Use the cors handler
 
 	router.Use(middleware.Middleware)
@@ -78,7 +74,7 @@ func main() {
 
 // PerformMigrations performs database migrations using Gorm's AutoMigrate function.
 func PerformMigrations(db *gorm.DB) error {
-	err := db.AutoMigrate(&model.Member{},&model.Church{},&model.SubChurch{},&model.MyType{}, &model.Registration{},&model.Post{})
+	err := db.AutoMigrate(&model.Member{},&model.Church{},&model.SubChurch{},&model.MyArr{}, &model.Registration{},&model.Post{})
 	if err != nil {
 		return err
 	}

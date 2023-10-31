@@ -145,7 +145,7 @@ func ExtractCTXinfo(ctx context.Context) error {
 	leaderType = strings.ToUpper(leaderType) // Convert leaderType to uppercase
 
 	// Check if the leaderType is not one of the allowed values
-	if leaderType != "ADMIN" && leaderType != "SUBLEADER" && leaderType != "LEADER" && leaderType != "CALLAGENT" {
+	if leaderType != "ADMIN"&& leaderType != "SUBCHURCH" && leaderType != "SUBLEADER" && leaderType != "LEADER" && leaderType != "CALLAGENT" {
 		return fmt.Errorf("%s is not allowed", leaderType)
 	}
 	
