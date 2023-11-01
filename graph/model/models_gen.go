@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"time"
 )
 
 type CreateMemberInput struct {
@@ -54,16 +53,6 @@ type LoginLeaderInput struct {
 	Password    string  `json:"password"`
 	PhoneNumber *string `json:"phoneNumber,omitempty"`
 	Email       *string `json:"email,omitempty"`
-}
-
-type MigrationRequest struct {
-	ID                string          `json:"id"`
-	LocationFrom      string          `json:"locationFrom"`
-	LocationEnd       string          `json:"locationEnd"`
-	MigratedTime      time.Time       `json:"migratedTime"`
-	Member            *Member         `json:"member"`
-	DestinationChurch *SubChurch      `json:"destinationChurch"`
-	Status            MigrationStatus `json:"status"`
 }
 
 type Person struct {

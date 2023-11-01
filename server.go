@@ -34,7 +34,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-
 	err = PerformMigrations(db)
 	if err != nil {
 		// Handle the error
@@ -55,12 +54,12 @@ func main() {
 
 	// Configure CORS
 	corsConfig := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:5173"}, // Set to a slice of allowed origins
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type"},
+		AllowedOrigins:   []string{"http://localhost:5173"}, // Set to a slice of allowed origins
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,
 	})
-	
+
 	router.Use(corsConfig.Handler) // Use the cors handler
 
 	router.Use(middleware.Middleware)
@@ -74,7 +73,7 @@ func main() {
 
 // PerformMigrations performs database migrations using Gorm's AutoMigrate function.
 func PerformMigrations(db *gorm.DB) error {
-	err := db.AutoMigrate(&model.Member{},&model.Church{},&model.SubChurch{},&model.MyArr{}, &model.Registration{},&model.Post{})
+	err := db.AutoMigrate(&model.Member{}, &model.Church{}, &model.SubChurch{}, &model.MyArr{}, &model.Registration{}, &model.MigrationRequest{})
 	if err != nil {
 		return err
 	}

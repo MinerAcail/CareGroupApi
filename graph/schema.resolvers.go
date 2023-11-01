@@ -44,19 +44,188 @@ func (r *memberResolver) Types(ctx context.Context, obj *model.Member) ([]string
 	return obj.Types, nil
 }
 
+// ID is the resolver for the id field.
+func (r *migrationRequestResolver) ID(ctx context.Context, obj *model.MigrationRequest) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
+
+// DestinationChurchID is the resolver for the destinationChurchID field.
+func (r *migrationRequestResolver) DestinationChurchID(ctx context.Context, obj *model.MigrationRequest) (*string, error) {
+	panic(fmt.Errorf("not implemented: DestinationChurchID - destinationChurchID"))
+}
+
 // RequestSubChurchMigration is the resolver for the requestSubChurchMigration field.
 func (r *mutationResolver) RequestSubChurchMigration(ctx context.Context, input model.SubChurchMigrationInput) (*model.MigrationRequest, error) {
-	panic(fmt.Errorf("not implemented: RequestSubChurchMigration - requestSubChurchMigration"))
+	// You need to implement the logic to create a new migration request based on the input.
+
+	// Check if the member exists based on input.memberId
+	member, err := r.Query().Getmember(ctx, input.MemberID)
+	if err != nil {
+		return nil, fmt.Errorf("Member not found")
+	}
+
+	// Check if the destination sub-church exists based on input.destinationChurchId
+	destinationChurch, err := r.Query().GetsubChurchByID(ctx, input.DestinationChurchID)
+	if err != nil {
+		return nil, fmt.Errorf(" Destination sub Church not found")
+	}
+	memberID := member.ID.String()
+	destinationChurchID := destinationChurch.ID
+	
+	PENDING := model.MigrationStatusPending
+
+	// Create a new MigrationRequest record
+	migrationRequest := &model.MigrationRequest{
+		LocationFrom:        &member.SubChurch.Name,  // Example: Set the location from the member's data
+		LocationEnd:         &destinationChurch.Name, // Example: Set the location end to the destination sub-church name
+		MemberID:            &memberID,               // Associate the member with the migration request
+		DestinationChurchID: destinationChurchID,     // Associate the destination sub-church
+		Status:              &PENDING,
+	}
+
+	// Save the migration request to the database
+
+	if err := r.DB.Create(migrationRequest).Error; err != nil {
+		return nil, fmt.Errorf("failed to save to the database: %w", err)
+	}
+
+	// Return the created migration request
+	return migrationRequest, nil
 }
 
 // ApproveSubChurchMigration is the resolver for the approveSubChurchMigration field.
 func (r *mutationResolver) ApproveSubChurchMigration(ctx context.Context, requestID string) (*model.MigrationRequest, error) {
-	panic(fmt.Errorf("not implemented: ApproveSubChurchMigration - approveSubChurchMigration"))
+	// Check if the migration request exists based on requestID
+	migrationRequest, err := schemas.GetMigrationRequestByID(r.DB, requestID)
+	if err != nil {
+		return nil, fmt.Errorf(" Migration request not found")
+	}
+	PENDING := model.MigrationStatusPending
+	Approved := model.MigrationStatusApproved
+
+	// Check if the current status is pending and update it to approved
+	if migrationRequest.Status != &PENDING {
+		return nil, fmt.Errorf(" Migration request is not in a pending state and cannot be approved")
+	}
+	// Update the status to approved
+	migrationRequest.Status = &Approved
+
+	// Start a database transaction
+	tx := r.DB.Begin()
+	if tx.Error != nil {
+		return nil, fmt.Errorf(" Failed to start a database transaction: %w", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback() // Rollback the transaction on any panics
+		}
+	}()
+
+	var (
+		memberUpdateErr, registrationsDeleteErr error
+	)
+
+	// Concurrently update the member's data and delete registrations
+	go func() {
+		// Update the member's data
+		// member, err := schemas.GetMemberByID(r.DB, migrationRequest.MemberID)
+		member, err := r.Query().Getmember(ctx, *migrationRequest.MemberID)
+
+		if err != nil {
+			memberUpdateErr = err
+			return
+		}
+
+		// Modify the member's data as needed
+		// member.SubChurchID = &migrationRequest.DestinationChurch.ChurchID
+		member.LeaderID = nil
+		member.Types = nil
+		member.Password = nil
+		member.Token = nil
+		member.ReferenceIDCount = nil
+
+		// Save the updated member data
+		if err := tx.Save(member).Error; err != nil {
+			memberUpdateErr = err
+		}
+	}()
+
+	// Concurrently delete all the registrations associated with the member
+	go func() {
+		if err := tx.Where("member_id = ?", migrationRequest.MemberID).Delete(&model.Registration{}).Error; err != nil {
+			registrationsDeleteErr = err
+		}
+	}()
+
+	// Wait for both Goroutines to finish
+	// You can use a WaitGroup or channels for synchronization if needed
+
+	// Commit the transaction if all updates and deletions are successful
+	if err := tx.Commit().Error; err != nil {
+		return nil, fmt.Errorf(" Failed to commit the transaction: %w", err)
+	}
+
+	if memberUpdateErr != nil {
+		return nil, fmt.Errorf(" Failed to update member's data: %w", memberUpdateErr)
+	}
+
+	if registrationsDeleteErr != nil {
+		return nil, fmt.Errorf(" Failed to delete registrations: %w", registrationsDeleteErr)
+	}
+
+	// Return the updated migration request
+	return migrationRequest, nil
 }
 
 // RejectSubChurchMigration is the resolver for the rejectSubChurchMigration field.
 func (r *mutationResolver) RejectSubChurchMigration(ctx context.Context, requestID string) (*model.MigrationRequest, error) {
-	panic(fmt.Errorf("not implemented: RejectSubChurchMigration - rejectSubChurchMigration"))
+	// Check if the migration request exists based on requestID
+	migrationRequest, err := schemas.GetMigrationRequestByID(r.DB, requestID)
+	if err != nil {
+		return nil, fmt.Errorf(" Migration request not found")
+	}
+
+	// // Check if the current status is pending and update it to rejected
+	// if migrationRequest.Status != model.MigrationStatusPending {
+	// 	return nil, fmt.Errorf(" Migration request is not in a pending state and cannot be rejected")
+	// }
+
+	// // Update the status to rejected
+	// migrationRequest.Status = model.MigrationStatusRejected
+
+	// Start a database transaction
+	tx := r.DB.Begin()
+	if tx.Error != nil {
+		return nil, fmt.Errorf(" Failed to start a database transaction: %w", tx.Error)
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback() // Rollback the transaction on any panics
+		}
+	}()
+
+	// Save the updated migration request to the database within the transaction
+	if err := tx.Save(migrationRequest).Error; err != nil {
+		tx.Rollback() // Rollback the transaction on error
+		return nil, fmt.Errorf(" Failed to update the migration request: %w", err)
+	}
+
+	// If the status is rejected, delete the migration request from the database
+	// if migrationRequest.Status == model.MigrationStatusRejected {
+	// 	if err := tx.Delete(migrationRequest).Error; err != nil {
+	// 		tx.Rollback() // Rollback the transaction on error
+	// 		return nil, fmt.Errorf(" Failed to delete the migration request: %w", err)
+	// 	}
+	// }
+
+	// Commit the transaction if all updates are successful
+	if err := tx.Commit().Error; err != nil {
+		return nil, fmt.Errorf(" Failed to commit the transaction: %w", err)
+	}
+
+	// Return the updated (or deleted) migration request
+	return migrationRequest, nil
 }
 
 // GetMyL is the resolver for the getMyL field.
@@ -1854,14 +2023,14 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error
 
 // Getmember is the resolver for the Getmember field.
 func (r *queryResolver) Getmember(ctx context.Context, id string) (*model.Member, error) {
-	var post model.Member
+	var Member model.Member
 
-	// Use GORM to find the post by its ID
-	if err := r.DB.Where("id = ?", id).First(&post).Error; err != nil {
+	// Use GORM to find the Member by its ID
+	if err := r.DB.Where("id = ?", id).Preload("SubChurch").First(&Member).Error; err != nil {
 		return nil, err
 	}
 
-	return &post, nil
+	return &Member, nil
 }
 
 // GetMyType is the resolver for the GetMyType field.
@@ -1911,7 +2080,14 @@ func (r *queryResolver) MembersByChurch(ctx context.Context, churchID string) ([
 
 // GetsubChurchByID is the resolver for the GetsubChurchByID field.
 func (r *queryResolver) GetsubChurchByID(ctx context.Context, id string) (*model.SubChurch, error) {
-	panic(fmt.Errorf("not implemented: GetsubChurchByID - GetsubChurchByID"))
+	var sub model.SubChurch
+
+	// Use GORM to find the sub by its ID
+	if err := r.DB.Where("id = ?", id).First(&sub).Error; err != nil {
+		return nil, err
+	}
+
+	return &sub, nil
 }
 
 // GetChurchByID is the resolver for the GetChurchByID field.
@@ -2099,6 +2275,9 @@ func (r *Resolver) Church() ChurchResolver { return &churchResolver{r} }
 // Member returns MemberResolver implementation.
 func (r *Resolver) Member() MemberResolver { return &memberResolver{r} }
 
+// MigrationRequest returns MigrationRequestResolver implementation.
+func (r *Resolver) MigrationRequest() MigrationRequestResolver { return &migrationRequestResolver{r} }
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
@@ -2122,6 +2301,7 @@ func (r *Resolver) SubChurch() SubChurchResolver { return &subChurchResolver{r} 
 
 type churchResolver struct{ *Resolver }
 type memberResolver struct{ *Resolver }
+type migrationRequestResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type myArrResolver struct{ *Resolver }
 type myTypeResolver struct{ *Resolver }

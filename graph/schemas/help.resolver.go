@@ -271,6 +271,20 @@ func GetLeaderByChurchID(db *gorm.DB, churchID *string) (*model.Member, error) {
 
 	return &leader, nil
 }
+
+// GetMigrationRequestByID retrieves a MigrationRequest by its ID.
+func  GetMigrationRequestByID(db *gorm.DB, requestID string) (*model.MigrationRequest, error) {
+    var migrationRequest model.MigrationRequest
+
+    // Use GORM to find the migration request by its ID
+    if err := db.Where("id = ?", requestID).First(&migrationRequest).Error; err != nil {
+        
+        return nil, fmt.Errorf(" Migration request not found")
+    }
+
+    return &migrationRequest, nil
+}
+
 func GetSubChurchIDForLeader(db *gorm.DB, leaderID string) (string, error) {
 	var subChurchID string
 

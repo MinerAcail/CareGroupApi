@@ -205,12 +205,15 @@ input SubChurchMigrationInput {
 
 type MigrationRequest {
   id: String!
-  locationFrom: String!
-  locationEnd: String!
-  migratedTime: Time!
-  member: Member!
-  destinationChurch: SubChurch!
-  status: MigrationStatus!
+  locationFrom: String
+  locationEnd: String
+  # migratedTime: Time
+  createdAt: Time
+  memberID: String
+  # destinationChurch: SubChurch
+  destinationChurchID: String
+  statusID: String
+  status: MigrationStatus
 }
 
 type Mutation {
