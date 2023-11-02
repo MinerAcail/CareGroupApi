@@ -42,8 +42,6 @@ type Church struct {
 	SubChurches []*SubChurch `json:"subChurches,omitempty" `
 }
 
-
-
 type MyType struct {
 	ID      uuid.UUID     `gorm:"type:uuid;default:uuid_generate_v4()"`
 	MyArray mypkg.Myarray `gorm:"type:text[]" json:"MyArray"`
@@ -122,16 +120,16 @@ type SubChurch struct {
 	Members   []*Member `json:"members,omitempty"`
 }
 type MigrationRequest struct {
-	ID        uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	ID                  uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4()"`
 	LocationFrom        *string    `json:"locationFrom,omitempty"`
 	LocationEnd         *string    `json:"locationEnd,omitempty"`
 	CreatedAt           *time.Time `json:"createdAt,omitempty"`
 	MemberID            *string    `json:"memberID,omitempty"`
-	// DestinationChurch   *SubChurch `json:"destinationChurch,omitempty"`
-	DestinationChurchID uuid.UUID    `json:"destinationChurchID,omitempty"`
-	
-	StatusID            *string    `json:"statusID,omitempty"`
-	Status              *MigrationStatus    `json:"status,omitempty"`
+	MemberName          *string    `json:"MemberName,omitempty"`
+	DestinationChurchID string     `json:"destinationChurchID,omitempty"`
+
+	StatusID *string          `json:"statusID,omitempty"`
+	Status   *MigrationStatus `json:"status,omitempty"`
 }
 type Returns interface {
 	IsReturns()

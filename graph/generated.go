@@ -103,6 +103,7 @@ type ComplexityRoot struct {
 		LocationEnd         func(childComplexity int) int
 		LocationFrom        func(childComplexity int) int
 		MemberID            func(childComplexity int) int
+		MemberName          func(childComplexity int) int
 		Status              func(childComplexity int) int
 		StatusID            func(childComplexity int) int
 	}
@@ -181,8 +182,11 @@ type ComplexityRoot struct {
 		GetAllSubLeaderByLeader        func(childComplexity int, leaderID string) int
 		GetAllsubChurch                func(childComplexity int) int
 		GetAllsubChurchByMainChurchID  func(childComplexity int, mainChurchID string) int
+		GetAllsubChurchByMemberID      func(childComplexity int, memberID string) int
 		GetCaller                      func(childComplexity int) int
-		GetChurchByID                  func(childComplexity int, id string) int
+		GetChurchByMemberID            func(childComplexity int, id string) int
+		GetMigration                   func(childComplexity int, id string) int
+		GetMigrationdestinationID      func(childComplexity int, destinationChurchID string) int
 		GetMyType                      func(childComplexity int, id *string) int
 		GetRegistrations               func(childComplexity int) int
 		Getmember                      func(childComplexity int, id string) int
@@ -249,8 +253,6 @@ type MemberResolver interface {
 }
 type MigrationRequestResolver interface {
 	ID(ctx context.Context, obj *model.MigrationRequest) (string, error)
-
-	DestinationChurchID(ctx context.Context, obj *model.MigrationRequest) (*string, error)
 }
 type MutationResolver interface {
 	RequestSubChurchMigration(ctx context.Context, input model.SubChurchMigrationInput) (*model.MigrationRequest, error)
@@ -304,6 +306,7 @@ type PostResolver interface {
 type QueryResolver interface {
 	GetAllMainChurch(ctx context.Context) ([]*model.Church, error)
 	GetAllsubChurchByMainChurchID(ctx context.Context, mainChurchID string) ([]*model.SubChurch, error)
+	GetAllsubChurchByMemberID(ctx context.Context, memberID string) ([]*model.SubChurch, error)
 	GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error)
 	GetAllSubChurchLeader(ctx context.Context, subChurchID string) (*model.Member, error)
 	GetAllMembersByLeader(ctx context.Context, leaderID string) ([]*model.Member, error)
@@ -314,12 +317,14 @@ type QueryResolver interface {
 	GetCaller(ctx context.Context) ([]*model.Member, error)
 	Post(ctx context.Context, id string) (*model.Post, error)
 	Getmember(ctx context.Context, id string) (*model.Member, error)
+	GetMigration(ctx context.Context, id string) (*model.MigrationRequest, error)
+	GetMigrationdestinationID(ctx context.Context, destinationChurchID string) ([]*model.MigrationRequest, error)
 	GetMyType(ctx context.Context, id *string) (*model.MyType, error)
 	Getmembers(ctx context.Context) ([]*model.Member, error)
 	TodaysMembers(ctx context.Context) ([]*model.Member, error)
 	MembersByChurch(ctx context.Context, churchID string) ([]*model.Member, error)
 	GetsubChurchByID(ctx context.Context, id string) (*model.SubChurch, error)
-	GetChurchByID(ctx context.Context, id string) (*model.Church, error)
+	GetChurchByMemberID(ctx context.Context, id string) (*model.Church, error)
 	GetAllChurchByID(ctx context.Context) ([]*model.Church, error)
 	MembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error)
 	RegistrationsByLeader(ctx context.Context, mleaderID string) ([]*model.Registration, error)
@@ -596,6 +601,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.MigrationRequest.MemberID(childComplexity), true
+
+	case "MigrationRequest.MemberName":
+		if e.complexity.MigrationRequest.MemberName == nil {
+			break
+		}
+
+		return e.complexity.MigrationRequest.MemberName(childComplexity), true
 
 	case "MigrationRequest.status":
 		if e.complexity.MigrationRequest.Status == nil {
@@ -1222,6 +1234,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.GetAllsubChurchByMainChurchID(childComplexity, args["mainChurchId"].(string)), true
 
+	case "Query.GetAllsubChurchByMemberId":
+		if e.complexity.Query.GetAllsubChurchByMemberID == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetAllsubChurchByMemberId_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetAllsubChurchByMemberID(childComplexity, args["memberId"].(string)), true
+
 	case "Query.GetCaller":
 		if e.complexity.Query.GetCaller == nil {
 			break
@@ -1229,17 +1253,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.GetCaller(childComplexity), true
 
-	case "Query.GetChurchByID":
-		if e.complexity.Query.GetChurchByID == nil {
+	case "Query.GetChurchByMemberID":
+		if e.complexity.Query.GetChurchByMemberID == nil {
 			break
 		}
 
-		args, err := ec.field_Query_GetChurchByID_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_GetChurchByMemberID_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.GetChurchByID(childComplexity, args["id"].(string)), true
+		return e.complexity.Query.GetChurchByMemberID(childComplexity, args["id"].(string)), true
+
+	case "Query.GetMigration":
+		if e.complexity.Query.GetMigration == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetMigration_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetMigration(childComplexity, args["id"].(string)), true
+
+	case "Query.GetMigrationdestinationID":
+		if e.complexity.Query.GetMigrationdestinationID == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetMigrationdestinationID_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetMigrationdestinationID(childComplexity, args["destinationChurchID"].(string)), true
 
 	case "Query.GetMyType":
 		if e.complexity.Query.GetMyType == nil {
@@ -2451,7 +2499,22 @@ func (ec *executionContext) field_Query_GetAllsubChurchByMainChurchID_args(ctx c
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_GetChurchByID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_GetAllsubChurchByMemberId_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["memberId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("memberId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["memberId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_GetChurchByMemberID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -2463,6 +2526,36 @@ func (ec *executionContext) field_Query_GetChurchByID_args(ctx context.Context, 
 		}
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_GetMigration_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_GetMigrationdestinationID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["destinationChurchID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("destinationChurchID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["destinationChurchID"] = arg0
 	return args, nil
 }
 
@@ -4186,6 +4279,47 @@ func (ec *executionContext) fieldContext_MigrationRequest_memberID(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _MigrationRequest_MemberName(ctx context.Context, field graphql.CollectedField, obj *model.MigrationRequest) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MigrationRequest_MemberName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MemberName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MigrationRequest_MemberName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MigrationRequest",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MigrationRequest_destinationChurchID(ctx context.Context, field graphql.CollectedField, obj *model.MigrationRequest) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_MigrationRequest_destinationChurchID(ctx, field)
 	if err != nil {
@@ -4200,7 +4334,7 @@ func (ec *executionContext) _MigrationRequest_destinationChurchID(ctx context.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.MigrationRequest().DestinationChurchID(rctx, obj)
+		return obj.DestinationChurchID, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -4209,17 +4343,17 @@ func (ec *executionContext) _MigrationRequest_destinationChurchID(ctx context.Co
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_MigrationRequest_destinationChurchID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "MigrationRequest",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -4358,6 +4492,8 @@ func (ec *executionContext) fieldContext_Mutation_requestSubChurchMigration(ctx 
 				return ec.fieldContext_MigrationRequest_createdAt(ctx, field)
 			case "memberID":
 				return ec.fieldContext_MigrationRequest_memberID(ctx, field)
+			case "MemberName":
+				return ec.fieldContext_MigrationRequest_MemberName(ctx, field)
 			case "destinationChurchID":
 				return ec.fieldContext_MigrationRequest_destinationChurchID(ctx, field)
 			case "statusID":
@@ -4431,6 +4567,8 @@ func (ec *executionContext) fieldContext_Mutation_approveSubChurchMigration(ctx 
 				return ec.fieldContext_MigrationRequest_createdAt(ctx, field)
 			case "memberID":
 				return ec.fieldContext_MigrationRequest_memberID(ctx, field)
+			case "MemberName":
+				return ec.fieldContext_MigrationRequest_MemberName(ctx, field)
 			case "destinationChurchID":
 				return ec.fieldContext_MigrationRequest_destinationChurchID(ctx, field)
 			case "statusID":
@@ -4504,6 +4642,8 @@ func (ec *executionContext) fieldContext_Mutation_rejectSubChurchMigration(ctx c
 				return ec.fieldContext_MigrationRequest_createdAt(ctx, field)
 			case "memberID":
 				return ec.fieldContext_MigrationRequest_memberID(ctx, field)
+			case "MemberName":
+				return ec.fieldContext_MigrationRequest_MemberName(ctx, field)
 			case "destinationChurchID":
 				return ec.fieldContext_MigrationRequest_destinationChurchID(ctx, field)
 			case "statusID":
@@ -7436,6 +7576,84 @@ func (ec *executionContext) fieldContext_Query_GetAllsubChurchByMainChurchID(ctx
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_GetAllsubChurchByMemberId(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetAllsubChurchByMemberId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetAllsubChurchByMemberID(rctx, fc.Args["memberId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.SubChurch)
+	fc.Result = res
+	return ec.marshalOSubChurch2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐSubChurch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetAllsubChurchByMemberId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SubChurch_id(ctx, field)
+			case "name":
+				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SubChurch_createdAt(ctx, field)
+			case "church":
+				return ec.fieldContext_SubChurch_church(ctx, field)
+			case "churchId":
+				return ec.fieldContext_SubChurch_churchId(ctx, field)
+			case "leaders":
+				return ec.fieldContext_SubChurch_leaders(ctx, field)
+			case "members":
+				return ec.fieldContext_SubChurch_members(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SubChurch", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetAllsubChurchByMemberId_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_GetAllMembersBySubChurchID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_GetAllMembersBySubChurchID(ctx, field)
 	if err != nil {
@@ -8196,6 +8414,150 @@ func (ec *executionContext) fieldContext_Query_Getmember(ctx context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_GetMigration(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetMigration(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetMigration(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.MigrationRequest)
+	fc.Result = res
+	return ec.marshalOMigrationRequest2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetMigration(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MigrationRequest_id(ctx, field)
+			case "locationFrom":
+				return ec.fieldContext_MigrationRequest_locationFrom(ctx, field)
+			case "locationEnd":
+				return ec.fieldContext_MigrationRequest_locationEnd(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MigrationRequest_createdAt(ctx, field)
+			case "memberID":
+				return ec.fieldContext_MigrationRequest_memberID(ctx, field)
+			case "MemberName":
+				return ec.fieldContext_MigrationRequest_MemberName(ctx, field)
+			case "destinationChurchID":
+				return ec.fieldContext_MigrationRequest_destinationChurchID(ctx, field)
+			case "statusID":
+				return ec.fieldContext_MigrationRequest_statusID(ctx, field)
+			case "status":
+				return ec.fieldContext_MigrationRequest_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MigrationRequest", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetMigration_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_GetMigrationdestinationID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetMigrationdestinationID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetMigrationdestinationID(rctx, fc.Args["destinationChurchID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.MigrationRequest)
+	fc.Result = res
+	return ec.marshalOMigrationRequest2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetMigrationdestinationID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MigrationRequest_id(ctx, field)
+			case "locationFrom":
+				return ec.fieldContext_MigrationRequest_locationFrom(ctx, field)
+			case "locationEnd":
+				return ec.fieldContext_MigrationRequest_locationEnd(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MigrationRequest_createdAt(ctx, field)
+			case "memberID":
+				return ec.fieldContext_MigrationRequest_memberID(ctx, field)
+			case "MemberName":
+				return ec.fieldContext_MigrationRequest_MemberName(ctx, field)
+			case "destinationChurchID":
+				return ec.fieldContext_MigrationRequest_destinationChurchID(ctx, field)
+			case "statusID":
+				return ec.fieldContext_MigrationRequest_statusID(ctx, field)
+			case "status":
+				return ec.fieldContext_MigrationRequest_status(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MigrationRequest", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetMigrationdestinationID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_GetMyType(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_GetMyType(ctx, field)
 	if err != nil {
@@ -8571,8 +8933,8 @@ func (ec *executionContext) fieldContext_Query_GetsubChurchByID(ctx context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_GetChurchByID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_GetChurchByID(ctx, field)
+func (ec *executionContext) _Query_GetChurchByMemberID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetChurchByMemberID(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -8585,7 +8947,7 @@ func (ec *executionContext) _Query_GetChurchByID(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GetChurchByID(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Query().GetChurchByMemberID(rctx, fc.Args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8599,7 +8961,7 @@ func (ec *executionContext) _Query_GetChurchByID(ctx context.Context, field grap
 	return ec.marshalOChurch2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurch(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_GetChurchByID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_GetChurchByMemberID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -8636,7 +8998,7 @@ func (ec *executionContext) fieldContext_Query_GetChurchByID(ctx context.Context
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_GetChurchByID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_GetChurchByMemberID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -13583,39 +13945,10 @@ func (ec *executionContext) _MigrationRequest(ctx context.Context, sel ast.Selec
 			out.Values[i] = ec._MigrationRequest_createdAt(ctx, field, obj)
 		case "memberID":
 			out.Values[i] = ec._MigrationRequest_memberID(ctx, field, obj)
+		case "MemberName":
+			out.Values[i] = ec._MigrationRequest_MemberName(ctx, field, obj)
 		case "destinationChurchID":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._MigrationRequest_destinationChurchID(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			out.Values[i] = ec._MigrationRequest_destinationChurchID(ctx, field, obj)
 		case "statusID":
 			out.Values[i] = ec._MigrationRequest_statusID(ctx, field, obj)
 		case "status":
@@ -14267,6 +14600,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetAllsubChurchByMemberId":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetAllsubChurchByMemberId(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "GetAllMembersBySubChurchID":
 			field := field
 
@@ -14457,6 +14809,44 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetMigration":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetMigration(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetMigrationdestinationID":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetMigrationdestinationID(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "GetMyType":
 			field := field
 
@@ -14555,7 +14945,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "GetChurchByID":
+		case "GetChurchByMemberID":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -14564,7 +14954,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_GetChurchByID(ctx, field)
+				res = ec._Query_GetChurchByMemberID(ctx, field)
 				return res
 			}
 
@@ -16340,6 +16730,54 @@ func (ec *executionContext) marshalOMember2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋg
 	return ec._Member(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOMigrationRequest2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx context.Context, sel ast.SelectionSet, v []*model.MigrationRequest) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOMigrationRequest2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOMigrationRequest2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx context.Context, sel ast.SelectionSet, v *model.MigrationRequest) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MigrationRequest(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalOMigrationStatus2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationStatus(ctx context.Context, v interface{}) (*model.MigrationStatus, error) {
 	if v == nil {
 		return nil, nil
@@ -16458,6 +16896,16 @@ func (ec *executionContext) marshalOReturns2githubᚗcomᚋkobbiᚋvbciapiᚋgra
 		return graphql.Null
 	}
 	return ec._Returns(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
+	res, err := graphql.UnmarshalString(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	res := graphql.MarshalString(v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOString2ᚕᚖstring(ctx context.Context, v interface{}) ([]*string, error) {

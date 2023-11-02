@@ -13,6 +13,7 @@ import (
 	"log"
 	"math/rand"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -50,11 +51,6 @@ func (r *migrationRequestResolver) ID(ctx context.Context, obj *model.MigrationR
 	return id, nil
 }
 
-// DestinationChurchID is the resolver for the destinationChurchID field.
-func (r *migrationRequestResolver) DestinationChurchID(ctx context.Context, obj *model.MigrationRequest) (*string, error) {
-	panic(fmt.Errorf("not implemented: DestinationChurchID - destinationChurchID"))
-}
-
 // RequestSubChurchMigration is the resolver for the requestSubChurchMigration field.
 func (r *mutationResolver) RequestSubChurchMigration(ctx context.Context, input model.SubChurchMigrationInput) (*model.MigrationRequest, error) {
 	// You need to implement the logic to create a new migration request based on the input.
@@ -71,16 +67,17 @@ func (r *mutationResolver) RequestSubChurchMigration(ctx context.Context, input 
 		return nil, fmt.Errorf(" Destination sub Church not found")
 	}
 	memberID := member.ID.String()
-	destinationChurchID := destinationChurch.ID
-	
+	destinationChurchID := destinationChurch.ID.String()
+
 	PENDING := model.MigrationStatusPending
 
 	// Create a new MigrationRequest record
 	migrationRequest := &model.MigrationRequest{
-		LocationFrom:        &member.SubChurch.Name,  // Example: Set the location from the member's data
-		LocationEnd:         &destinationChurch.Name, // Example: Set the location end to the destination sub-church name
-		MemberID:            &memberID,               // Associate the member with the migration request
-		DestinationChurchID: destinationChurchID,     // Associate the destination sub-church
+		LocationFrom:        &member.SubChurch.Name,
+		LocationEnd:         &destinationChurch.Name,
+		MemberID:            &memberID,
+		MemberName:          &member.Name,
+		DestinationChurchID: destinationChurchID,
 		Status:              &PENDING,
 	}
 
@@ -97,20 +94,29 @@ func (r *mutationResolver) RequestSubChurchMigration(ctx context.Context, input 
 // ApproveSubChurchMigration is the resolver for the approveSubChurchMigration field.
 func (r *mutationResolver) ApproveSubChurchMigration(ctx context.Context, requestID string) (*model.MigrationRequest, error) {
 	// Check if the migration request exists based on requestID
-	migrationRequest, err := schemas.GetMigrationRequestByID(r.DB, requestID)
+	migrationRequest, err := r.Query().GetMigration(ctx, requestID)
 	if err != nil {
 		return nil, fmt.Errorf(" Migration request not found")
 	}
 	PENDING := model.MigrationStatusPending
 	Approved := model.MigrationStatusApproved
+	APPROVED := "APPROVED"
+	REJECTED := "REJECTED"
+
+	// Rejected := model.MigrationStatusRejected
+	_ = model.MigrationStatusCompleted
+	// fmt.Printf("migrationRequest value: %v\n",migrationRequest.Status)
 
 	// Check if the current status is pending and update it to approved
-	if migrationRequest.Status != &PENDING {
+	if PENDING != "PENDING" {
 		return nil, fmt.Errorf(" Migration request is not in a pending state and cannot be approved")
 	}
-	// Update the status to approved
-	migrationRequest.Status = &Approved
-
+	if REJECTED == string(*migrationRequest.Status) {
+		return nil, fmt.Errorf(" Migration request is already Rejected")
+	}
+	if APPROVED == string(*migrationRequest.Status) {
+		return nil, fmt.Errorf(" Migration request is already Approved")
+	}
 	// Start a database transaction
 	tx := r.DB.Begin()
 	if tx.Error != nil {
@@ -122,56 +128,59 @@ func (r *mutationResolver) ApproveSubChurchMigration(ctx context.Context, reques
 		}
 	}()
 
-	var (
-		memberUpdateErr, registrationsDeleteErr error
-	)
+	// Create a WaitGroup to wait for both goroutines
+	var wg sync.WaitGroup
 
-	// Concurrently update the member's data and delete registrations
+	// Update the status to approved
+	migrationRequest.Status = &Approved
+	if err := tx.Save(migrationRequest).Error; err != nil {
+		tx.Rollback()
+		return nil, fmt.Errorf(" Failed to update migration request status: %w", err)
+	}
+
+	// Goroutine to update the member's data
+	wg.Add(1)
 	go func() {
-		// Update the member's data
-		// member, err := schemas.GetMemberByID(r.DB, migrationRequest.MemberID)
-		member, err := r.Query().Getmember(ctx, *migrationRequest.MemberID)
+		defer wg.Done()
 
-		if err != nil {
-			memberUpdateErr = err
+		// Update the member's data
+		Member := &model.Member{}
+		// Retrieve the Member from the database based on the provided ID
+		if err := r.DB.Where("id = ?", migrationRequest.MemberID).First(Member).Error; err != nil {
+			tx.Rollback()
 			return
 		}
 
 		// Modify the member's data as needed
-		// member.SubChurchID = &migrationRequest.DestinationChurch.ChurchID
-		member.LeaderID = nil
-		member.Types = nil
-		member.Password = nil
-		member.Token = nil
-		member.ReferenceIDCount = nil
+		Member.SubChurchID = nil
+		Member.LeaderID = nil
+		Member.Types = nil
+		Member.Password = nil
+		Member.Token = nil
+		Member.ReferenceIDCount = nil
+		Member.SubChurchID = &migrationRequest.DestinationChurchID
 
-		// Save the updated member data
-		if err := tx.Save(member).Error; err != nil {
-			memberUpdateErr = err
+		// Save the updated Member data
+		if err := tx.Save(Member).Error; err != nil {
+			tx.Rollback()
 		}
 	}()
 
-	// Concurrently delete all the registrations associated with the member
+	// Goroutine to delete all the registrations associated with the member
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if err := tx.Where("member_id = ?", migrationRequest.MemberID).Delete(&model.Registration{}).Error; err != nil {
-			registrationsDeleteErr = err
+			tx.Rollback()
 		}
 	}()
 
-	// Wait for both Goroutines to finish
-	// You can use a WaitGroup or channels for synchronization if needed
+	// Wait for both goroutines to finish
+	wg.Wait()
 
 	// Commit the transaction if all updates and deletions are successful
 	if err := tx.Commit().Error; err != nil {
 		return nil, fmt.Errorf(" Failed to commit the transaction: %w", err)
-	}
-
-	if memberUpdateErr != nil {
-		return nil, fmt.Errorf(" Failed to update member's data: %w", memberUpdateErr)
-	}
-
-	if registrationsDeleteErr != nil {
-		return nil, fmt.Errorf(" Failed to delete registrations: %w", registrationsDeleteErr)
 	}
 
 	// Return the updated migration request
@@ -185,14 +194,22 @@ func (r *mutationResolver) RejectSubChurchMigration(ctx context.Context, request
 	if err != nil {
 		return nil, fmt.Errorf(" Migration request not found")
 	}
+	// Approved := model.MigrationStatusApproved
+	Rejected := model.MigrationStatusRejected
+	APPROVED := "APPROVED"
+	REJECTED := "REJECTED"
 
 	// // Check if the current status is pending and update it to rejected
-	// if migrationRequest.Status != model.MigrationStatusPending {
-	// 	return nil, fmt.Errorf(" Migration request is not in a pending state and cannot be rejected")
-	// }
+	if APPROVED == string(*migrationRequest.Status) {
+		return nil, fmt.Errorf(" The migration request has already been approved and is not in a pending state, so it cannot be rejected")
+	}
+
+	if REJECTED == string(*migrationRequest.Status) {
+		return nil, fmt.Errorf(" The migration request has already been marked as rejected and cannot be rejected again")
+	}
 
 	// // Update the status to rejected
-	// migrationRequest.Status = model.MigrationStatusRejected
+	migrationRequest.Status = &Rejected
 
 	// Start a database transaction
 	tx := r.DB.Begin()
@@ -212,12 +229,14 @@ func (r *mutationResolver) RejectSubChurchMigration(ctx context.Context, request
 	}
 
 	// If the status is rejected, delete the migration request from the database
-	// if migrationRequest.Status == model.MigrationStatusRejected {
-	// 	if err := tx.Delete(migrationRequest).Error; err != nil {
-	// 		tx.Rollback() // Rollback the transaction on error
-	// 		return nil, fmt.Errorf(" Failed to delete the migration request: %w", err)
-	// 	}
-	// }
+	if migrationRequest.Status == &Rejected {
+		// Sleep for 1 minute before deleting
+		// time.Sleep(1 * time.Minute)
+		if err := tx.Delete(migrationRequest).Error; err != nil {
+			tx.Rollback() // Rollback the transaction on error
+			return nil, fmt.Errorf(" Failed to delete the migration request: %w", err)
+		}
+	}
 
 	// Commit the transaction if all updates are successful
 	if err := tx.Commit().Error; err != nil {
@@ -500,7 +519,7 @@ func (r *mutationResolver) ImportMemberData(ctx context.Context, file graphql.Up
 	// }
 	if err := r.DB.Where("sub_church_id = ? AND types && ?", churchID, pq.Array([]string{"Leader", "SubLeader"})).Find(&leaders).Error; err != nil {
 		// Handle the error, such as logging or returning an error response.
-		return nil, err
+		return nil, fmt.Errorf("leader not found")
 	}
 	if len(leaders) >= 2 {
 		var leadersMap = make(map[string]*model.Member)
@@ -610,7 +629,7 @@ func (r *mutationResolver) ImportMemberData(ctx context.Context, file graphql.Up
 // DataMembers is the resolver for the dataMembers field.
 func (r *mutationResolver) DataMembers(ctx context.Context) (*string, error) {
 	// member := &model.Member{}
-	targetDate := "10/31/2023"
+	targetDate := "11/2/2023"
 
 	// Delete members created on the target date
 	if err := r.DB.Where("DATE(created_at) = ?", targetDate).Delete(&model.Member{}).Error; err != nil {
@@ -1868,7 +1887,7 @@ func (r *postResolver) Tags(ctx context.Context, obj *model.Post) ([]string, err
 // GetAllMainChurch is the resolver for the GetAllMainChurch field.
 func (r *queryResolver) GetAllMainChurch(ctx context.Context) ([]*model.Church, error) {
 	var churchs []*model.Church
-	if err := r.DB.Find(&churchs).Error; err != nil {
+	if err := r.DB.Find(&churchs).Order("created_at DESC").Error; err != nil {
 		return nil, err
 	}
 
@@ -1878,19 +1897,41 @@ func (r *queryResolver) GetAllMainChurch(ctx context.Context) ([]*model.Church, 
 // GetsubChurchByMainChurchID is the resolver for the GetsubChurchByMainChurchID field.
 func (r *queryResolver) GetAllsubChurchByMainChurchID(ctx context.Context, mainChurchID string) ([]*model.SubChurch, error) {
 	var subChurch []*model.SubChurch
-	if err := r.DB.Where("church_id = ?", mainChurchID).Preload("Church").Find(&subChurch).Error; err != nil {
+	if err := r.DB.Where("church_id = ?", mainChurchID).Preload("Church").Order("created_at DESC").Find(&subChurch).Error; err != nil {
 		return nil, err
 	}
 
 	return subChurch, nil
 }
 
+// GetAllsubChurchByMemberID is the resolver for the GetAllsubChurchByMemberId field.
+func (r *queryResolver) GetAllsubChurchByMemberID(ctx context.Context, memberID string) ([]*model.SubChurch, error) {
+	// Find the Member and its associated SubChurch
+	member := model.Member{}
+	if err := r.DB.Where("id = ?", memberID).Preload("SubChurch").Find(&member).Error; err != nil {
+		return nil, err
+	}
+
+	if member.SubChurch == nil {
+		return nil, fmt.Errorf("Member is not associated with a SubChurch")
+	}
+
+	// Find the Church and its associated SubChurches
+	church := model.Church{}
+	if err := r.DB.Where("id = ?", member.SubChurch.ChurchID).Preload("SubChurches").Order("created_at DESC").Find(&church).Error; err != nil {
+		return nil, err
+	}
+
+	// Return the list of SubChurches associated with the Church
+	return church.SubChurches, nil
+}
+
 // GetAllMembersBySubChurchID is the resolver for the GetAllMembersBySubChurchID field.
 func (r *queryResolver) GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error) {
 	var members []*model.Member
-	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("SubChurch").Find(&members).Error; err != nil {
+	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("SubChurch").Order("created_at DESC").Find(&members).Error; err != nil {
 		log.Printf("Error executing SQL query: %v", err)
-		return nil, fmt.Errorf("Error executing SQL query: %w", err)
+		return nil, fmt.Errorf(" Error executing SQL query: %w", err)
 	}
 
 	// Convert pq.StringArray to []string
@@ -1904,7 +1945,7 @@ func (r *queryResolver) GetAllMembersBySubChurchID(ctx context.Context, subChurc
 func (r *queryResolver) GetAllSubChurchLeader(ctx context.Context, subChurchID string) (*model.Member, error) {
 	var leader model.Member
 
-	if err := r.DB.Where("sub_church_id = ? AND types && ?", subChurchID, pq.Array([]string{"Leader"})).Find(&leader).Error; err != nil {
+	if err := r.DB.Where("sub_church_id = ? AND types && ?", subChurchID, pq.Array([]string{"Leader"})).Order("created_at DESC").Find(&leader).Error; err != nil {
 		// Handle the error, such as logging or returning an error response.
 		return nil, err
 	}
@@ -1915,7 +1956,7 @@ func (r *queryResolver) GetAllSubChurchLeader(ctx context.Context, subChurchID s
 func (r *queryResolver) GetAllMembersByLeader(ctx context.Context, leaderID string) ([]*model.Member, error) {
 	var members []*model.Member
 
-	if err := r.DB.Where("leader_id = ?", leaderID).Preload("SubChurch").Find(&members).Error; err != nil {
+	if err := r.DB.Where("leader_id = ?", leaderID).Preload("SubChurch").Order("created_at DESC").Find(&members).Error; err != nil {
 		// Handle the error, such as logging or returning an error response.
 		return nil, err
 	}
@@ -1928,7 +1969,7 @@ func (r *queryResolver) GetAllSubLeaderByLeader(ctx context.Context, leaderID st
 	var members []*model.Member
 
 	// Use GORM to query the database.
-	if err := r.DB.Where("leader_id = ? AND types && ?", leaderID, pq.Array([]string{"SubLeader"})).Preload("SubChurch").Find(&members).Error; err != nil {
+	if err := r.DB.Where("leader_id = ? AND types && ?", leaderID, pq.Array([]string{"SubLeader"})).Preload("SubChurch").Order("created_at DESC").Find(&members).Error; err != nil {
 		// Handle the error, such as logging or returning an error response.
 		return nil, err
 	}
@@ -1939,7 +1980,7 @@ func (r *queryResolver) GetAllSubLeaderByLeader(ctx context.Context, leaderID st
 // GetAllRegistersByMemberID is the resolver for the GetAllRegistersByMemberID field.
 func (r *queryResolver) GetAllRegistersByMemberID(ctx context.Context, memberID string) ([]*model.Registration, error) {
 	var Registrations []*model.Registration
-	if err := r.DB.Where("member_id = ?", memberID).Preload("Member").Find(&Registrations).Error; err != nil {
+	if err := r.DB.Where("member_id = ?", memberID).Preload("Member").Order("created_at DESC").Find(&Registrations).Error; err != nil {
 		return nil, err
 	}
 	// Fetch LeaderNames based on LeaderIDs or set to "No Assign Caller" if LeaderID is nil
@@ -1951,7 +1992,7 @@ func (r *queryResolver) GetAllRegistersByMemberID(ctx context.Context, memberID 
 			}
 		} else {
 			// Set LeaderName to "No Assign Caller" in the database when LeaderID is nil
-			if err := r.DB.Model(&reg).Update("LeaderName", "No Assign Caller").Error; err != nil {
+			if err := r.DB.Model(&reg).Update(" LeaderName", "No Assign Caller").Error; err != nil {
 				// Handle the error if needed
 			}
 		}
@@ -1986,8 +2027,8 @@ func (r *queryResolver) LastFourCommentsForMember(ctx context.Context, memberID 
 // GetAllsubChurch is the resolver for the GetAllsubChurch field.
 func (r *queryResolver) GetAllsubChurch(ctx context.Context) ([]*model.SubChurch, error) {
 	var sub []*model.SubChurch
-	if err := r.DB.Preload("Members").Find(&sub).Error; err != nil {
-		fmt.Println("Error preloading associations:", err)
+	if err := r.DB.Preload("Members").Order("created_at DESC").Find(&sub).Error; err != nil {
+		fmt.Println(" Error preloading associations:", err)
 		return nil, err
 	}
 
@@ -2001,7 +2042,7 @@ func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Member, error) 
 	// Query the database to retrieve leaders with Types equal to "Caller" or "Admin"
 	// if err := r.DB.Where("types IN (?)", []string{"CallAgent"}).Find(&leaders).Error; err != nil
 	// if err := r.DB.Where("?'CallAgent'", "types").Find(&leaders).Error; err != nil
-	if err := r.DB.Where("? = ANY(types)", "CallAgent").Find(&leaders).Error; err != nil {
+	if err := r.DB.Where("? = ANY(types)", "CallAgent").Order("created_at DESC").Find(&leaders).Error; err != nil {
 
 		return nil, fmt.Errorf("failed to fetch leaders: %w", err)
 	}
@@ -2033,6 +2074,30 @@ func (r *queryResolver) Getmember(ctx context.Context, id string) (*model.Member
 	return &Member, nil
 }
 
+// GetMigration is the resolver for the GetMigration field.
+func (r *queryResolver) GetMigration(ctx context.Context, id string) (*model.MigrationRequest, error) {
+	var migrate model.MigrationRequest
+
+	// Use GORM to find the migrate by its ID
+	if err := r.DB.Where("id = ?", id).First(&migrate).Error; err != nil {
+		return nil, err
+	}
+
+	return &migrate, nil
+}
+
+// GetMigrationdestinationID is the resolver for the GetMigrationdestinationID field.
+func (r *queryResolver) GetMigrationdestinationID(ctx context.Context, destinationChurchID string) ([]*model.MigrationRequest, error) {
+	var migrationRequests []*model.MigrationRequest
+
+	// Use GORM to query the database for migration requests with the given destinationChurchID and order them by CreatedAt in descending order
+	if err := r.DB.Where("destination_church_id = ?", destinationChurchID).Order("created_at DESC").Find(&migrationRequests).Error; err != nil {
+		return nil, err
+	}
+
+	return migrationRequests, nil
+}
+
 // GetMyType is the resolver for the GetMyType field.
 func (r *queryResolver) GetMyType(ctx context.Context, id *string) (*model.MyType, error) {
 	// Fetch the MyType object from the database by its ID
@@ -2049,7 +2114,7 @@ func (r *queryResolver) Getmembers(ctx context.Context) ([]*model.Member, error)
 	var leaders []*model.Member
 
 	// Query the database to retrieve leaders with Types equal to "Caller" or "Admin"
-	if err := r.DB.Find(&leaders).Error; err != nil {
+	if err := r.DB.Find(&leaders).Order("created_at DESC").Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch leaders: %w", err)
 	}
 
@@ -2066,7 +2131,7 @@ func (r *queryResolver) TodaysMembers(ctx context.Context) ([]*model.Member, err
 	var members []*model.Member
 
 	// Assuming you have a database or data source, you can query members created on both today and yesterday.
-	if err := r.DB.Where("created_at >= ? AND created_at < ?", yesterday, today.AddDate(0, 0, 1)).Find(&members).Error; err != nil {
+	if err := r.DB.Where("created_at >= ? AND created_at < ?", yesterday, today.AddDate(0, 0, 1)).Order("created_at DESC").Find(&members).Error; err != nil {
 		return nil, err
 	}
 
@@ -2090,13 +2155,14 @@ func (r *queryResolver) GetsubChurchByID(ctx context.Context, id string) (*model
 	return &sub, nil
 }
 
-// GetChurchByID is the resolver for the GetChurchByID field.
-func (r *queryResolver) GetChurchByID(ctx context.Context, id string) (*model.Church, error) {
-	panic(fmt.Errorf("not implemented: GetChurchByID - GetChurchByID"))
+// GetChurchByMemberID is the resolver for the GetChurchByMemberID field.
+func (r *queryResolver) GetChurchByMemberID(ctx context.Context, id string) (*model.Church, error) {
+	panic(fmt.Errorf("not implemented: GetChurchByMemberID - GetChurchByMemberID"))
 }
 
 // GetAllChurchByID is the resolver for the GetAllChurchByID field.
 func (r *queryResolver) GetAllChurchByID(ctx context.Context) ([]*model.Church, error) {
+	// .Order("created_at DESC")
 	panic(fmt.Errorf("not implemented: GetAllChurchByID - GetAllChurchByID"))
 }
 
@@ -2104,7 +2170,7 @@ func (r *queryResolver) GetAllChurchByID(ctx context.Context) ([]*model.Church, 
 func (r *queryResolver) MembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error) {
 	var members []*model.Member
 	if err := r.DB.
-		Where("sub_church_id = ?", subChurchID).Preload("Registrations").Preload("Church").Find(&members).Error; err != nil {
+		Where("sub_church_id = ?", subChurchID).Preload("Registrations").Preload("Church").Order("created_at DESC").Find(&members).Error; err != nil {
 		fmt.Println("Error preloading associations:", err)
 		return nil, err
 	}
@@ -2117,7 +2183,7 @@ func (r *queryResolver) RegistrationsByLeader(ctx context.Context, mleaderID str
 	var registrations []*model.Registration
 
 	// Preload the Leader and member associations
-	if err := r.DB.Where("leader_id = ?", mleaderID).Preload("Leader").Preload("Member.SubChurch").Find(&registrations).Error; err != nil {
+	if err := r.DB.Where("leader_id = ?", mleaderID).Preload("Leader").Preload("Member.SubChurch").Order("created_at DESC").Find(&registrations).Error; err != nil {
 		fmt.Println("Error preloading associations:", err)
 		return nil, err
 	}
@@ -2131,7 +2197,7 @@ func (r *queryResolver) CallRoom(ctx context.Context, subChurchID string) ([]*mo
 
 	// Preload the Leader and member associations
 	// Preload the Leader and member associations
-	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("Leader").Preload("Member.SubChurch").Find(&registrations).Error; err != nil {
+	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("Leader").Preload("Member.SubChurch").Order("created_at DESC").Find(&registrations).Error; err != nil {
 		fmt.Println("Error preloading associations:", err)
 		return nil, err
 	}
@@ -2147,7 +2213,7 @@ func (r *queryResolver) GetsubChurch(ctx context.Context, id string) (*model.Sub
 // CurrentWeekRegistrations is the resolver for the currentWeekRegistrations field.
 func (r *queryResolver) CurrentWeekRegistrations(ctx context.Context) ([]*model.Registration, error) {
 	var registrations []*model.Registration
-	if err := r.DB.Preload("Member").Find(&registrations).Error; err != nil {
+	if err := r.DB.Preload("Member").Order("created_at DESC").Find(&registrations).Error; err != nil {
 		return nil, err
 	}
 
@@ -2183,7 +2249,7 @@ func (r *queryResolver) CurrentWeekRegistrations(ctx context.Context) ([]*model.
 func (r *queryResolver) CurrentWeekRegistrationsforsub(ctx context.Context, subChurchID string) ([]*model.Registration, error) {
 	var registrations []*model.Registration
 
-	if err := r.DB.Preload("Member").Where("sub_church_id = ?", subChurchID).Find(&registrations).Error; err != nil {
+	if err := r.DB.Preload("Member").Where("sub_church_id = ?", subChurchID).Order("created_at DESC").Find(&registrations).Error; err != nil {
 		return nil, err
 	}
 	currentWeekNumber := schemas.GetWeekNumber(time.Now()) // Get the current week number
@@ -2221,7 +2287,7 @@ func (r *queryResolver) WeekRegistrationsforSub(ctx context.Context) ([]*model.R
 	// 	return nil, fmt.Errorf("leaderID not found in request context")
 	// }
 	var registrations []*model.Registration
-	if err := r.DB.Preload("Member").Find(&registrations).Error; err != nil {
+	if err := r.DB.Preload("Member").Order("created_at DESC").Find(&registrations).Error; err != nil {
 		return nil, err
 	}
 	currentWeekNumber := schemas.GetWeekNumber(time.Now()) // Get the current week number

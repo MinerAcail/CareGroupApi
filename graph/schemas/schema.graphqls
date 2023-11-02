@@ -92,6 +92,7 @@ type Post {
 type Query {
   GetAllMainChurch: [Church]
   GetAllsubChurchByMainChurchID(mainChurchId: String!): [SubChurch]
+  GetAllsubChurchByMemberId(memberId: String!): [SubChurch]
   GetAllMembersBySubChurchID(subChurchId: String!): [Member]
   GetAllSubChurchLeader(subChurchId: String!): Member
   GetAllMembersByLeader(leaderID: String!): [Member]
@@ -106,6 +107,8 @@ type Query {
   # amember(id: String!): member
 
   Getmember(id: String!): Member
+  GetMigration(id: String!): MigrationRequest
+  GetMigrationdestinationID(destinationChurchID: String!): [MigrationRequest]
   GetMyType(id: String): MyType
   Getmembers: [Member]
   todaysMembers: [Member]
@@ -113,7 +116,7 @@ type Query {
   membersByChurch(churchId: String!): [Member!]!
   GetsubChurchByID(id: String!): SubChurch
 
-  GetChurchByID(id: String!): Church
+  GetChurchByMemberID(id: String!): Church
   GetAllChurchByID: [Church]
   MembersBySubChurchID(subChurchId: String!): [Member!]!
 
@@ -210,7 +213,7 @@ type MigrationRequest {
   # migratedTime: Time
   createdAt: Time
   memberID: String
-  # destinationChurch: SubChurch
+  MemberName: String
   destinationChurchID: String
   statusID: String
   status: MigrationStatus
