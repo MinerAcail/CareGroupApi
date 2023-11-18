@@ -30,6 +30,8 @@ type Registration {
   lastComment: String!
   absence: Boolean!
   present: Boolean!
+  report: Boolean
+  done: Boolean
   createdAt: Time!
   leaderName: String
   leader: Member
@@ -37,9 +39,13 @@ type Registration {
   member: Member
   subChurch: SubChurch
   subChurchID: String
+  tempLeaderID: String!
   memberID: String!
 }
-
+input ReportRegistrationInput {
+  report: Boolean
+  done: Boolean
+}
 type Church {
   id: String!
   name: String!
@@ -63,10 +69,23 @@ type SubChurch {
   createdAt: Time!
   church: Church
   churchId: String!
+  isLocal: Boolean
   leaders: [Member]
   members: [Member]
+  CallCenterID: String
+  CallCenter: CallCenter
 }
-
+type CallCenter {
+  ID: String!
+  Name: String!
+  Password: String
+  Email: String
+  Types: String
+  Token: String
+  UpdatedAt: Time!
+  CreatedAt: Time!
+  SubChurches: [SubChurch]
+}
 union Returns = Church | SubChurch | Member
 
 type WeeklyResults {
@@ -77,18 +96,7 @@ type DateInfo {
   month: String
   weekOfMonth: Int
 }
-type MyType {
-  ID: String!
-  MyArray: Myarray!
-}
-type MyArr {
-  ID: String!
-  MyArray: Myarray!
-}
-type Post {
-  id: String!
-  tags: [String!]!
-}
+
 type Query {
   GetAllMainChurch: [Church]
   GetAllsubChurchByMainChurchID(mainChurchId: String!): [SubChurch]
@@ -102,32 +110,27 @@ type Query {
 
   GetAllsubChurch: [SubChurch]
   GetCaller: [Member]
+  GetCallAgent: [Member]
 
-  post(id: String!): Post
   # amember(id: String!): member
 
   Getmember(id: String!): Member
   GetMigration(id: String!): MigrationRequest
   GetMigrationdestinationID(destinationChurchID: String!): [MigrationRequest]
-  GetMyType(id: String): MyType
   Getmembers: [Member]
   todaysMembers: [Member]
 
-  membersByChurch(churchId: String!): [Member!]!
   GetsubChurchByID(id: String!): SubChurch
 
-  GetChurchByMemberID(id: String!): Church
-  GetAllChurchByID: [Church]
   MembersBySubChurchID(subChurchId: String!): [Member!]!
 
   registrationsByLeader(mleaderID: String!): [Registration]
   CallRoom(subChurchId: String!): [Registration]
+  GetAllRegistersByTempLeader(tempLeaderID: String!): [Registration]
 
-  GetsubChurch(id: String!): SubChurch
   currentWeekRegistrations: [Registration!]!
   currentWeekRegistrationsforsub(subChurchId: String!): [Registration!]!
   WeekRegistrationsforSub: [Registration!]!
-  GetRegistrations: [WeeklyResults!]!
 }
 
 input CreateRegistrationInput {
@@ -218,19 +221,20 @@ type MigrationRequest {
   statusID: String
   status: MigrationStatus
 }
+input RegistrationArrayInputs {
+  registrationIDs: ID!
+  createInput: CreateRegistrationInput!
+}
 
 type Mutation {
   requestSubChurchMigration(input: SubChurchMigrationInput!): MigrationRequest!
   approveSubChurchMigration(requestId: String!): MigrationRequest!
   rejectSubChurchMigration(requestId: String!): MigrationRequest!
 
-  getMyL(id: String): MyType
-  PushMyL(id: String, newValue: String!): MyType
-  getMyArr: MyArr
+
   createMember(input: CreateMemberInput): Member!
   createMemberbySubchurch(input: CreateMemberInput): Member!
-  createPost(tags: [String!]!): Post
-  updatePost(id: String, tags: [String!]!): Post
+
 
   importMemberData(file: Upload!, ChurchID: String): [Member]
   dataMembers: String
@@ -250,14 +254,29 @@ type Mutation {
   deleteSubChurch(subChurchId: String!): Boolean!
   deleteRegistration(registrationId: String!): Boolean!
 
-  createSubChurch(subChurchName: String, branch: Boolean!): Church!
+  createSubChurch(
+    subChurchName: String
+    branch: Boolean!
+    isLocal: Boolean
+  ): Church!
   createMianChurch(subChurchName: String): Church!
   # createsubBranch(subBranchName: String): Church!
 
   assignLeader(input: assignLeaderInput): Member!
   addAnotherType(memberId: String!, types: String): Member!
   updateLeaderTypes(id: String, tags: [String!]!): Member
+  assignMemberToLeaderbySubchurch(leaderID: String!, memberID: String!): Member
+  assignLeaderMemberRegisterToAnotherLeader(
+    sendToLeaderID: String!
+    sendFromLeaderID: String!
+  ): [Registration]!
+
+  tempLeadercreateRegistrationArray(
+    input: [CreateRegistrationInput]!
+    registrationID: [String]!
+  ): [Registration]!
   # updateLeaderTypes( id: String,tags: [String!]!): Member
+  updateRegistrationArray(input: [RegistrationArrayInputs]!): [Registration]!
 
   removeLeader(memberId: String!): Member
 
@@ -282,11 +301,16 @@ type Mutation {
     registrationID: String!
     leaderID: String!
   ): Registration
-
+  CreateCallCenterForSubChurchs(name: String!, subChurchIDs: [String!]!): CallCenter
   distributeRegistrationsToLeaders(
     leaderIds: [String!]!
   ): [LeaderRegistrationsDistribution]
 
+  ReportRegistrationByLeader(
+    report: ReportRegistrationInput
+    registrationID: String!
+    leaderID: String!
+  ): Registration
   login(input: LoginLeaderInput!): Returns
   memberlogin(input: LoginLeaderInput!): Returns!
 

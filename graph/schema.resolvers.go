@@ -22,11 +22,15 @@ import (
 	"github.com/kobbi/vbciapi/graph/schemas"
 	"github.com/kobbi/vbciapi/jwt/helpers"
 	"github.com/kobbi/vbciapi/jwt/middleware"
-	"github.com/kobbi/vbciapi/mypkg"
 	"github.com/lib/pq"
-	"github.com/tealeg/xlsx"
 	"gorm.io/gorm"
 )
+
+// ID is the resolver for the ID field.
+func (r *callCenterResolver) ID(ctx context.Context, obj *model.CallCenter) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
 
 // ID is the resolver for the id field.
 func (r *churchResolver) ID(ctx context.Context, obj *model.Church) (string, error) {
@@ -42,6 +46,18 @@ func (r *memberResolver) ID(ctx context.Context, obj *model.Member) (string, err
 
 // Types is the resolver for the types field.
 func (r *memberResolver) Types(ctx context.Context, obj *model.Member) ([]string, error) {
+	// return obj.Types, nil
+
+	if obj.Types == nil {
+		return nil, nil // Return null for the field when it's null in the database
+	}
+
+	// Convert the pq.StringArray to a slice of pointers to strings
+	types := make([]*string, len(obj.Types))
+	for i, t := range obj.Types {
+		types[i] = &t
+	}
+
 	return obj.Types, nil
 }
 
@@ -247,48 +263,6 @@ func (r *mutationResolver) RejectSubChurchMigration(ctx context.Context, request
 	return migrationRequest, nil
 }
 
-// GetMyL is the resolver for the getMyL field.
-func (r *mutationResolver) GetMyL(ctx context.Context, id *string) (*model.MyType, error) {
-	// myArray := mypkg.Myarray{"item1", "item2", "item3"}
-	myArray := pq.StringArray{"item1", "item2", "item3"}
-
-	myType := &model.MyType{
-		MyArray: mypkg.Myarray(myArray),
-	}
-
-	if err := r.DB.Create(myType).Error; err != nil {
-		return nil, fmt.Errorf("failed to save to the database: %w", err)
-	}
-	return myType, nil
-}
-
-// PushMyL is the resolver for the PushMyL field.
-func (r *mutationResolver) PushMyL(ctx context.Context, id *string, newValue string) (*model.MyType, error) {
-	// Find the MyType object with the given ID
-	existingMyType := &model.MyType{}
-
-	// Retrieve the Member from the database based on the provided ID
-	if err := r.DB.Where("id = ?", id).First(existingMyType).Error; err != nil {
-		return nil, fmt.Errorf("failed to find MyType: %w", err)
-	}
-	myArray := mypkg.Myarray{newValue}
-
-	// Append the new value to the existing array
-	existingMyType.MyArray = append(existingMyType.MyArray, myArray...)
-
-	// Use GORM's Save method to update the MyType object in the database
-	if err := r.DB.Save(existingMyType).Error; err != nil {
-		return nil, fmt.Errorf("failed to save to the database: %w", err)
-	}
-
-	return existingMyType, nil
-}
-
-// GetMyArr is the resolver for the getMyArr field.
-func (r *mutationResolver) GetMyArr(ctx context.Context) (*model.MyArr, error) {
-	panic(fmt.Errorf("not implemented: GetMyArr - getMyArr"))
-}
-
 // CreateMember is the resolver for the createMember field.
 func (r *mutationResolver) CreateMember(ctx context.Context, input *model.CreateMemberInput) (*model.Member, error) {
 	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
@@ -411,54 +385,6 @@ func (r *mutationResolver) CreateMemberbySubchurch(ctx context.Context, input *m
 	return member, nil
 }
 
-// CreatePost is the resolver for the createPost field.
-func (r *mutationResolver) CreatePost(ctx context.Context, tags []string) (*model.Post, error) {
-	// Create a new Post
-	post := model.Post{
-		Tags: tags,
-	}
-
-	// Save the Post to the database using GORM
-	if err := r.DB.Create(&post).Error; err != nil {
-		return nil, err
-	}
-
-	return &post, nil
-}
-
-// UpdatePost is the resolver for the updatePost field.
-func (r *mutationResolver) UpdatePost(ctx context.Context, id *string, tags []string) (*model.Post, error) {
-	// Find the post in the database by its ID
-	var post model.Post
-	if err := r.DB.Where("id = ?", id).First(&post).Error; err != nil {
-		return nil, err
-	}
-
-	// Create a map to store the tags to remove for efficient lookup
-	tagsToRemoveMap := make(map[string]bool)
-	for _, tag := range tags {
-		tagsToRemoveMap[tag] = true
-	}
-
-	// Filter the existing tags, keeping only those not in the tagsToRemoveMap
-	var updatedTags []string
-	for _, existingTag := range post.Tags {
-		if !tagsToRemoveMap[existingTag] {
-			updatedTags = append(updatedTags, existingTag)
-		}
-	}
-
-	// Update the post's Tags field with the filtered tags
-	post.Tags = updatedTags
-
-	// Save the updated post back to the database
-	if err := r.DB.Save(&post).Error; err != nil {
-		return nil, err
-	}
-
-	return &post, nil
-}
-
 // ImportMemberData is the resolver for the importMemberData field.
 func (r *mutationResolver) ImportMemberData(ctx context.Context, file graphql.Upload, churchID *string) ([]*model.Member, error) {
 	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
@@ -467,163 +393,28 @@ func (r *mutationResolver) ImportMemberData(ctx context.Context, file graphql.Up
 		return nil, err
 	}
 
-	// Create a buffer to read the data from the file
+	// Create a buffer to read the data from the file.
 	buffer := new(bytes.Buffer)
 
-	// Read the data from the file into the buffer
+	// Read the data from the file into the buffer.
 	_, err = io.Copy(buffer, file.File)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert the data in the buffer to a string
+	// Convert the data in the buffer to a string.
 	fileDataString := buffer.String()
 
-	// Open the uploaded Excel file
-	xlFile, err := xlsx.OpenBinary([]byte(fileDataString)) // Open Excel file from binary data
+	// Convert the Excel data to a CSV file.
+	csvFilePath, err := schemas.ConvertExcelToCSV(fileDataString)
 	if err != nil {
 		return nil, err
 	}
 
-	// Check if the header row exists and find column indices
-	headerRow := xlFile.Sheets[0].Rows[0]                             // Assuming the header row is the first row
-	nameIdx, emailIdx, phoneIdx, day, Locations := -1, -1, -1, -1, -1 // Initialize variables to store the column indices
+	// Log the path of the created CSV file.
+	fmt.Printf("Created CSV file: %s\n", csvFilePath)
 
-	// Loop through the cells in the header row to find the column indices
-	for colIdx, cell := range headerRow.Cells {
-		switch cell.String() {
-		case "Name":
-			nameIdx = colIdx
-		case "Email":
-			emailIdx = colIdx
-		case "Day":
-			day = colIdx
-		case "Location":
-			Locations = colIdx
-		case "Phone Number":
-			phoneIdx = colIdx
-		}
-
-	}
-
-	// Check if any of the required columns are missing
-	if nameIdx == -1 || emailIdx == -1 || phoneIdx == -1 || day == -1 || Locations == -1 {
-		return nil, fmt.Errorf(" One or more required columns are missing in the Excel file")
-	}
-
-	var leaders []model.Member
-
-	// if err := r.DB.Where("types IN (?) AND sub_church_id = ?", pq.Array([]string{"Leader", "SubLeader"}), churchID).Find(&leaders).Error; err != nil {
-	// 	fmt.Println("Database error:", err)
-	// 	return nil, err
-	// }
-	if err := r.DB.Where("sub_church_id = ? AND types && ?", churchID, pq.Array([]string{"Leader", "SubLeader"})).Find(&leaders).Error; err != nil {
-		// Handle the error, such as logging or returning an error response.
-		return nil, fmt.Errorf("leader not found")
-	}
-	if len(leaders) >= 2 {
-		var leadersMap = make(map[string]*model.Member)
-
-		for _, leader := range leaders {
-			leadersMap[leader.Day] = &leader
-		}
-
-		// Ensure that there is a leader for each day of the week (Monday to Sunday)
-		for _, day := range []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"} {
-			if leadersMap[day] == nil {
-				return nil, fmt.Errorf(" No leader assigned for %s", day)
-			}
-		}
-	}
-
-	var duplicateRecords []string
-	members := []*model.Member{}
-
-	for _, sheet := range xlFile.Sheets {
-		for rowIndex, row := range sheet.Rows {
-			// Skip the header row
-			if rowIndex == 0 {
-				continue
-			}
-
-			// Extract data from rows and cells and create member objects
-			name := row.Cells[nameIdx].String()
-			email := row.Cells[emailIdx].String()
-			Day := row.Cells[day].String()
-			Locations := row.Cells[Locations].String()
-
-			// Clean phone number
-			phoneNumber := row.Cells[phoneIdx].String()
-			phoneNumber = schemas.CleanPhoneNumber(phoneNumber)
-			var lop *model.Member
-			if len(leaders) == 1 {
-				// // Get the leader for the given churchID
-				leader, err := schemas.GetLeaderByChurchID(r.DB, churchID)
-				if err != nil {
-					return nil, err
-				}
-				lop = leader
-
-			} else if len(leaders) > 1 {
-
-				// // Get the leader for the given churchID
-				leader, err := schemas.FindLeaderWithSameDay(ctx, r.DB, Day, *churchID)
-				if err != nil {
-					return nil, err
-				}
-				lop = leader
-			}
-
-			leaderID := lop.ID.String()
-
-			if leaderID == "" {
-				// Handle the case where lop is nil, e.g., return an error or take appropriate action.
-				return nil, fmt.Errorf("leaderID is nil")
-			}
-
-			// leaderID := lop.ID.String()
-
-			// // Call the checking Duplicate Records function if already in db
-			if err := schemas.CheckMembersDuplicateRecords(r.DB, name, email, phoneNumber); err != nil {
-				// Collect the record with duplicate data
-				duplicateRecords = append(duplicateRecords, fmt.Sprintf("Row %d - Name: %s, Email: %s, Phone: %s", rowIndex, name, email, phoneNumber))
-
-				// Skip creating this member and continue to the next iteration
-				continue
-			}
-
-			// Create a member object
-			member := &model.Member{
-				Name:        name,
-				Email:       email,
-				PhoneNumber: &phoneNumber,
-				Day:         Day,
-				Location:    &Locations,
-				LeaderID:    &leaderID, // Assign the LeaderID to the selected leader's ID
-				SubChurchID: churchID,
-			}
-
-			members = append(members, member)
-		}
-	}
-	// If there are duplicate records, return an error with the list of duplicates
-	if len(duplicateRecords) > 0 {
-		errMessage := "Duplicate records found:\n" + strings.Join(duplicateRecords, "\n")
-		return nil, fmt.Errorf(errMessage)
-	}
-	// Save the created members to the database
-	for _, member := range members {
-		if err := r.DB.Create(member).Error; err != nil {
-			return nil, err
-		}
-	}
-	// Call UpdateReferenceIDCounts to ensure the counts are up-to-date.
-	if err := schemas.UpdateReferenceIDCounts(r.DB, *churchID); err != nil {
-		// Handle the error, such as logging or returning an error response.
-		return nil, err
-	}
-
-	return members, nil
+	return nil, nil
 }
 
 // DataMembers is the resolver for the dataMembers field.
@@ -971,7 +762,7 @@ func (r *mutationResolver) DeleteRegistration(ctx context.Context, registrationI
 }
 
 // CreateSubChurch is the resolver for the createSubChurch field.
-func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *string, branch bool) (*model.Church, error) {
+func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *string, branch bool, isLocal *bool) (*model.Church, error) {
 	mainChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
 		return nil, fmt.Errorf("main ChurchID not found in request context")
@@ -1122,8 +913,8 @@ func (r *mutationResolver) CreateMianChurch(ctx context.Context, subChurchName *
 	// Append the sub-church to the main church's SubChurches slice
 	mainChurch.SubChurches = append(mainChurch.SubChurches, subChurch)
 	// Define the days of the week
-	leaderDaysOfWeek := []string{"Monday", "Tuesday", "Wednesday"}
-	subLeaderDaysOfWeek := []string{"Thursday", "Friday", "Saturday", "Sunday"}
+	leaderDaysOfWeek := []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
+	subLeaderDaysOfWeek := []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
 	// Create 3 leaders
 	leaderIndex := 0
 	leadertype := "Leader"
@@ -1140,7 +931,7 @@ func (r *mutationResolver) CreateMianChurch(ctx context.Context, subChurchName *
 		return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < len(leaderDaysOfWeek); i++ {
 		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
 		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
 
@@ -1171,7 +962,7 @@ func (r *mutationResolver) CreateMianChurch(ctx context.Context, subChurchName *
 	// Create 4 sub-leaders
 	subLeaderIndex := 0
 	subLeaderSubLeader := "SubLeader"
-	for i := 0; i < 4; i++ {
+	for i := 0; i < len(subLeaderDaysOfWeek); i++ {
 		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
 		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
 
@@ -1341,6 +1132,219 @@ func (r *mutationResolver) UpdateLeaderTypes(ctx context.Context, id *string, ta
 	}
 
 	return &Member, nil
+}
+
+// AssignMemberToLeaderbySubchurch is the resolver for the assignMemberToLeaderbySubchurch field.
+func (r *mutationResolver) AssignMemberToLeaderbySubchurch(ctx context.Context, leaderID string, memberID string) (*model.Member, error) {
+	// Check if the specified leader exists.
+	var leader model.Member
+	if err := r.DB.Where("id = ? AND types && ?", leaderID, pq.Array([]string{"Leader", "SubLeader"})).First(&leader).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("Leader with ID %s not found", leaderID)
+		}
+		return nil, fmt.Errorf("failed to query leader: %w", err)
+	}
+
+	// Find the member based on the provided memberID.
+	var member model.Member
+	if err := r.DB.Where("id = ?", memberID).First(&member).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("Member with ID %s not found", memberID)
+		}
+		return nil, fmt.Errorf("failed to query member: %w", err)
+	}
+
+	// Update the Member's fields with the input values if they are provided
+	if leaderID != "" {
+		member.LeaderID = &leaderID
+	}
+
+	// Save the updated member to the database using your preferred ORM.
+	if err := r.DB.Save(&member).Error; err != nil {
+		return nil, fmt.Errorf("failed to save member to the database: %w", err)
+	}
+
+	return &member, nil
+}
+
+// AssignLeaderMemberRegisterToAnotherLeader is the resolver for the assignLeaderMemberRegisterToAnotherLeader field.
+func (r *mutationResolver) AssignLeaderMemberRegisterToAnotherLeader(ctx context.Context, sendToLeaderID string, sendFromLeaderID string) ([]*model.Registration, error) {
+	// Retrieve the SubChurchID associated with the leaderID
+	subChurchID, err := schemas.GetSubChurchIDForLeader(r.DB, sendFromLeaderID)
+	if err != nil {
+		return nil, err
+	}
+	createdRegistrations := []*model.Registration{}
+	exceededRateLimitMembers := []string{} // Track members who exceeded the rate limit of 24 hours a  Leader can't create a register within 24 hours cause it has been give to a TempLeader
+	var members []*model.Member
+
+	if err := r.DB.Where("leader_id = ?", sendFromLeaderID).Find(&members).Error; err != nil {
+		// Handle the error, such as logging or returning an error response.
+		return nil, fmt.Errorf("invalid Leader or Can't find Leader: %w", err)
+	}
+	for _, registrationInput := range members {
+		// Check if MemberID is a valid UUID
+		_, err := uuid.Parse(sendToLeaderID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid Leader: %w", err)
+		}
+		var member model.Member
+
+		if err := r.DB.Model(&model.Member{}).
+			Where("id = ?", registrationInput.ID).
+			First(&member).
+			Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+
+		// Ensure that the member exists
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("member with ID %s does not exist", registrationInput.ID)
+		}
+
+		// Query the database to check for existing registrations within the past 24 hours
+		var lastRegistrationTime time.Time
+		if err := r.DB.Model(&model.Registration{}).
+			Select("created_at").
+			Where("member_id = ?", registrationInput.ID).
+			First(&lastRegistrationTime).
+			Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
+		// Calculate the time difference between now and the last registration
+		timeSinceLastRegistration := time.Since(lastRegistrationTime)
+
+		// Define the rate limit (24 hours)
+		rateLimit := 24 * time.Hour
+
+		// Check if the last registration was within the rate limit
+		if timeSinceLastRegistration < rateLimit {
+			exceededRateLimitMembers = append(exceededRateLimitMembers, member.Name) // Track the name of the member
+			continue                                                                 // Skip creating a registration for this member
+		}
+
+		// Create a new Registration object using the input data
+		registration := &model.Registration{
+			MemberID:     registrationInput.ID.String(),
+			TempLeaderID: &sendToLeaderID,
+			SubChurchID:  &subChurchID,
+		}
+		// Update the fields with the new values
+
+		// Save the registration to the database
+		if err := r.DB.Create(registration).Error; err != nil {
+			return nil, err
+		}
+
+		createdRegistrations = append(createdRegistrations, registration)
+	}
+	// Check if any members exceeded the rate limit and include their names in the error message
+	if len(exceededRateLimitMembers) > 0 {
+		return nil, fmt.Errorf(" %v Cannot create registrations due to the transfer to a Temporary Leader", exceededRateLimitMembers)
+	}
+	// Return the created registrations
+	return createdRegistrations, nil
+}
+
+// TempLeadercreateRegistrationArray is the resolver for the tempLeadercreateRegistrationArray field.
+func (r *mutationResolver) TempLeadercreateRegistrationArray(ctx context.Context, input []*model.CreateRegistrationInput, registrationID []*string) ([]*model.Registration, error) {
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	createdRegistrations := []*model.Registration{}
+
+	for i, registrations := range input {
+		// Fetch the existing registration from the database
+		uuid, err := uuid.Parse(*registrationID[i])
+		if err != nil {
+			return nil, fmt.Errorf("invalid registrationID: %w", err)
+		}
+		registration := &model.Registration{}
+
+		if err := r.DB.Where("id = ?", uuid).First(&registration).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, fmt.Errorf("registration not found")
+			}
+			return nil, err
+		}
+
+		// Update the fields with the new values
+		if registrations.Absence != nil {
+			registration.Absence = *registrations.Absence
+		}
+		if registrations.Present != nil {
+			registration.Present = *registrations.Present
+		}
+		// Save the updated registration to the database
+		if err := r.DB.Save(registration).Error; err != nil {
+			return nil, err
+		}
+
+		// Convert the GORM model to the GraphQL model and return
+		createdRegistrations = append(createdRegistrations, registration)
+
+	}
+	return createdRegistrations, nil
+}
+
+// UpdateRegistrationArray is the resolver for the updateRegistrationArray field.
+func (r *mutationResolver) UpdateRegistrationArray(ctx context.Context, input []*model.RegistrationArrayInputs) ([]*model.Registration, error) {
+	// Extracting context information using middleware
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a slice to hold the updated registrations
+	updatedRegistrations := []*model.Registration{}
+
+	// Iterate over the input array
+	for _, regInput := range input {
+		// Check if RegistrationIDs is not nil
+		if regInput.RegistrationIDs == "" {
+			return nil, fmt.Errorf("RegistrationIDs is required in input")
+		}
+
+		// Parse the registration ID from the input
+		uuid, err := uuid.Parse(regInput.RegistrationIDs)
+		if err != nil {
+			return nil, fmt.Errorf("invalid registrationID: %w", err)
+		}
+
+		// Fetch the existing registration from the database
+		registration := &model.Registration{}
+		if err := r.DB.Where("id = ?", uuid).First(&registration).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, fmt.Errorf("registration not found")
+			}
+			return nil, err
+		}
+
+		// Update the fields with the new values
+		if regInput.CreateInput != nil {
+			if regInput.CreateInput.Absence != nil {
+				registration.Absence = *regInput.CreateInput.Absence
+			}
+			if regInput.CreateInput.Present != nil {
+				registration.Present = *regInput.CreateInput.Present
+			}
+			if regInput.CreateInput.LastComment != nil {
+				registration.LastComment = *regInput.CreateInput.LastComment
+			}
+		}
+
+		// Save the updated registration to the database
+		if err := r.DB.Save(registration).Error; err != nil {
+			return nil, err
+		}
+
+		// Append the updated registration to the slice
+		updatedRegistrations = append(updatedRegistrations, registration)
+	}
+
+	// Return the slice of updated registrations
+	return updatedRegistrations, nil
 }
 
 // RemoveLeader is the resolver for the removeLeader field.
@@ -1658,6 +1662,72 @@ func (r *mutationResolver) UpdateRegistrationByLeader(ctx context.Context, input
 	return register, nil
 }
 
+// CreateCallCenterForSubChurchs is the resolver for the CreateCallCenterForSubChurchs field.
+func (r *mutationResolver) CreateCallCenterForSubChurchs(ctx context.Context, name string, subChurchIDs []string) (*model.CallCenter, error) {
+	// Validate inputs
+	if name == "" {
+		return nil, fmt.Errorf("name cannot be empty")
+	}
+
+	// Assuming you have a middleware that provides the main church ID in the context
+	SubChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("SubChurch ID not found in request context")
+	}
+
+	// Retrieve the main church
+	SubChurch := &model.SubChurch{}
+	if err := r.DB.First(SubChurch, "id = ?", SubChurchID).Error; err != nil {
+		return nil, fmt.Errorf("failed to find main church: %w", err)
+	}
+
+	Types := "callCenter"
+	randomPassword := helpers.GenerateRandomPassword(6)
+	// Hash the password
+	hpassword, err := helpers.HashPassword(randomPassword)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %v", err)
+	}
+	randomEmail := helpers.GenerateRandomEmail("envcare.com", randomPassword)
+
+	// Create the call center
+	callCenter := &model.CallCenter{
+		Name:     name,
+		Types:    &Types, // Assuming a default value for types
+		Email:    &randomEmail,
+		Password: &hpassword,
+	}
+
+	// Save the call center to get a valid ID
+	if err := r.DB.Create(callCenter).Error; err != nil {
+		return nil, fmt.Errorf("failed to create call center: %w", err)
+	}
+
+	callCenterID := callCenter.ID.String()
+
+	// Associate the call center with sub-churches
+	for _, subChurchID := range subChurchIDs {
+		subChurch := &model.SubChurch{}
+		if err := r.DB.First(subChurch, "id = ?", subChurchID).Error; err != nil {
+			return nil, fmt.Errorf("failed to find sub-church with ID %s: %w", subChurchID, err)
+		}
+
+		subChurch.CallCenterID = &callCenterID
+
+		// Save changes to the database
+		if err := r.DB.Save(subChurch).Error; err != nil {
+			return nil, fmt.Errorf("failed to save changes to the database: %w", err)
+		}
+	}
+
+	// Save changes to the database
+	if err := r.DB.Save(SubChurch).Error; err != nil {
+		return nil, fmt.Errorf("failed to save changes to the database: %w", err)
+	}
+
+	return callCenter, nil
+}
+
 // DistributeRegistrationsToLeaders is the resolver for the distributeRegistrationsToLeaders field.
 func (r *mutationResolver) DistributeRegistrationsToLeaders(ctx context.Context, leaderIds []string) ([]*model.LeaderRegistrationsDistribution, error) {
 	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
@@ -1707,6 +1777,60 @@ func (r *mutationResolver) DistributeRegistrationsToLeaders(ctx context.Context,
 	}
 
 	return leaderDistribution, nil
+}
+
+// ReportRegistrationByLeader is the resolver for the ReportRegistrationByLeader field.
+func (r *mutationResolver) ReportRegistrationByLeader(ctx context.Context, report *model.ReportRegistrationInput, registrationID string, leaderID string) (*model.Registration, error) {
+	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Validate registrationID and leaderID as valid UUIDs
+	registrationUUID, err := uuid.Parse(registrationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid registrationID: %w", err)
+	}
+
+	_, err = uuid.Parse(leaderID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid leaderID: %w", err)
+	}
+
+	// Fetch the registration from the database
+	register := &model.Registration{}
+
+	if err := r.DB.Where("id = ?", registrationUUID).
+		Preload("Leader").
+		Preload("Member"). // Preload the Member field
+		First(&register).Error; err != nil {
+		// Handle the case when the registration is not found
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("registration not found")
+		}
+		return nil, err
+	}
+
+	// Check if the registration is associated with the provided leader ID
+	if register.LeaderID != nil && *register.LeaderID != leaderID {
+		return nil, fmt.Errorf("registration is not associated with the provided leader")
+	}
+
+	// Update the fields with the input values if they are provided
+	if report != nil {
+		register.Report = report.Report
+	}
+	if report.Done != nil {
+		register.Done = report.Done
+	}
+
+	// Save the updated registration
+	if err := r.DB.Save(register).Error; err != nil {
+		return nil, fmt.Errorf("failed to save registration: %w", err)
+	}
+
+	return register, nil
 }
 
 // Login is the resolver for the login field.
@@ -1859,29 +1983,6 @@ func (r *mutationResolver) LogOut(ctx context.Context) (bool, error) {
 
 	// Return true to indicate a successful logout
 	return true, nil
-}
-
-// ID is the resolver for the ID field.
-func (r *myArrResolver) ID(ctx context.Context, obj *model.MyArr) (string, error) {
-	id := obj.ID.String()
-	return id, nil
-}
-
-// ID is the resolver for the ID field.
-func (r *myTypeResolver) ID(ctx context.Context, obj *model.MyType) (string, error) {
-	id := obj.ID.String()
-	return id, nil
-}
-
-// ID is the resolver for the id field.
-func (r *postResolver) ID(ctx context.Context, obj *model.Post) (string, error) {
-	id := obj.ID.String()
-	return id, nil
-}
-
-// Tags is the resolver for the tags field.
-func (r *postResolver) Tags(ctx context.Context, obj *model.Post) ([]string, error) {
-	return obj.Tags, nil
 }
 
 // GetAllMainChurch is the resolver for the GetAllMainChurch field.
@@ -2050,16 +2151,20 @@ func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Member, error) 
 	return leaders, nil
 }
 
-// Post is the resolver for the post field.
-func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error) {
-	var post model.Post
+// GetCallAgent is the resolver for the GetCallAgent field.
+func (r *queryResolver) GetCallAgent(ctx context.Context) ([]*model.Member, error) {
+	var leaders []*model.Member
 
-	// Use GORM to find the post by its ID
-	if err := r.DB.Where("id = ?", id).First(&post).Error; err != nil {
-		return nil, err
+	types := []string{"CallAgent", "CAL", "CASL"}
+
+	if err := r.DB.Where("? = ANY(types)", pq.Array(types)).
+		Preload("SubChurch").
+		Order("created_at DESC").
+		Find(&leaders).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch leaders: %w", err)
 	}
 
-	return &post, nil
+	return leaders, nil
 }
 
 // Getmember is the resolver for the Getmember field.
@@ -2098,17 +2203,6 @@ func (r *queryResolver) GetMigrationdestinationID(ctx context.Context, destinati
 	return migrationRequests, nil
 }
 
-// GetMyType is the resolver for the GetMyType field.
-func (r *queryResolver) GetMyType(ctx context.Context, id *string) (*model.MyType, error) {
-	// Fetch the MyType object from the database by its ID
-	var myType model.MyType
-	if err := r.DB.Where("id = ?", id).First(&myType).Error; err != nil {
-		return nil, err
-	}
-
-	return &myType, nil
-}
-
 // Getmembers is the resolver for the Getmembers field.
 func (r *queryResolver) Getmembers(ctx context.Context) ([]*model.Member, error) {
 	var leaders []*model.Member
@@ -2138,11 +2232,6 @@ func (r *queryResolver) TodaysMembers(ctx context.Context) ([]*model.Member, err
 	return members, nil
 }
 
-// MembersByChurch is the resolver for the membersByChurch field.
-func (r *queryResolver) MembersByChurch(ctx context.Context, churchID string) ([]*model.Member, error) {
-	panic(fmt.Errorf("not implemented: MembersByChurch - membersByChurch"))
-}
-
 // GetsubChurchByID is the resolver for the GetsubChurchByID field.
 func (r *queryResolver) GetsubChurchByID(ctx context.Context, id string) (*model.SubChurch, error) {
 	var sub model.SubChurch
@@ -2153,17 +2242,6 @@ func (r *queryResolver) GetsubChurchByID(ctx context.Context, id string) (*model
 	}
 
 	return &sub, nil
-}
-
-// GetChurchByMemberID is the resolver for the GetChurchByMemberID field.
-func (r *queryResolver) GetChurchByMemberID(ctx context.Context, id string) (*model.Church, error) {
-	panic(fmt.Errorf("not implemented: GetChurchByMemberID - GetChurchByMemberID"))
-}
-
-// GetAllChurchByID is the resolver for the GetAllChurchByID field.
-func (r *queryResolver) GetAllChurchByID(ctx context.Context) ([]*model.Church, error) {
-	// .Order("created_at DESC")
-	panic(fmt.Errorf("not implemented: GetAllChurchByID - GetAllChurchByID"))
 }
 
 // MembersBySubChurchID is the resolver for the MembersBySubChurchID field.
@@ -2205,9 +2283,16 @@ func (r *queryResolver) CallRoom(ctx context.Context, subChurchID string) ([]*mo
 	return registrations, nil
 }
 
-// GetsubChurch is the resolver for the GetsubChurch field.
-func (r *queryResolver) GetsubChurch(ctx context.Context, id string) (*model.SubChurch, error) {
-	panic(fmt.Errorf("not implemented: GetsubChurch - GetsubChurch"))
+// GetAllRegistersByTempLeader is the resolver for the GetAllRegistersByTempLeader field.
+func (r *queryResolver) GetAllRegistersByTempLeader(ctx context.Context, tempLeaderID string) ([]*model.Registration, error) {
+	var Registrations []*model.Registration
+	if err := r.DB.Where("temp_leader_id = ?", tempLeaderID).
+		Preload("Member").
+		Order("created_at DESC").
+		Find(&Registrations).Error; err != nil {
+		return nil, err
+	}
+	return Registrations, nil
 }
 
 // CurrentWeekRegistrations is the resolver for the currentWeekRegistrations field.
@@ -2318,11 +2403,6 @@ func (r *queryResolver) WeekRegistrationsforSub(ctx context.Context) ([]*model.R
 	return currentWeekRegistrations, nil
 }
 
-// GetRegistrations is the resolver for the GetRegistrations field.
-func (r *queryResolver) GetRegistrations(ctx context.Context) ([]*model.WeeklyResults, error) {
-	panic(fmt.Errorf("not implemented: GetRegistrations - GetRegistrations"))
-}
-
 // ID is the resolver for the id field.
 func (r *registrationResolver) ID(ctx context.Context, obj *model.Registration) (string, error) {
 	id := obj.ID.String()
@@ -2334,6 +2414,9 @@ func (r *subChurchResolver) ID(ctx context.Context, obj *model.SubChurch) (strin
 	id := obj.ID.String()
 	return id, nil
 }
+
+// CallCenter returns CallCenterResolver implementation.
+func (r *Resolver) CallCenter() CallCenterResolver { return &callCenterResolver{r} }
 
 // Church returns ChurchResolver implementation.
 func (r *Resolver) Church() ChurchResolver { return &churchResolver{r} }
@@ -2347,15 +2430,6 @@ func (r *Resolver) MigrationRequest() MigrationRequestResolver { return &migrati
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
-// MyArr returns MyArrResolver implementation.
-func (r *Resolver) MyArr() MyArrResolver { return &myArrResolver{r} }
-
-// MyType returns MyTypeResolver implementation.
-func (r *Resolver) MyType() MyTypeResolver { return &myTypeResolver{r} }
-
-// Post returns PostResolver implementation.
-func (r *Resolver) Post() PostResolver { return &postResolver{r} }
-
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
@@ -2365,13 +2439,11 @@ func (r *Resolver) Registration() RegistrationResolver { return &registrationRes
 // SubChurch returns SubChurchResolver implementation.
 func (r *Resolver) SubChurch() SubChurchResolver { return &subChurchResolver{r} }
 
+type callCenterResolver struct{ *Resolver }
 type churchResolver struct{ *Resolver }
 type memberResolver struct{ *Resolver }
 type migrationRequestResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
-type myArrResolver struct{ *Resolver }
-type myTypeResolver struct{ *Resolver }
-type postResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type registrationResolver struct{ *Resolver }
 type subChurchResolver struct{ *Resolver }

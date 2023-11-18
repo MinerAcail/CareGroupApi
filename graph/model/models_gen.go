@@ -66,9 +66,19 @@ type RegistrationArrayInput struct {
 	CreateInput *CreateRegistrationInput `json:"createInput"`
 }
 
+type RegistrationArrayInputs struct {
+	RegistrationIDs string                   `json:"registrationIDs"`
+	CreateInput     *CreateRegistrationInput `json:"createInput"`
+}
+
 type RegistrationsDistribution struct {
 	LeaderID        string   `json:"leaderID"`
 	RegistrationIDs []string `json:"registrationIDs"`
+}
+
+type ReportRegistrationInput struct {
+	Report *bool `json:"report,omitempty"`
+	Done   *bool `json:"done,omitempty"`
 }
 
 type SubChurchMigrationInput struct {

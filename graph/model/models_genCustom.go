@@ -92,19 +92,23 @@ type Member struct {
 }
 
 type Registration struct {
-	ID          uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4()"`
-	LastComment string     `json:"lastComment"`
-	Absence     bool       `json:"absence"`
-	Present     bool       `json:"present"`
-	CreatedAt   time.Time  `json:"createdAt"`
-	LeaderName  *string    `json:"leaderName,omitempty"`
-	Leader      *Member    `json:"leader,omitempty"`
-	LeaderID    *string    `json:"leaderID,omitempty"`
-	Member      *Member    `json:"member,omitempty"`
-	SubChurch   *SubChurch `json:"subChurch,omitempty"`
-	SubChurchID *string    `json:"subChurchID,omitempty"`
-	MemberID    string     `json:"memberID"`
+	ID           uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4()"`
+	LastComment  string     `json:"lastComment"`
+	Absence      bool       `json:"absence"`
+	Present      bool       `json:"present"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	LeaderName   *string    `json:"leaderName,omitempty"`
+	Leader       *Member    `json:"leader,omitempty"`
+	LeaderID     *string    `json:"leaderID,omitempty"`
+	Member       *Member    `json:"member,omitempty"`
+	SubChurch    *SubChurch `json:"subChurch,omitempty"`
+	SubChurchID  *string    `json:"subChurchID,omitempty"`
+	MemberID     string     `json:"memberID"`
+	Report       *bool      `json:"report,omitempty"`
+	Done         *bool      `json:"done,omitempty"`
+	TempLeaderID *string    `json:"tempLeaderID,omitempty"`
 }
+
 type SubChurch struct {
 	ID        uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
 	Name      string    `json:"name"`
@@ -118,6 +122,21 @@ type SubChurch struct {
 	ChurchID  string    `json:"churchId"`
 	Leaders   []*Member `json:"leaders,omitempty"`
 	Members   []*Member `json:"members,omitempty"`
+	IsLocal   *bool      `json:"isLocal,omitempty"`
+	CallCenterID *string     `json:"callCenterId,omitempty"`
+	CallCenter   *CallCenter `json:"callCenter,omitempty"`
+}
+type CallCenter struct {
+	ID        uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Name      string    `json:"name"`
+	Password  *string   `json:"password,omitempty"`
+	Email     *string   `json:"email,omitempty"`
+	Types     *string   `json:"types,omitempty"`
+	Token     *string   `json:"token,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `json:"createdAt"`
+	SubChurches []*SubChurch `json:"subChurches,omitempty" `
+
 }
 type MigrationRequest struct {
 	ID                  uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4()"`

@@ -8,7 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi"
-	"github.com/go-chi/cors" // Import the cors package
+	"github.com/go-chi/cors" 
 	"github.com/kobbi/vbciapi/database"
 	"github.com/kobbi/vbciapi/graph"
 	"github.com/kobbi/vbciapi/graph/model"
@@ -73,7 +73,7 @@ func main() {
 
 // PerformMigrations performs database migrations using Gorm's AutoMigrate function.
 func PerformMigrations(db *gorm.DB) error {
-	err := db.AutoMigrate(&model.Member{}, &model.Church{}, &model.SubChurch{}, &model.MyArr{}, &model.Registration{}, &model.MigrationRequest{})
+	err := db.AutoMigrate(&model.Member{}, &model.Church{}, &model.SubChurch{}, &model.CallCenter{}, &model.Registration{}, &model.MigrationRequest{})
 	if err != nil {
 		return err
 	}
