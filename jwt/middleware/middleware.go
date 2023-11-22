@@ -172,6 +172,26 @@ func ExtractCTXinfo4AdminOnly(ctx context.Context) error {
 	return nil
 }
 
+func ExtractCTXinfo4CallCenter(ctx context.Context) error {
+	_, ok := ctx.Value(IDContextKey).(string)
+	if !ok {
+		return fmt.Errorf("leader not found in request context")
+	}
+	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
+	if !ok {
+		return fmt.Errorf("leader Type not found in request context")
+	}
+
+	leaderType = strings.ToUpper(leaderType) // Convert leaderType to uppercase
+
+	// Check if the leaderType is not one of the allowed values
+	if leaderType != "CALLCENTER"{
+		return fmt.Errorf("%s is not allowed", leaderType)
+	}
+
+	return nil
+}
+
 // AuthenticationMiddleware is the middleware for authentication.
 /* func AuthenticationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

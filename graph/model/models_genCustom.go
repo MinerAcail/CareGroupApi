@@ -98,6 +98,7 @@ type Registration struct {
 	Present      bool       `json:"present"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	LeaderName   *string    `json:"leaderName,omitempty"`
+	MemberName   *string    `json:"memberName,omitempty"`
 	Leader       *Member    `json:"leader,omitempty"`
 	LeaderID     *string    `json:"leaderID,omitempty"`
 	Member       *Member    `json:"member,omitempty"`
@@ -135,7 +136,9 @@ type CallCenter struct {
 	Token     *string   `json:"token,omitempty"`
 	UpdatedAt time.Time `json:"updatedAt"`
 	CreatedAt time.Time `json:"createdAt"`
-	SubChurches []*SubChurch `json:"subChurches,omitempty" `
+	// SubChurches []*SubChurch `json:"subChurches,omitempty" `
+	SubChurches []*SubChurch `gorm:"foreignKey:CallCenterID" json:"subChurches,omitempty"`
+
 
 }
 type MigrationRequest struct {
@@ -161,6 +164,8 @@ func (Member) IsReturns() {}
 
 func (Church) IsReturns()    {}
 func (SubChurch) IsReturns() {}
+func (CallCenter) IsReturns() {}
+
 
 func IsNumeric(s string) bool {
 	numericRegex := regexp.MustCompile(`^[0-9]+$`)

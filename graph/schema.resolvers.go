@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -414,13 +415,21 @@ func (r *mutationResolver) ImportMemberData(ctx context.Context, file graphql.Up
 	// Log the path of the created CSV file.
 	fmt.Printf("Created CSV file: %s\n", csvFilePath)
 
-	return nil, nil
+	// Convert the Excel data to a CSV file.
+	data, err := schemas.ProcessCSVFile(ctx, csvFilePath, *churchID, r.DB)
+	if err != nil {
+		return nil, err
+	}
+	// Remove the temporary directory after using the file
+	schemas.RemoveTempDir(filepath.Dir(csvFilePath))
+
+	return data, nil
 }
 
 // DataMembers is the resolver for the dataMembers field.
 func (r *mutationResolver) DataMembers(ctx context.Context) (*string, error) {
 	// member := &model.Member{}
-	targetDate := "11/2/2023"
+	targetDate := "11/20/2023"
 
 	// Delete members created on the target date
 	if err := r.DB.Where("DATE(created_at) = ?", targetDate).Delete(&model.Member{}).Error; err != nil {
@@ -552,6 +561,7 @@ func (r *mutationResolver) UpdateLeader(ctx context.Context, input model.UpdateL
 	if !ok {
 		return nil, fmt.Errorf("leaderID not found in request context")
 	}
+
 	// Check if the authenticated user is the same as the member being updated.
 	if leaderID != memberID {
 		return nil, fmt.Errorf("unauthorized: you can only update your own profile")
@@ -561,12 +571,10 @@ func (r *mutationResolver) UpdateLeader(ctx context.Context, input model.UpdateL
 	if err := r.DB.First(leader, "id = ?", leaderID).Error; err != nil {
 		return nil, fmt.Errorf("leader not found: %w", err)
 	}
-
-	// Verify the provided password against the hashed password in the database
 	if err := helpers.VerifyPassword(*leader.Password, *input.Oldpassword); err != nil {
 		return nil, fmt.Errorf("incorrect password, Can't make changes without you old Password")
 	}
-	PhoneNumber := schemas.CleanPhoneNumber(*input.PhoneNumber)
+	// Verify the provided password against the hashed password in the database
 
 	// Update the leader's profile with the provided input fields.
 	if input.Name != nil {
@@ -576,6 +584,7 @@ func (r *mutationResolver) UpdateLeader(ctx context.Context, input model.UpdateL
 		leader.Email = *input.Email
 	}
 	if input.PhoneNumber != nil {
+		PhoneNumber := schemas.CleanPhoneNumber(*input.PhoneNumber)
 		leader.PhoneNumber = &PhoneNumber
 	}
 
@@ -733,6 +742,24 @@ func (r *mutationResolver) DeleteSubChurch(ctx context.Context, subChurchID stri
 	if err := r.DB.Delete(subChurch).Error; err != nil {
 		return false, err
 	}
+	return true, nil
+}
+
+// DeleteAllMembersBySubChurch is the resolver for the deleteAllMembersBySubChurch field.
+func (r *mutationResolver) DeleteAllMembersBySubChurch(ctx context.Context, subChurchID string) (bool, error) {
+	// Find all members with the specified SubChurchID
+	members := []model.Member{}
+	if err := r.DB.Where("sub_church_id = ?", subChurchID).Find(&members).Error; err != nil {
+		return false, err
+	}
+
+	// Delete each member
+	for _, member := range members {
+		if err := r.DB.Delete(&member).Error; err != nil {
+			return false, err
+		}
+	}
+
 	return true, nil
 }
 
@@ -931,7 +958,7 @@ func (r *mutationResolver) CreateMianChurch(ctx context.Context, subChurchName *
 		return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
 	}
 
-	for i := 0; i < len(leaderDaysOfWeek); i++ {
+	for i := 0; i < 7; i++ {
 		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
 		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
 
@@ -962,7 +989,7 @@ func (r *mutationResolver) CreateMianChurch(ctx context.Context, subChurchName *
 	// Create 4 sub-leaders
 	subLeaderIndex := 0
 	subLeaderSubLeader := "SubLeader"
-	for i := 0; i < len(subLeaderDaysOfWeek); i++ {
+	for i := 0; i < 7; i++ {
 		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
 		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
 
@@ -1669,17 +1696,17 @@ func (r *mutationResolver) CreateCallCenterForSubChurchs(ctx context.Context, na
 		return nil, fmt.Errorf("name cannot be empty")
 	}
 
-	// Assuming you have a middleware that provides the main church ID in the context
-	SubChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
-	if !ok {
-		return nil, fmt.Errorf("SubChurch ID not found in request context")
-	}
+	// // Assuming you have a middleware that provides the main church ID in the context
+	// SubChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
+	// if !ok {
+	// 	return nil, fmt.Errorf("SubChurch ID not found in request context")
+	// }
 
-	// Retrieve the main church
-	SubChurch := &model.SubChurch{}
-	if err := r.DB.First(SubChurch, "id = ?", SubChurchID).Error; err != nil {
-		return nil, fmt.Errorf("failed to find main church: %w", err)
-	}
+	// // Retrieve the main church
+	// SubChurch := &model.SubChurch{}
+	// if err := r.DB.First(SubChurch, "church_id = ?", SubChurchID).Error; err != nil {
+	// 	return nil, fmt.Errorf("failed to find main church: %w", err)
+	// }
 
 	Types := "callCenter"
 	randomPassword := helpers.GenerateRandomPassword(6)
@@ -1707,22 +1734,17 @@ func (r *mutationResolver) CreateCallCenterForSubChurchs(ctx context.Context, na
 
 	// Associate the call center with sub-churches
 	for _, subChurchID := range subChurchIDs {
-		subChurch := &model.SubChurch{}
-		if err := r.DB.First(subChurch, "id = ?", subChurchID).Error; err != nil {
+		sub := &model.SubChurch{}
+		if err := r.DB.First(sub, "id = ?", subChurchID).Error; err != nil {
 			return nil, fmt.Errorf("failed to find sub-church with ID %s: %w", subChurchID, err)
 		}
 
-		subChurch.CallCenterID = &callCenterID
+		sub.CallCenterID = &callCenterID
 
 		// Save changes to the database
-		if err := r.DB.Save(subChurch).Error; err != nil {
+		if err := r.DB.Save(sub).Error; err != nil {
 			return nil, fmt.Errorf("failed to save changes to the database: %w", err)
 		}
-	}
-
-	// Save changes to the database
-	if err := r.DB.Save(SubChurch).Error; err != nil {
-		return nil, fmt.Errorf("failed to save changes to the database: %w", err)
 	}
 
 	return callCenter, nil
@@ -1731,7 +1753,7 @@ func (r *mutationResolver) CreateCallCenterForSubChurchs(ctx context.Context, na
 // DistributeRegistrationsToLeaders is the resolver for the distributeRegistrationsToLeaders field.
 func (r *mutationResolver) DistributeRegistrationsToLeaders(ctx context.Context, leaderIds []string) ([]*model.LeaderRegistrationsDistribution, error) {
 	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
-	err := middleware.ExtractCTXinfo(ctx)
+	err := middleware.ExtractCTXinfo4CallCenter(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1787,7 +1809,6 @@ func (r *mutationResolver) ReportRegistrationByLeader(ctx context.Context, repor
 		return nil, err
 	}
 
-	// Validate registrationID and leaderID as valid UUIDs
 	registrationUUID, err := uuid.Parse(registrationID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid registrationID: %w", err)
@@ -1809,7 +1830,7 @@ func (r *mutationResolver) ReportRegistrationByLeader(ctx context.Context, repor
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("registration not found")
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to Fetch the registration: %w", err)
 	}
 
 	// Check if the registration is associated with the provided leader ID
@@ -1840,6 +1861,7 @@ func (r *mutationResolver) Login(ctx context.Context, input model.LoginLeaderInp
 		// Fetch the leader from the database based on the provided email
 		leader := &model.Church{}
 		sub := &model.SubChurch{}
+		callCenter := &model.CallCenter{}
 
 		// Check if it's an admin leader
 		if err := r.DB.Where("email = ?", clear).First(leader).Error; err == nil {
@@ -1895,6 +1917,33 @@ func (r *mutationResolver) Login(ctx context.Context, input model.LoginLeaderInp
 				ca.SetToken(token)
 
 				return sub, nil
+			}
+		} else if err := r.DB.Where("email = ?", clear).Preload("SubChurches").First(callCenter).Error; err == nil {
+			if *callCenter.Types == "callCenter" {
+				// Verify the provided password against the hashed password in the database
+				if err := helpers.VerifyPassword(*callCenter.Password, input.Password); err != nil {
+					return nil, fmt.Errorf("invalid password")
+				}
+				// Generate a new token for the authenticated callCenter
+				token, err := helpers.GenerateToken(*callCenter.Types, callCenter.ID.String())
+				if err != nil {
+					return nil, fmt.Errorf("failed to generate token")
+				}
+				// Update the callCenter's token with the newly generated token
+				callCenter.Token = &token
+
+				// Save the updated callCenter with the token to the database
+				if err := r.DB.Save(callCenter).Error; err != nil {
+					return nil, fmt.Errorf("failed to save callCenter's token to the database")
+				}
+
+				// Retrieve the CookieAccess object from the context
+				ca := middleware.GetCookieAccess(ctx)
+
+				// Set the generated token as a cookie using the CookieAccess object
+				ca.SetToken(token)
+
+				return callCenter, nil
 			}
 		}
 		return nil, fmt.Errorf("email not found or invalid login input")
@@ -2066,16 +2115,53 @@ func (r *queryResolver) GetAllMembersByLeader(ctx context.Context, leaderID stri
 }
 
 // GetAllSubLeaderByLeader is the resolver for the GetAllSubLeaderByLeader field.
-func (r *queryResolver) GetAllSubLeaderByLeader(ctx context.Context, leaderID string) ([]*model.Member, error) {
+func (r *queryResolver) GetAllSubLeaderByLeader(ctx context.Context, subChurchID string, day string) ([]*model.Member, error) {
 	var members []*model.Member
 
-	// Use GORM to query the database.
-	if err := r.DB.Where("leader_id = ? AND types && ?", leaderID, pq.Array([]string{"SubLeader"})).Preload("SubChurch").Order("created_at DESC").Find(&members).Error; err != nil {
-		// Handle the error, such as logging or returning an error response.
+	// var members []*model.Member
+
+	if err := r.DB.Where("types IN (?) AND day = ? AND sub_church_id = ?", pq.Array([]string{"SubLeader"}), day, subChurchID).Preload("SubChurch").Order("created_at DESC").Find(&members).Error; err != nil {
+		// Handle errors here, such as if no leaders with the same day are found.
+		return nil, err
+	}
+	return members, nil
+}
+
+// GetNoteficationByLeader is the resolver for the GetNoteficationByLeader field.
+func (r *queryResolver) GetNoteficationByLeader(ctx context.Context, subChurchID string, day *string) ([]*model.Member, error) {
+	// Step 1: Fetch all sub-leaders based on specified conditions
+	var subLeaders []*model.Member
+	if err := r.DB.
+		Where("types IN (?) AND day = ? AND sub_church_id = ?", pq.Array([]string{"SubLeader"}), day, subChurchID).
+		Find(&subLeaders).
+		Error; err != nil {
+		// Handle errors here, such as if no sub-leaders are found.
 		return nil, err
 	}
 
-	return members, nil
+	// Step 2: Extract IDs of sub-leaders and log them
+	var subLeaderIDs []string
+	for _, subLeader := range subLeaders {
+		idString := subLeader.ID.String()
+		subLeaderIDs = append(subLeaderIDs, idString)
+		log.Printf("SubLeader ID: %s", idString)
+	}
+
+	// Step 3: Use sub-leader IDs to query registrations with Report true
+	var subLeadersMembers []*model.Member
+	if err := r.DB.
+		Where("leader_id IN (?) AND report = ?", subLeaderIDs, true).
+		Preload("Registrations", func(db *gorm.DB) *gorm.DB {
+			return db.Where("registrations.report = ?", true)
+		}).
+		Order("created_at DESC").
+		Find(&subLeadersMembers).
+		Error; err != nil {
+		// Handle errors here, such as if no registrations are found for the sub-leaders.
+		return nil, err
+	}
+
+	return subLeadersMembers, nil
 }
 
 // GetAllRegistersByMemberID is the resolver for the GetAllRegistersByMemberID field.
@@ -2136,6 +2222,18 @@ func (r *queryResolver) GetAllsubChurch(ctx context.Context) ([]*model.SubChurch
 	return sub, nil
 }
 
+// GetCallCenter is the resolver for the GetCallCenter field.
+func (r *queryResolver) GetCallCenter(ctx context.Context) ([]*model.CallCenter, error) {
+	var callCenters []*model.CallCenter
+
+	// Use Preload to include the SubChurches relationship
+	if err := r.DB.Preload("SubChurches").Find(&callCenters).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch Call Centers: %w", err)
+	}
+
+	return callCenters, nil
+}
+
 // GetCaller is the resolver for the GetCaller field.
 func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Member, error) {
 	var leaders []*model.Member
@@ -2155,9 +2253,10 @@ func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Member, error) 
 func (r *queryResolver) GetCallAgent(ctx context.Context) ([]*model.Member, error) {
 	var leaders []*model.Member
 
-	types := []string{"CallAgent", "CAL", "CASL"}
+	// types := []string{"CallAgent"}
 
-	if err := r.DB.Where("? = ANY(types)", pq.Array(types)).
+	if err := r.DB.WithContext(ctx).
+		Where("? = ANY(types)", "CallAgent").
 		Preload("SubChurch").
 		Order("created_at DESC").
 		Find(&leaders).Error; err != nil {
@@ -2261,9 +2360,14 @@ func (r *queryResolver) RegistrationsByLeader(ctx context.Context, mleaderID str
 	var registrations []*model.Registration
 
 	// Preload the Leader and member associations
-	if err := r.DB.Where("leader_id = ?", mleaderID).Preload("Leader").Preload("Member.SubChurch").Order("created_at DESC").Find(&registrations).Error; err != nil {
-		fmt.Println("Error preloading associations:", err)
-		return nil, err
+	if err := r.DB.Where("leader_id = ?", mleaderID).
+		Preload("Leader").
+		Preload("Member.SubChurch").
+		Order("created_at DESC").
+		Find(&registrations).Error; err != nil {
+		// Log the error using your preferred logging mechanism
+		log.Printf("Error fetching registrations by leader: %v", err)
+		return nil, errors.New("failed to fetch registrations by leader")
 	}
 
 	return registrations, nil
@@ -2363,6 +2467,28 @@ func (r *queryResolver) CurrentWeekRegistrationsforsub(ctx context.Context, subC
 	}
 
 	return currentWeekRegistrations, nil
+}
+
+// CurrentWeekRegistrationsforCallCenter is the resolver for the currentWeekRegistrationsforCallCenter field.
+func (r *queryResolver) CurrentWeekRegistrationsforCallCenter(ctx context.Context) ([]*model.SubChurch, error) {
+	callCenterID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("leaderID not found in request context")
+	}
+	var subChurches []*model.SubChurch
+
+	// Preload SubChurches, Members, and Registrations
+	if err := r.DB.Preload("Members.Registrations").Where("call_center_id = ?", callCenterID).Order("created_at DESC").Find(&subChurches).Error; err != nil {
+		return nil, err
+	}
+
+	// Filter SubChurches and Members based on current week registrations
+	currentWeekNumber := schemas.GetWeekNumber(time.Now())
+	for _, subChurch := range subChurches {
+		subChurch.Members = schemas.FilterMembersByWeek(r.DB, ctx, subChurch.Members, currentWeekNumber)
+	}
+
+	return subChurches, nil
 }
 
 // WeekRegistrationsforSub is the resolver for the WeekRegistrationsforSub field.

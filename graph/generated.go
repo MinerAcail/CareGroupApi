@@ -135,6 +135,7 @@ type ComplexityRoot struct {
 		CreateSubChurch                           func(childComplexity int, subChurchName *string, branch bool, isLocal *bool) int
 		CreateSubChurchesWithMainChurch           func(childComplexity int, mainChurchID string, subChurchNames []string) int
 		DataMembers                               func(childComplexity int) int
+		DeleteAllMembersBySubChurch               func(childComplexity int, subChurchID string) int
 		DeleteChurch                              func(childComplexity int, mainChurchID string) int
 		DeleteMember                              func(childComplexity int, memberID string) int
 		DeleteRegistration                        func(childComplexity int, registrationID string) int
@@ -165,31 +166,34 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		CallRoom                       func(childComplexity int, subChurchID string) int
-		CurrentWeekRegistrations       func(childComplexity int) int
-		CurrentWeekRegistrationsforsub func(childComplexity int, subChurchID string) int
-		GetAllMainChurch               func(childComplexity int) int
-		GetAllMembersByLeader          func(childComplexity int, leaderID string) int
-		GetAllMembersBySubChurchID     func(childComplexity int, subChurchID string) int
-		GetAllRegistersByMemberID      func(childComplexity int, memberID string) int
-		GetAllRegistersByTempLeader    func(childComplexity int, tempLeaderID string) int
-		GetAllSubChurchLeader          func(childComplexity int, subChurchID string) int
-		GetAllSubLeaderByLeader        func(childComplexity int, leaderID string) int
-		GetAllsubChurch                func(childComplexity int) int
-		GetAllsubChurchByMainChurchID  func(childComplexity int, mainChurchID string) int
-		GetAllsubChurchByMemberID      func(childComplexity int, memberID string) int
-		GetCallAgent                   func(childComplexity int) int
-		GetCaller                      func(childComplexity int) int
-		GetMigration                   func(childComplexity int, id string) int
-		GetMigrationdestinationID      func(childComplexity int, destinationChurchID string) int
-		Getmember                      func(childComplexity int, id string) int
-		Getmembers                     func(childComplexity int) int
-		GetsubChurchByID               func(childComplexity int, id string) int
-		LastFourCommentsForMember      func(childComplexity int, memberID string) int
-		MembersBySubChurchID           func(childComplexity int, subChurchID string) int
-		RegistrationsByLeader          func(childComplexity int, mleaderID string) int
-		TodaysMembers                  func(childComplexity int) int
-		WeekRegistrationsforSub        func(childComplexity int) int
+		CallRoom                              func(childComplexity int, subChurchID string) int
+		CurrentWeekRegistrations              func(childComplexity int) int
+		CurrentWeekRegistrationsforCallCenter func(childComplexity int) int
+		CurrentWeekRegistrationsforsub        func(childComplexity int, subChurchID string) int
+		GetAllMainChurch                      func(childComplexity int) int
+		GetAllMembersByLeader                 func(childComplexity int, leaderID string) int
+		GetAllMembersBySubChurchID            func(childComplexity int, subChurchID string) int
+		GetAllRegistersByMemberID             func(childComplexity int, memberID string) int
+		GetAllRegistersByTempLeader           func(childComplexity int, tempLeaderID string) int
+		GetAllSubChurchLeader                 func(childComplexity int, subChurchID string) int
+		GetAllSubLeaderByLeader               func(childComplexity int, subChurchID string, day string) int
+		GetAllsubChurch                       func(childComplexity int) int
+		GetAllsubChurchByMainChurchID         func(childComplexity int, mainChurchID string) int
+		GetAllsubChurchByMemberID             func(childComplexity int, memberID string) int
+		GetCallAgent                          func(childComplexity int) int
+		GetCallCenter                         func(childComplexity int) int
+		GetCaller                             func(childComplexity int) int
+		GetMigration                          func(childComplexity int, id string) int
+		GetMigrationdestinationID             func(childComplexity int, destinationChurchID string) int
+		GetNoteficationByLeader               func(childComplexity int, subChurchID string, day *string) int
+		Getmember                             func(childComplexity int, id string) int
+		Getmembers                            func(childComplexity int) int
+		GetsubChurchByID                      func(childComplexity int, id string) int
+		LastFourCommentsForMember             func(childComplexity int, memberID string) int
+		MembersBySubChurchID                  func(childComplexity int, subChurchID string) int
+		RegistrationsByLeader                 func(childComplexity int, mleaderID string) int
+		TodaysMembers                         func(childComplexity int) int
+		WeekRegistrationsforSub               func(childComplexity int) int
 	}
 
 	Registration struct {
@@ -203,6 +207,7 @@ type ComplexityRoot struct {
 		LeaderName   func(childComplexity int) int
 		Member       func(childComplexity int) int
 		MemberID     func(childComplexity int) int
+		MemberName   func(childComplexity int) int
 		Present      func(childComplexity int) int
 		Report       func(childComplexity int) int
 		SubChurch    func(childComplexity int) int
@@ -270,6 +275,7 @@ type MutationResolver interface {
 	DeleteChurch(ctx context.Context, mainChurchID string) (bool, error)
 	DeleteMember(ctx context.Context, memberID string) (bool, error)
 	DeleteSubChurch(ctx context.Context, subChurchID string) (bool, error)
+	DeleteAllMembersBySubChurch(ctx context.Context, subChurchID string) (bool, error)
 	DeleteRegistration(ctx context.Context, registrationID string) (bool, error)
 	CreateSubChurch(ctx context.Context, subChurchName *string, branch bool, isLocal *bool) (*model.Church, error)
 	CreateMianChurch(ctx context.Context, subChurchName *string) (*model.Church, error)
@@ -300,10 +306,12 @@ type QueryResolver interface {
 	GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error)
 	GetAllSubChurchLeader(ctx context.Context, subChurchID string) (*model.Member, error)
 	GetAllMembersByLeader(ctx context.Context, leaderID string) ([]*model.Member, error)
-	GetAllSubLeaderByLeader(ctx context.Context, leaderID string) ([]*model.Member, error)
+	GetAllSubLeaderByLeader(ctx context.Context, subChurchID string, day string) ([]*model.Member, error)
+	GetNoteficationByLeader(ctx context.Context, subChurchID string, day *string) ([]*model.Member, error)
 	GetAllRegistersByMemberID(ctx context.Context, memberID string) ([]*model.Registration, error)
 	LastFourCommentsForMember(ctx context.Context, memberID string) ([]*string, error)
 	GetAllsubChurch(ctx context.Context) ([]*model.SubChurch, error)
+	GetCallCenter(ctx context.Context) ([]*model.CallCenter, error)
 	GetCaller(ctx context.Context) ([]*model.Member, error)
 	GetCallAgent(ctx context.Context) ([]*model.Member, error)
 	Getmember(ctx context.Context, id string) (*model.Member, error)
@@ -318,6 +326,7 @@ type QueryResolver interface {
 	GetAllRegistersByTempLeader(ctx context.Context, tempLeaderID string) ([]*model.Registration, error)
 	CurrentWeekRegistrations(ctx context.Context) ([]*model.Registration, error)
 	CurrentWeekRegistrationsforsub(ctx context.Context, subChurchID string) ([]*model.Registration, error)
+	CurrentWeekRegistrationsforCallCenter(ctx context.Context) ([]*model.SubChurch, error)
 	WeekRegistrationsforSub(ctx context.Context) ([]*model.Registration, error)
 }
 type RegistrationResolver interface {
@@ -865,6 +874,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DataMembers(childComplexity), true
 
+	case "Mutation.deleteAllMembersBySubChurch":
+		if e.complexity.Mutation.DeleteAllMembersBySubChurch == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteAllMembersBySubChurch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteAllMembersBySubChurch(childComplexity, args["subChurchId"].(string)), true
+
 	case "Mutation.deleteChurch":
 		if e.complexity.Mutation.DeleteChurch == nil {
 			break
@@ -1152,6 +1173,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.CurrentWeekRegistrations(childComplexity), true
 
+	case "Query.currentWeekRegistrationsforCallCenter":
+		if e.complexity.Query.CurrentWeekRegistrationsforCallCenter == nil {
+			break
+		}
+
+		return e.complexity.Query.CurrentWeekRegistrationsforCallCenter(childComplexity), true
+
 	case "Query.currentWeekRegistrationsforsub":
 		if e.complexity.Query.CurrentWeekRegistrationsforsub == nil {
 			break
@@ -1241,7 +1269,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.GetAllSubLeaderByLeader(childComplexity, args["leaderID"].(string)), true
+		return e.complexity.Query.GetAllSubLeaderByLeader(childComplexity, args["subChurchID"].(string), args["day"].(string)), true
 
 	case "Query.GetAllsubChurch":
 		if e.complexity.Query.GetAllsubChurch == nil {
@@ -1281,6 +1309,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.GetCallAgent(childComplexity), true
 
+	case "Query.GetCallCenter":
+		if e.complexity.Query.GetCallCenter == nil {
+			break
+		}
+
+		return e.complexity.Query.GetCallCenter(childComplexity), true
+
 	case "Query.GetCaller":
 		if e.complexity.Query.GetCaller == nil {
 			break
@@ -1311,6 +1346,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetMigrationdestinationID(childComplexity, args["destinationChurchID"].(string)), true
+
+	case "Query.GetNoteficationByLeader":
+		if e.complexity.Query.GetNoteficationByLeader == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetNoteficationByLeader_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetNoteficationByLeader(childComplexity, args["subChurchID"].(string), args["day"].(*string)), true
 
 	case "Query.Getmember":
 		if e.complexity.Query.Getmember == nil {
@@ -1462,6 +1509,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Registration.MemberID(childComplexity), true
+
+	case "Registration.memberName":
+		if e.complexity.Registration.MemberName == nil {
+			break
+		}
+
+		return e.complexity.Registration.MemberName(childComplexity), true
 
 	case "Registration.present":
 		if e.complexity.Registration.Present == nil {
@@ -2115,6 +2169,21 @@ func (ec *executionContext) field_Mutation_createSubChurchesWithMainChurch_args(
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteAllMembersBySubChurch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["subChurchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subChurchId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_deleteChurch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2575,14 +2644,23 @@ func (ec *executionContext) field_Query_GetAllSubLeaderByLeader_args(ctx context
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
-	if tmp, ok := rawArgs["leaderID"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("leaderID"))
+	if tmp, ok := rawArgs["subChurchID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchID"))
 		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["leaderID"] = arg0
+	args["subChurchID"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["day"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["day"] = arg1
 	return args, nil
 }
 
@@ -2643,6 +2721,30 @@ func (ec *executionContext) field_Query_GetMigrationdestinationID_args(ctx conte
 		}
 	}
 	args["destinationChurchID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_GetNoteficationByLeader_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["subChurchID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subChurchID"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["day"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["day"] = arg1
 	return args, nil
 }
 
@@ -4306,6 +4408,8 @@ func (ec *executionContext) fieldContext_Member_registrations(ctx context.Contex
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -6066,6 +6170,61 @@ func (ec *executionContext) fieldContext_Mutation_deleteSubChurch(ctx context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_deleteAllMembersBySubChurch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteAllMembersBySubChurch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteAllMembersBySubChurch(rctx, fc.Args["subChurchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteAllMembersBySubChurch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteAllMembersBySubChurch_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_deleteRegistration(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_deleteRegistration(ctx, field)
 	if err != nil {
@@ -6676,6 +6835,8 @@ func (ec *executionContext) fieldContext_Mutation_assignLeaderMemberRegisterToAn
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -6763,6 +6924,8 @@ func (ec *executionContext) fieldContext_Mutation_tempLeadercreateRegistrationAr
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -6850,6 +7013,8 @@ func (ec *executionContext) fieldContext_Mutation_updateRegistrationArray(ctx co
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -7098,6 +7263,8 @@ func (ec *executionContext) fieldContext_Mutation_createRegistration(ctx context
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -7185,6 +7352,8 @@ func (ec *executionContext) fieldContext_Mutation_createRegistrationArray(ctx co
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -7272,6 +7441,8 @@ func (ec *executionContext) fieldContext_Mutation_updateRegistration(ctx context
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -7356,6 +7527,8 @@ func (ec *executionContext) fieldContext_Mutation_updateRegistrationByLeader(ctx
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -7570,6 +7743,8 @@ func (ec *executionContext) fieldContext_Mutation_ReportRegistrationByLeader(ctx
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -8386,7 +8561,7 @@ func (ec *executionContext) _Query_GetAllSubLeaderByLeader(ctx context.Context, 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().GetAllSubLeaderByLeader(rctx, fc.Args["leaderID"].(string))
+		return ec.resolvers.Query().GetAllSubLeaderByLeader(rctx, fc.Args["subChurchID"].(string), fc.Args["day"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -8458,6 +8633,92 @@ func (ec *executionContext) fieldContext_Query_GetAllSubLeaderByLeader(ctx conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_GetNoteficationByLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetNoteficationByLeader(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetNoteficationByLeader(rctx, fc.Args["subChurchID"].(string), fc.Args["day"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Member)
+	fc.Result = res
+	return ec.marshalOMember2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetNoteficationByLeader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Member_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Member_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Member_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Member_phoneNumber(ctx, field)
+			case "location":
+				return ec.fieldContext_Member_location(ctx, field)
+			case "day":
+				return ec.fieldContext_Member_day(ctx, field)
+			case "password":
+				return ec.fieldContext_Member_password(ctx, field)
+			case "types":
+				return ec.fieldContext_Member_types(ctx, field)
+			case "token":
+				return ec.fieldContext_Member_token(ctx, field)
+			case "LeaderID":
+				return ec.fieldContext_Member_LeaderID(ctx, field)
+			case "ReferenceIDCount":
+				return ec.fieldContext_Member_ReferenceIDCount(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Member_registrations(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Member_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Member_subChurchID(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Member_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Member_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetNoteficationByLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_GetAllRegistersByMemberID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_GetAllRegistersByMemberID(ctx, field)
 	if err != nil {
@@ -8510,6 +8771,8 @@ func (ec *executionContext) fieldContext_Query_GetAllRegistersByMemberID(ctx con
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -8662,6 +8925,67 @@ func (ec *executionContext) fieldContext_Query_GetAllsubChurch(ctx context.Conte
 				return ec.fieldContext_SubChurch_CallCenter(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SubChurch", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_GetCallCenter(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetCallCenter(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetCallCenter(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.CallCenter)
+	fc.Result = res
+	return ec.marshalOCallCenter2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCallCenter(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetCallCenter(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "ID":
+				return ec.fieldContext_CallCenter_ID(ctx, field)
+			case "Name":
+				return ec.fieldContext_CallCenter_Name(ctx, field)
+			case "Password":
+				return ec.fieldContext_CallCenter_Password(ctx, field)
+			case "Email":
+				return ec.fieldContext_CallCenter_Email(ctx, field)
+			case "Types":
+				return ec.fieldContext_CallCenter_Types(ctx, field)
+			case "Token":
+				return ec.fieldContext_CallCenter_Token(ctx, field)
+			case "UpdatedAt":
+				return ec.fieldContext_CallCenter_UpdatedAt(ctx, field)
+			case "CreatedAt":
+				return ec.fieldContext_CallCenter_CreatedAt(ctx, field)
+			case "SubChurches":
+				return ec.fieldContext_CallCenter_SubChurches(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CallCenter", field.Name)
 		},
 	}
 	return fc, nil
@@ -9422,6 +9746,8 @@ func (ec *executionContext) fieldContext_Query_registrationsByLeader(ctx context
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -9506,6 +9832,8 @@ func (ec *executionContext) fieldContext_Query_CallRoom(ctx context.Context, fie
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -9590,6 +9918,8 @@ func (ec *executionContext) fieldContext_Query_GetAllRegistersByTempLeader(ctx c
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -9677,6 +10007,8 @@ func (ec *executionContext) fieldContext_Query_currentWeekRegistrations(ctx cont
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -9753,6 +10085,8 @@ func (ec *executionContext) fieldContext_Query_currentWeekRegistrationsforsub(ct
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -9781,6 +10115,82 @@ func (ec *executionContext) fieldContext_Query_currentWeekRegistrationsforsub(ct
 	if fc.Args, err = ec.field_Query_currentWeekRegistrationsforsub_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_currentWeekRegistrationsforCallCenter(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_currentWeekRegistrationsforCallCenter(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CurrentWeekRegistrationsforCallCenter(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.SubChurch)
+	fc.Result = res
+	return ec.marshalNSubChurch2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐSubChurchᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_currentWeekRegistrationsforCallCenter(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SubChurch_id(ctx, field)
+			case "name":
+				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SubChurch_createdAt(ctx, field)
+			case "church":
+				return ec.fieldContext_SubChurch_church(ctx, field)
+			case "churchId":
+				return ec.fieldContext_SubChurch_churchId(ctx, field)
+			case "isLocal":
+				return ec.fieldContext_SubChurch_isLocal(ctx, field)
+			case "leaders":
+				return ec.fieldContext_SubChurch_leaders(ctx, field)
+			case "members":
+				return ec.fieldContext_SubChurch_members(ctx, field)
+			case "CallCenterID":
+				return ec.fieldContext_SubChurch_CallCenterID(ctx, field)
+			case "CallCenter":
+				return ec.fieldContext_SubChurch_CallCenter(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SubChurch", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -9840,6 +10250,8 @@ func (ec *executionContext) fieldContext_Query_WeekRegistrationsforSub(ctx conte
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -10321,6 +10733,47 @@ func (ec *executionContext) _Registration_leaderName(ctx context.Context, field 
 }
 
 func (ec *executionContext) fieldContext_Registration_leaderName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Registration",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Registration_memberName(ctx context.Context, field graphql.CollectedField, obj *model.Registration) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Registration_memberName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MemberName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Registration_memberName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Registration",
 		Field:      field,
@@ -11651,6 +12104,8 @@ func (ec *executionContext) fieldContext_WeeklyResults_registrations(ctx context
 				return ec.fieldContext_Registration_createdAt(ctx, field)
 			case "leaderName":
 				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
 			case "leader":
 				return ec.fieldContext_Registration_leader(ctx, field)
 			case "leaderID":
@@ -14110,6 +14565,13 @@ func (ec *executionContext) _Returns(ctx context.Context, sel ast.SelectionSet, 
 			return graphql.Null
 		}
 		return ec._Member(ctx, sel, obj)
+	case model.CallCenter:
+		return ec._CallCenter(ctx, sel, &obj)
+	case *model.CallCenter:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._CallCenter(ctx, sel, obj)
 	default:
 		panic(fmt.Errorf("unexpected type %T", obj))
 	}
@@ -14119,7 +14581,7 @@ func (ec *executionContext) _Returns(ctx context.Context, sel ast.SelectionSet, 
 
 // region    **************************** object.gotpl ****************************
 
-var callCenterImplementors = []string{"CallCenter"}
+var callCenterImplementors = []string{"CallCenter", "Returns"}
 
 func (ec *executionContext) _CallCenter(ctx context.Context, sel ast.SelectionSet, obj *model.CallCenter) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, callCenterImplementors)
@@ -14751,6 +15213,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "deleteAllMembersBySubChurch":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteAllMembersBySubChurch(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "deleteRegistration":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteRegistration(ctx, field)
@@ -15105,6 +15574,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetNoteficationByLeader":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetNoteficationByLeader(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "GetAllRegistersByMemberID":
 			field := field
 
@@ -15153,6 +15641,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_GetAllsubChurch(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetCallCenter":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetCallCenter(ctx, field)
 				return res
 			}
 
@@ -15437,6 +15944,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "currentWeekRegistrationsforCallCenter":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_currentWeekRegistrationsforCallCenter(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "WeekRegistrationsforSub":
 			field := field
 
@@ -15563,6 +16092,8 @@ func (ec *executionContext) _Registration(ctx context.Context, sel ast.Selection
 			}
 		case "leaderName":
 			out.Values[i] = ec._Registration_leaderName(ctx, field, obj)
+		case "memberName":
+			out.Values[i] = ec._Registration_memberName(ctx, field, obj)
 		case "leader":
 			out.Values[i] = ec._Registration_leader(ctx, field, obj)
 		case "leaderID":
@@ -16869,6 +17400,47 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	}
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOCallCenter2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCallCenter(ctx context.Context, sel ast.SelectionSet, v []*model.CallCenter) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOCallCenter2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCallCenter(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
 }
 
 func (ec *executionContext) marshalOCallCenter2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCallCenter(ctx context.Context, sel ast.SelectionSet, v *model.CallCenter) graphql.Marshaler {

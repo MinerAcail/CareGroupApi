@@ -34,6 +34,7 @@ type Registration {
   done: Boolean
   createdAt: Time!
   leaderName: String
+  memberName: String
   leader: Member
   leaderID: String
   member: Member
@@ -73,7 +74,7 @@ type SubChurch {
   leaders: [Member]
   members: [Member]
   CallCenterID: String
-  CallCenter: CallCenter
+  CallCenter: CallCenter 
 }
 type CallCenter {
   ID: String!
@@ -84,9 +85,9 @@ type CallCenter {
   Token: String
   UpdatedAt: Time!
   CreatedAt: Time!
-  SubChurches: [SubChurch]
+  SubChurches: [SubChurch] 
 }
-union Returns = Church | SubChurch | Member
+union Returns = Church | SubChurch | Member | CallCenter
 
 type WeeklyResults {
   date: DateInfo
@@ -104,11 +105,14 @@ type Query {
   GetAllMembersBySubChurchID(subChurchId: String!): [Member]
   GetAllSubChurchLeader(subChurchId: String!): Member
   GetAllMembersByLeader(leaderID: String!): [Member]
-  GetAllSubLeaderByLeader(leaderID: String!): [Member]
+  GetAllSubLeaderByLeader(subChurchID: String!,day: String!): [Member]
+  GetNoteficationByLeader(subChurchID: String!,day: String): [Member]
   GetAllRegistersByMemberID(MemberId: String!): [Registration]
   LastFourCommentsForMember(memberID: String!): [String]
 
   GetAllsubChurch: [SubChurch]
+  GetCallCenter: [CallCenter]
+
   GetCaller: [Member]
   GetCallAgent: [Member]
 
@@ -130,6 +134,7 @@ type Query {
 
   currentWeekRegistrations: [Registration!]!
   currentWeekRegistrationsforsub(subChurchId: String!): [Registration!]!
+  currentWeekRegistrationsforCallCenter: [SubChurch!]!
   WeekRegistrationsforSub: [Registration!]!
 }
 
@@ -252,6 +257,7 @@ type Mutation {
   deleteChurch(mainChurchId: String!): Boolean!
   deleteMember(memberId: String!): Boolean!
   deleteSubChurch(subChurchId: String!): Boolean!
+  deleteAllMembersBySubChurch(subChurchId: String!): Boolean!
   deleteRegistration(registrationId: String!): Boolean!
 
   createSubChurch(
