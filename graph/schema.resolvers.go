@@ -883,6 +883,19 @@ func (r *mutationResolver) CreateSubChurch(ctx context.Context, subChurchName *s
 	}
 
 	leader.Token = &token // Set the leader's token here
+	// Parse the UUID separately
+	uuid, err := uuid.Parse(leader.ID.String())
+	if err != nil {
+		return nil, fmt.Errorf("invalid Leader ID: %w", err)
+	}
+
+	// Convert the UUID to string before assigning to LeaderID
+	uuidString := uuid.String()
+	leader.LeaderID = &uuidString
+
+	if err := r.DB.Save(leader).Error; err != nil {
+		return nil, fmt.Errorf("failed to create leader: %w", err)
+	}
 
 	return mainChurch, nil
 }
@@ -958,6 +971,54 @@ func (r *mutationResolver) CreateMianChurch(ctx context.Context, subChurchName *
 		return nil, fmt.Errorf("failed to hash password: %w", schemas.ErrInvalidInput)
 	}
 
+	// Create 4 sub-leaders
+	subLeaderIndex := 0
+	subLeaderSubLeader := "SubLeader"
+	const numberOfSubLeaders = 7
+
+	for i := 0; i < numberOfSubLeaders; i++ {
+		subChurchIDStr := subChurch.ID.String()
+		phoneNumber := randomPhoneNumber()
+
+		subLeader := &model.Member{
+			Name:        fmt.Sprintf("%s SubLeader %d", uppercasedSubChurchName, i+1),
+			Types:       []string{subLeaderSubLeader},
+			PhoneNumber: &phoneNumber,
+			Password:    &password,
+			Email:       leaderemail,
+			Day:         subLeaderDaysOfWeek[subLeaderIndex],
+			SubChurchID: &subChurchIDStr,
+			// Set other sub-leader properties as needed
+		}
+
+		if err := r.DB.Create(subLeader).Error; err != nil {
+			return nil, fmt.Errorf("failed to create sub-leader: %w", err)
+		}
+
+		subLeaderIndex = (subLeaderIndex + 1) % len(subLeaderDaysOfWeek)
+
+		token, err := helpers.GenerateToken(leadertype, subLeader.ID.String())
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate tokens: %w", err)
+		}
+
+		subLeader.Token = &token
+
+		// Parse the UUID separately
+		uuid, err := uuid.Parse(subLeader.ID.String())
+		if err != nil {
+			return nil, fmt.Errorf("invalid Leader ID: %w", err)
+		}
+
+		// Convert the UUID to string before assigning to LeaderID
+		uuidString := uuid.String()
+		subLeader.LeaderID = &uuidString
+
+		if err := r.DB.Save(subLeader).Error; err != nil {
+			return nil, fmt.Errorf("failed to create leader: %w", err)
+		}
+	}
+
 	for i := 0; i < 7; i++ {
 		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
 		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
@@ -984,45 +1045,30 @@ func (r *mutationResolver) CreateMianChurch(ctx context.Context, subChurchName *
 			return nil, fmt.Errorf("failed to generate tokens: %w", err)
 		}
 
-		leader.Token = &token // Set the leader's token here
-	}
-	// Create 4 sub-leaders
-	subLeaderIndex := 0
-	subLeaderSubLeader := "SubLeader"
-	for i := 0; i < 7; i++ {
-		subChurchIDStr := subChurch.ID.String() // Convert subChurch.ID to a string
-		phoneNumber := randomPhoneNumber()      // Generate random phone number for leaders
-
-		subLeader := &model.Member{
-			Name:  fmt.Sprintf("%s SubLeader %d", uppercasedSubChurchName, i+1),
-			Types: []string{subLeaderSubLeader},
-
-			// Types:       &subLeaderSubLeader,
-			PhoneNumber: &phoneNumber,
-			Password:    &password, // Set the sub-leader's password here
-			Email:       leaderemail,
-			Day:         subLeaderDaysOfWeek[subLeaderIndex],
-			SubChurchID: &subChurchIDStr,
-			// Set other sub-leader properties as needed
-		}
-
-		if err := r.DB.Create(subLeader).Error; err != nil {
-			return nil, fmt.Errorf("failed to create sub-leader: %w", err)
-		}
-
-		subLeaderIndex = (subLeaderIndex + 1) % len(subLeaderDaysOfWeek) // Rotate through days of the week
-		token, err := helpers.GenerateToken(leadertype, (subLeader.ID.String()))
+		// Find the leader for the new member's day using FindLeaderWithSameDay
+		Seletedleader, err := schemas.FindLeaderWithSameDay(ctx, r.DB, leader.Day, *leader.SubChurchID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to generate tokens: %w", err)
+			return nil, fmt.Errorf("failed to create member : ")
 		}
 
-		subLeader.Token = &token // Set the leader's token here
-	}
+		leader.Token = &token // Set the leader's token here
+		// Parse the UUID separately
+		uuid, err := uuid.Parse(Seletedleader.ID.String())
+		if err != nil {
+			return nil, fmt.Errorf("invalid Leader ID: %w", err)
+		}
+		// Convert the UUID to string before assigning to LeaderID
+		uuidString := uuid.String()
+		leader.LeaderID = &uuidString
 
+		if err := r.DB.Save(leader).Error; err != nil {
+			return nil, fmt.Errorf("failed to create leader: %w", err)
+		}
+	}
 	return mainChurch, nil
 }
 
-// klllllllllllleader is the resolver for the assignLeader field.
+// leader is the resolver for the assignLeader field.
 func (r *mutationResolver) AssignLeader(ctx context.Context, input *model.AssignLeaderInput) (*model.Member, error) {
 	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
 	err := middleware.ExtractCTXinfo(ctx)
@@ -2129,6 +2175,8 @@ func (r *queryResolver) GetAllSubLeaderByLeader(ctx context.Context, subChurchID
 
 // GetNoteficationByLeader is the resolver for the GetNoteficationByLeader field.
 func (r *queryResolver) GetNoteficationByLeader(ctx context.Context, subChurchID string, day *string) ([]*model.Member, error) {
+	currentWeekNumber := schemas.GetWeekNumber(time.Now())
+
 	// Step 1: Fetch all sub-leaders based on specified conditions
 	var subLeaders []*model.Member
 	if err := r.DB.
@@ -2142,26 +2190,44 @@ func (r *queryResolver) GetNoteficationByLeader(ctx context.Context, subChurchID
 	// Step 2: Extract IDs of sub-leaders and log them
 	var subLeaderIDs []string
 	for _, subLeader := range subLeaders {
-		idString := subLeader.ID.String()
-		subLeaderIDs = append(subLeaderIDs, idString)
-		log.Printf("SubLeader ID: %s", idString)
+		subLeaderIDs = append(subLeaderIDs, subLeader.ID.String())
 	}
 
-	// Step 3: Use sub-leader IDs to query registrations with Report true
-	var subLeadersMembers []*model.Member
+	// Step 3: Query sub-leaders with their registrations for the current week
+	var filteredSubLeadersMembers []*model.Member
 	if err := r.DB.
-		Where("leader_id IN (?) AND report = ?", subLeaderIDs, true).
-		Preload("Registrations", func(db *gorm.DB) *gorm.DB {
-			return db.Where("registrations.report = ?", true)
-		}).
+		Model(&model.Member{}).
+		Where("leader_id IN (?)", subLeaderIDs).
+		Preload("Registrations", "report IS NOT NULL AND report = true AND EXTRACT(WEEK FROM created_at) = ?", currentWeekNumber).
 		Order("created_at DESC").
-		Find(&subLeadersMembers).
+		Find(&filteredSubLeadersMembers).
 		Error; err != nil {
-		// Handle errors here, such as if no registrations are found for the sub-leaders.
 		return nil, err
 	}
 
-	return subLeadersMembers, nil
+	// Step 4: Filter out sub-leaders with empty registrations
+	var result []*model.Member
+	for _, subLeader := range filteredSubLeadersMembers {
+		var filteredRegistrations []*model.Registration
+		for _, registration := range subLeader.Registrations {
+			// Check if the Report field is not nil and is true
+			isTrue := true
+			if registration.Report != nil && *registration.Report == isTrue {
+				filteredRegistrations = append(filteredRegistrations, registration)
+			}
+		}
+
+		// Only include sub-leaders with at least one registration where report is true
+		if len(filteredRegistrations) > 0 {
+			// Clone the subLeader to avoid modifying the original slice
+			clonedSubLeader := *subLeader
+			clonedSubLeader.Registrations = filteredRegistrations
+			result = append(result, &clonedSubLeader)
+		}
+	}
+
+	return result, nil
+
 }
 
 // GetAllRegistersByMemberID is the resolver for the GetAllRegistersByMemberID field.
