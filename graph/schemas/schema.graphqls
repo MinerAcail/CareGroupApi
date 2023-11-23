@@ -112,6 +112,7 @@ type Query {
 
   GetAllsubChurch: [SubChurch]
   GetCallCenter: [CallCenter]
+  GetAllSubChurchByCallCenter(CallCenterId: String!): [SubChurch!]!
 
   GetCaller: [Member]
   GetCallAgent: [Member]
@@ -121,6 +122,7 @@ type Query {
   Getmember(id: String!): Member
   GetMigration(id: String!): MigrationRequest
   GetMigrationdestinationID(destinationChurchID: String!): [MigrationRequest]
+  # GetCallCenter: [CallCenter]
   Getmembers: [Member]
   todaysMembers: [Member]
 

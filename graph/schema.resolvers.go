@@ -2227,7 +2227,6 @@ func (r *queryResolver) GetNoteficationByLeader(ctx context.Context, subChurchID
 	}
 
 	return result, nil
-
 }
 
 // GetAllRegistersByMemberID is the resolver for the GetAllRegistersByMemberID field.
@@ -2293,11 +2292,27 @@ func (r *queryResolver) GetCallCenter(ctx context.Context) ([]*model.CallCenter,
 	var callCenters []*model.CallCenter
 
 	// Use Preload to include the SubChurches relationship
-	if err := r.DB.Preload("SubChurches").Find(&callCenters).Error; err != nil {
+	if err := r.DB.Preload("SubChurches").Order("created_at DESC").Find(&callCenters).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch Call Centers: %w", err)
 	}
 
 	return callCenters, nil
+}
+
+// GetAllSubChurchByCallCenter is the resolver for the GetAllSubChurchByCallCenter field.
+func (r *queryResolver) GetAllSubChurchByCallCenter(ctx context.Context, callCenterID string) ([]*model.SubChurch, error) {
+	UUID, err := uuid.Parse(callCenterID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid ID: %w", err)
+	}
+	// Find the Member and its associated SubChurch
+	var sub []*model.SubChurch
+	if err := r.DB.Where("call_center_id = ?", UUID).Order("created_at DESC").Find(&sub).Error; err != nil {
+		return nil, err
+	}
+	
+
+	return sub, nil
 }
 
 // GetCaller is the resolver for the GetCaller field.

@@ -175,6 +175,7 @@ type ComplexityRoot struct {
 		GetAllMembersBySubChurchID            func(childComplexity int, subChurchID string) int
 		GetAllRegistersByMemberID             func(childComplexity int, memberID string) int
 		GetAllRegistersByTempLeader           func(childComplexity int, tempLeaderID string) int
+		GetAllSubChurchByCallCenter           func(childComplexity int, callCenterID string) int
 		GetAllSubChurchLeader                 func(childComplexity int, subChurchID string) int
 		GetAllSubLeaderByLeader               func(childComplexity int, subChurchID string, day string) int
 		GetAllsubChurch                       func(childComplexity int) int
@@ -312,6 +313,7 @@ type QueryResolver interface {
 	LastFourCommentsForMember(ctx context.Context, memberID string) ([]*string, error)
 	GetAllsubChurch(ctx context.Context) ([]*model.SubChurch, error)
 	GetCallCenter(ctx context.Context) ([]*model.CallCenter, error)
+	GetAllSubChurchByCallCenter(ctx context.Context, callCenterID string) ([]*model.SubChurch, error)
 	GetCaller(ctx context.Context) ([]*model.Member, error)
 	GetCallAgent(ctx context.Context) ([]*model.Member, error)
 	Getmember(ctx context.Context, id string) (*model.Member, error)
@@ -1246,6 +1248,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetAllRegistersByTempLeader(childComplexity, args["tempLeaderID"].(string)), true
+
+	case "Query.GetAllSubChurchByCallCenter":
+		if e.complexity.Query.GetAllSubChurchByCallCenter == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetAllSubChurchByCallCenter_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetAllSubChurchByCallCenter(childComplexity, args["CallCenterId"].(string)), true
 
 	case "Query.GetAllSubChurchLeader":
 		if e.complexity.Query.GetAllSubChurchLeader == nil {
@@ -2622,6 +2636,21 @@ func (ec *executionContext) field_Query_GetAllRegistersByTempLeader_args(ctx con
 		}
 	}
 	args["tempLeaderID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_GetAllSubChurchByCallCenter_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["CallCenterId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("CallCenterId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["CallCenterId"] = arg0
 	return args, nil
 }
 
@@ -8987,6 +9016,93 @@ func (ec *executionContext) fieldContext_Query_GetCallCenter(ctx context.Context
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CallCenter", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_GetAllSubChurchByCallCenter(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetAllSubChurchByCallCenter(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetAllSubChurchByCallCenter(rctx, fc.Args["CallCenterId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.SubChurch)
+	fc.Result = res
+	return ec.marshalNSubChurch2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐSubChurchᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetAllSubChurchByCallCenter(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SubChurch_id(ctx, field)
+			case "name":
+				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SubChurch_createdAt(ctx, field)
+			case "church":
+				return ec.fieldContext_SubChurch_church(ctx, field)
+			case "churchId":
+				return ec.fieldContext_SubChurch_churchId(ctx, field)
+			case "isLocal":
+				return ec.fieldContext_SubChurch_isLocal(ctx, field)
+			case "leaders":
+				return ec.fieldContext_SubChurch_leaders(ctx, field)
+			case "members":
+				return ec.fieldContext_SubChurch_members(ctx, field)
+			case "CallCenterID":
+				return ec.fieldContext_SubChurch_CallCenterID(ctx, field)
+			case "CallCenter":
+				return ec.fieldContext_SubChurch_CallCenter(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SubChurch", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetAllSubChurchByCallCenter_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -15660,6 +15776,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_GetCallCenter(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetAllSubChurchByCallCenter":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetAllSubChurchByCallCenter(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 

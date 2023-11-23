@@ -8,7 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi"
-	"github.com/go-chi/cors" 
+	"github.com/go-chi/cors"
 	"github.com/kobbi/vbciapi/database"
 	"github.com/kobbi/vbciapi/graph"
 	"github.com/kobbi/vbciapi/graph/model"
