@@ -12,6 +12,7 @@ type Member {
   password: String
   types: [String!]!
   token: String
+  leader: Member
   LeaderID: String
   ReferenceIDCount: Int
   registrations: [Registration] # Define a relationship to Registration
@@ -106,6 +107,7 @@ type Query {
   GetAllSubChurchLeader(subChurchId: String!): Member
   GetAllMembersByLeader(leaderID: String!): [Member]
   GetAllSubLeaderByLeader(subChurchID: String!,day: String!): [Member]
+  GetAllMemberBySubLeaderToLeader(subChurchID: String!,day: String!): [Member]
   GetNoteficationByLeader(subChurchID: String!,day: String): [Member]
   GetAllRegistersByMemberID(MemberId: String!): [Registration]
   LastFourCommentsForMember(memberID: String!): [String]

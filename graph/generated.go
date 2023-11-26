@@ -91,6 +91,7 @@ type ComplexityRoot struct {
 		Day              func(childComplexity int) int
 		Email            func(childComplexity int) int
 		ID               func(childComplexity int) int
+		Leader           func(childComplexity int) int
 		LeaderID         func(childComplexity int) int
 		Location         func(childComplexity int) int
 		Name             func(childComplexity int) int
@@ -171,6 +172,7 @@ type ComplexityRoot struct {
 		CurrentWeekRegistrationsforCallCenter func(childComplexity int) int
 		CurrentWeekRegistrationsforsub        func(childComplexity int, subChurchID string) int
 		GetAllMainChurch                      func(childComplexity int) int
+		GetAllMemberBySubLeaderToLeader       func(childComplexity int, subChurchID string, day string) int
 		GetAllMembersByLeader                 func(childComplexity int, leaderID string) int
 		GetAllMembersBySubChurchID            func(childComplexity int, subChurchID string) int
 		GetAllRegistersByMemberID             func(childComplexity int, memberID string) int
@@ -308,6 +310,7 @@ type QueryResolver interface {
 	GetAllSubChurchLeader(ctx context.Context, subChurchID string) (*model.Member, error)
 	GetAllMembersByLeader(ctx context.Context, leaderID string) ([]*model.Member, error)
 	GetAllSubLeaderByLeader(ctx context.Context, subChurchID string, day string) ([]*model.Member, error)
+	GetAllMemberBySubLeaderToLeader(ctx context.Context, subChurchID string, day string) ([]*model.Member, error)
 	GetNoteficationByLeader(ctx context.Context, subChurchID string, day *string) ([]*model.Member, error)
 	GetAllRegistersByMemberID(ctx context.Context, memberID string) ([]*model.Registration, error)
 	LastFourCommentsForMember(ctx context.Context, memberID string) ([]*string, error)
@@ -534,6 +537,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Member.ID(childComplexity), true
+
+	case "Member.leader":
+		if e.complexity.Member.Leader == nil {
+			break
+		}
+
+		return e.complexity.Member.Leader(childComplexity), true
 
 	case "Member.LeaderID":
 		if e.complexity.Member.LeaderID == nil {
@@ -1200,6 +1210,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetAllMainChurch(childComplexity), true
+
+	case "Query.GetAllMemberBySubLeaderToLeader":
+		if e.complexity.Query.GetAllMemberBySubLeaderToLeader == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetAllMemberBySubLeaderToLeader_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetAllMemberBySubLeaderToLeader(childComplexity, args["subChurchID"].(string), args["day"].(string)), true
 
 	case "Query.GetAllMembersByLeader":
 		if e.complexity.Query.GetAllMembersByLeader == nil {
@@ -2576,6 +2598,30 @@ func (ec *executionContext) field_Query_CallRoom_args(ctx context.Context, rawAr
 		}
 	}
 	args["subChurchId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_GetAllMemberBySubLeaderToLeader_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["subChurchID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subChurchID"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["day"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("day"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["day"] = arg1
 	return args, nil
 }
 
@@ -4303,6 +4349,83 @@ func (ec *executionContext) fieldContext_Member_token(ctx context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Member_leader(ctx context.Context, field graphql.CollectedField, obj *model.Member) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Member_leader(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Leader, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Member)
+	fc.Result = res
+	return ec.marshalOMember2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Member_leader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Member",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Member_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Member_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Member_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Member_phoneNumber(ctx, field)
+			case "location":
+				return ec.fieldContext_Member_location(ctx, field)
+			case "day":
+				return ec.fieldContext_Member_day(ctx, field)
+			case "password":
+				return ec.fieldContext_Member_password(ctx, field)
+			case "types":
+				return ec.fieldContext_Member_types(ctx, field)
+			case "token":
+				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
+			case "LeaderID":
+				return ec.fieldContext_Member_LeaderID(ctx, field)
+			case "ReferenceIDCount":
+				return ec.fieldContext_Member_ReferenceIDCount(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Member_registrations(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Member_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Member_subChurchID(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Member_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Member_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Member_LeaderID(ctx context.Context, field graphql.CollectedField, obj *model.Member) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Member_LeaderID(ctx, field)
 	if err != nil {
@@ -5316,6 +5439,8 @@ func (ec *executionContext) fieldContext_Mutation_createMember(ctx context.Conte
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -5405,6 +5530,8 @@ func (ec *executionContext) fieldContext_Mutation_createMemberbySubchurch(ctx co
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -5491,6 +5618,8 @@ func (ec *executionContext) fieldContext_Mutation_importMemberData(ctx context.C
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -5662,6 +5791,8 @@ func (ec *executionContext) fieldContext_Mutation_createMemberBysubLeader(ctx co
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -5751,6 +5882,8 @@ func (ec *executionContext) fieldContext_Mutation_updateMember(ctx context.Conte
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -5840,6 +5973,8 @@ func (ec *executionContext) fieldContext_Mutation_updateLeader(ctx context.Conte
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -6516,6 +6651,8 @@ func (ec *executionContext) fieldContext_Mutation_assignLeader(ctx context.Conte
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -6605,6 +6742,8 @@ func (ec *executionContext) fieldContext_Mutation_addAnotherType(ctx context.Con
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -6691,6 +6830,8 @@ func (ec *executionContext) fieldContext_Mutation_updateLeaderTypes(ctx context.
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -6777,6 +6918,8 @@ func (ec *executionContext) fieldContext_Mutation_assignMemberToLeaderbySubchurc
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -7130,6 +7273,8 @@ func (ec *executionContext) fieldContext_Mutation_removeLeader(ctx context.Conte
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -8372,6 +8517,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchID(ctx co
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -8458,6 +8605,8 @@ func (ec *executionContext) fieldContext_Query_GetAllSubChurchLeader(ctx context
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -8544,6 +8693,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersByLeader(ctx context
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -8630,6 +8781,8 @@ func (ec *executionContext) fieldContext_Query_GetAllSubLeaderByLeader(ctx conte
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -8656,6 +8809,94 @@ func (ec *executionContext) fieldContext_Query_GetAllSubLeaderByLeader(ctx conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_GetAllSubLeaderByLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_GetAllMemberBySubLeaderToLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetAllMemberBySubLeaderToLeader(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetAllMemberBySubLeaderToLeader(rctx, fc.Args["subChurchID"].(string), fc.Args["day"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Member)
+	fc.Result = res
+	return ec.marshalOMember2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetAllMemberBySubLeaderToLeader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Member_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Member_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Member_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Member_phoneNumber(ctx, field)
+			case "location":
+				return ec.fieldContext_Member_location(ctx, field)
+			case "day":
+				return ec.fieldContext_Member_day(ctx, field)
+			case "password":
+				return ec.fieldContext_Member_password(ctx, field)
+			case "types":
+				return ec.fieldContext_Member_types(ctx, field)
+			case "token":
+				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
+			case "LeaderID":
+				return ec.fieldContext_Member_LeaderID(ctx, field)
+			case "ReferenceIDCount":
+				return ec.fieldContext_Member_ReferenceIDCount(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Member_registrations(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Member_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Member_subChurchID(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Member_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Member_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetAllMemberBySubLeaderToLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -8716,6 +8957,8 @@ func (ec *executionContext) fieldContext_Query_GetNoteficationByLeader(ctx conte
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -9161,6 +9404,8 @@ func (ec *executionContext) fieldContext_Query_GetCaller(ctx context.Context, fi
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -9236,6 +9481,8 @@ func (ec *executionContext) fieldContext_Query_GetCallAgent(ctx context.Context,
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -9311,6 +9558,8 @@ func (ec *executionContext) fieldContext_Query_Getmember(ctx context.Context, fi
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -9541,6 +9790,8 @@ func (ec *executionContext) fieldContext_Query_Getmembers(ctx context.Context, f
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -9616,6 +9867,8 @@ func (ec *executionContext) fieldContext_Query_todaysMembers(ctx context.Context
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -9778,6 +10031,8 @@ func (ec *executionContext) fieldContext_Query_MembersBySubChurchID(ctx context.
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -10956,6 +11211,8 @@ func (ec *executionContext) fieldContext_Registration_leader(ctx context.Context
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -11072,6 +11329,8 @@ func (ec *executionContext) fieldContext_Registration_member(ctx context.Context
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -11923,6 +12182,8 @@ func (ec *executionContext) fieldContext_SubChurch_leaders(ctx context.Context, 
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -11998,6 +12259,8 @@ func (ec *executionContext) fieldContext_SubChurch_members(ctx context.Context, 
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
 				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
 			case "LeaderID":
 				return ec.fieldContext_Member_LeaderID(ctx, field)
 			case "ReferenceIDCount":
@@ -15078,6 +15341,8 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "token":
 			out.Values[i] = ec._Member_token(ctx, field, obj)
+		case "leader":
+			out.Values[i] = ec._Member_leader(ctx, field, obj)
 		case "LeaderID":
 			out.Values[i] = ec._Member_LeaderID(ctx, field, obj)
 		case "ReferenceIDCount":
@@ -15681,6 +15946,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_GetAllSubLeaderByLeader(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetAllMemberBySubLeaderToLeader":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetAllMemberBySubLeaderToLeader(ctx, field)
 				return res
 			}
 

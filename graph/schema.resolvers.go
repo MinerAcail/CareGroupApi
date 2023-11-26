@@ -2173,6 +2173,17 @@ func (r *queryResolver) GetAllSubLeaderByLeader(ctx context.Context, subChurchID
 	return members, nil
 }
 
+// GetAllMemberBySubLeaderToLeader is the resolver for the GetAllMemberBySubLeaderToLeader field.
+func (r *queryResolver) GetAllMemberBySubLeaderToLeader(ctx context.Context, subChurchID string, day string) ([]*model.Member, error) {
+	var members []*model.Member
+
+	if err := r.DB.Where("day = ? AND sub_church_id = ?", day, subChurchID).Preload("Leader").Preload("SubChurch").Order("created_at DESC").Find(&members).Error; err != nil {
+		// Handle errors here, such as if no leaders with the same day are found.
+		return nil, err
+	}
+	return members, nil
+}
+
 // GetNoteficationByLeader is the resolver for the GetNoteficationByLeader field.
 func (r *queryResolver) GetNoteficationByLeader(ctx context.Context, subChurchID string, day *string) ([]*model.Member, error) {
 	currentWeekNumber := schemas.GetWeekNumber(time.Now())
@@ -2310,7 +2321,6 @@ func (r *queryResolver) GetAllSubChurchByCallCenter(ctx context.Context, callCen
 	if err := r.DB.Where("call_center_id = ?", UUID).Order("created_at DESC").Find(&sub).Error; err != nil {
 		return nil, err
 	}
-	
 
 	return sub, nil
 }

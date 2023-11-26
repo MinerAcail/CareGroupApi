@@ -82,6 +82,7 @@ type Member struct {
 	Types pq.StringArray `gorm:"type:text[]" `
 
 	Token            *string         `json:"token,omitempty"`
+	Leader       *Member    `json:"leader,omitempty"`
 	LeaderID         *string         `json:"LeaderID,omitempty"`
 	ReferenceIDCount *int            `json:"ReferenceIDCount,omitempty"`
 	Registrations    []*Registration `json:"registrations,omitempty"`
