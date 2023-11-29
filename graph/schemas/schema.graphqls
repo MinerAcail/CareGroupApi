@@ -21,10 +21,14 @@ type Member {
   updatedAt: Time!
   createdAt: Time!
 }
-type Person {
+type RegistrationByCallAgent {
   id: String!
-  name: String!
-  email: [String]!
+  callAgentId: String!
+  callAgent: Member
+  #   subChurch: SubChurch # Define a relationship to SubChurch
+  # subChurchID: String
+  day: [String!]!
+  # registrations: [Registration]
 }
 type Registration {
   id: String!
@@ -59,6 +63,17 @@ type Church {
   token: String
   subChurches: [SubChurch!]!
 }
+type Finance {
+  id: String!
+  name: String!
+  password: String
+  email: String
+  types: String
+  updatedAt: Time!
+  createdAt: Time!
+  token: String
+  subChurches: [SubChurch!]!
+}
 
 type SubChurch {
   id: String!
@@ -75,7 +90,7 @@ type SubChurch {
   leaders: [Member]
   members: [Member]
   CallCenterID: String
-  CallCenter: CallCenter 
+  CallCenter: CallCenter
 }
 type CallCenter {
   ID: String!
@@ -86,7 +101,7 @@ type CallCenter {
   Token: String
   UpdatedAt: Time!
   CreatedAt: Time!
-  SubChurches: [SubChurch] 
+  SubChurches: [SubChurch]
 }
 union Returns = Church | SubChurch | Member | CallCenter
 
@@ -104,12 +119,18 @@ type Query {
   GetAllsubChurchByMainChurchID(mainChurchId: String!): [SubChurch]
   GetAllsubChurchByMemberId(memberId: String!): [SubChurch]
   GetAllMembersBySubChurchID(subChurchId: String!): [Member]
+  GetAllMembersBySubChurchIDForCallAgent(subChurchId: String!): [Member]
   GetAllSubChurchLeader(subChurchId: String!): Member
   GetAllMembersByLeader(leaderID: String!): [Member]
-  GetAllSubLeaderByLeader(subChurchID: String!,day: String!): [Member]
-  GetAllMemberBySubLeaderToLeader(subChurchID: String!,day: String!): [Member]
-  GetNoteficationByLeader(subChurchID: String!,day: String): [Member]
+  GetAllSubLeaderByLeader(subChurchID: String!, day: String!): [Member]
+  GetAllMemberBySubLeaderToLeader(subChurchID: String!, day: String!): [Member]
+  GetNoteficationByLeader(subChurchID: String!, day: String): [Member]
   GetAllRegistersByMemberID(MemberId: String!): [Registration]
+
+
+  GetAllmembersByDaysForCallAgent(CallAgentId: String!): [Member]
+  GetAllDaysFormassignCallAgentToMemberRegistration: [String!]!
+  
   LastFourCommentsForMember(memberID: String!): [String]
 
   GetAllsubChurch: [SubChurch]
@@ -234,16 +255,17 @@ input RegistrationArrayInputs {
   registrationIDs: ID!
   createInput: CreateRegistrationInput!
 }
-
+input assignSubLeaderToMemberRegistrationArrayInput {
+ callAgentId: String!
+    day: [String!]!
+}
 type Mutation {
   requestSubChurchMigration(input: SubChurchMigrationInput!): MigrationRequest!
   approveSubChurchMigration(requestId: String!): MigrationRequest!
   rejectSubChurchMigration(requestId: String!): MigrationRequest!
 
-
   createMember(input: CreateMemberInput): Member!
   createMemberbySubchurch(input: CreateMemberInput): Member!
-
 
   importMemberData(file: Upload!, ChurchID: String): [Member]
   dataMembers: String
@@ -256,6 +278,10 @@ type Mutation {
     input: updateLeaderProfileInput!
     subChurchId: String!
   ): SubChurch!
+    updateCallCenter(
+    input: updateLeaderProfileInput!
+    callCenterId: String!
+  ): CallCenter!
 
   createChurch(name: String!, email: String!, password: String): Church!
   deleteChurch(mainChurchId: String!): Boolean!
@@ -280,6 +306,16 @@ type Mutation {
     sendToLeaderID: String!
     sendFromLeaderID: String!
   ): [Registration]!
+
+  assignSubLeaderToMemberRegistration(
+    callAgentId: String!
+    day: [String!]!
+  ): [RegistrationByCallAgent]!
+
+   assignSubLeaderToMemberRegistrationArray(
+   input: [assignSubLeaderToMemberRegistrationArrayInput]
+  ): [RegistrationByCallAgent]!
+  deleteAssignSubLeaderToMemberRegistration: Boolean!
 
   tempLeadercreateRegistrationArray(
     input: [CreateRegistrationInput]!
@@ -311,7 +347,10 @@ type Mutation {
     registrationID: String!
     leaderID: String!
   ): Registration
-  CreateCallCenterForSubChurchs(name: String!, subChurchIDs: [String!]!): CallCenter
+  CreateCallCenterForSubChurchs(
+    name: String!
+    subChurchIDs: [String!]!
+  ): CallCenter
   distributeRegistrationsToLeaders(
     leaderIds: [String!]!
   ): [LeaderRegistrationsDistribution]

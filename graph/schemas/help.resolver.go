@@ -671,6 +671,9 @@ func GetWeekNumber(date time.Time) int {
 	_, weekNumber := date.ISOWeek()
 	return weekNumber
 }
+func ArrayToString(arr []string) string {
+    return "{" + strings.Join(arr, ",") + "}"
+}
 
 // func ReadMembersFromCSV(csvFilePath string, churchID *string, db *gorm.DB) ([]*model.Member, error) {
 // 	file, err := os.Open(csvFilePath)

@@ -655,6 +655,52 @@ func (r *mutationResolver) UpdatesubChurch(ctx context.Context, input model.Upda
 	return leader, nil
 }
 
+// UpdateCallCenter is the resolver for the updateCallCenter field.
+func (r *mutationResolver) UpdateCallCenter(ctx context.Context, input model.UpdateLeaderProfileInput, callCenterID string) (*model.CallCenter, error) {
+	CallCenterID, ok := ctx.Value(middleware.IDContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("Call Center ID not found in request context")
+	}
+	// Check if the authenticated user is the same as the member being updated.
+	if CallCenterID != callCenterID {
+		return nil, fmt.Errorf("unauthorized: you can only update your own profile")
+	}
+	// Fetch the CallCenter from the database using memberID.
+	CallCenter := &model.CallCenter{}
+	if err := r.DB.First(CallCenter, "id = ?", CallCenterID).Error; err != nil {
+		return nil, fmt.Errorf("CallCenter not found: %w", err)
+	}
+
+	// Verify the provided password against the hashed password in the database
+	if err := helpers.VerifyPassword(*CallCenter.Password, *input.Oldpassword); err != nil {
+		return nil, fmt.Errorf("incorrect password, Can't make changes without you old Password")
+	}
+
+	// Update the CallCenter's profile with the provided input fields.
+	if input.Name != nil {
+		CallCenter.Name = *input.Name
+	}
+	if input.Email != nil {
+		CallCenter.Email = input.Email
+	}
+
+	if input.Password != nil {
+		// Hash and update the password if a new password is provided.
+		password, err := helpers.HashPassword(*input.Password)
+		if err != nil {
+			return nil, fmt.Errorf("failed to hash password: %w", err)
+		}
+		CallCenter.Password = &password
+	}
+
+	// Save the updated CallCenter to the database.
+	if err := r.DB.Save(CallCenter).Error; err != nil {
+		return nil, fmt.Errorf("failed to save updated CallCenter: %w", err)
+	}
+
+	return CallCenter, nil
+}
+
 // CreateChurch is the resolver for the createChurch field.
 func (r *mutationResolver) CreateChurch(ctx context.Context, name string, email string, password *string) (*model.Church, error) {
 	// Check if an email already exists
@@ -1317,6 +1363,156 @@ func (r *mutationResolver) AssignLeaderMemberRegisterToAnotherLeader(ctx context
 	}
 	// Return the created registrations
 	return createdRegistrations, nil
+}
+
+// AssignSubLeaderToMemberRegistration is the resolver for the assignSubLeaderToMemberRegistration field.
+func (r *mutationResolver) AssignSubLeaderToMemberRegistration(ctx context.Context, callAgentID string, day []string) ([]*model.RegistrationByCallAgent, error) {
+	// Check if the specified leader exists.
+	var leader model.Member
+	if err := r.DB.Where("id = ? AND types && ?", callAgentID, pq.Array([]string{"CallAgent"})).First(&leader).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("leader with ID %s not found: %w", callAgentID, err)
+		}
+		return nil, fmt.Errorf("failed to query leader: %w", err)
+	}
+
+	// Validate the day field.
+	if len(day) == 0 {
+		return nil, fmt.Errorf("day cannot be empty")
+	}
+
+	// Validate the specified day.
+	validDays := map[string]bool{
+		"Monday":    true,
+		"Tuesday":   true,
+		"Wednesday": true,
+		"Thursday":  true,
+		"Friday":    true,
+		"Saturday":  true,
+		"Sunday":    true,
+	}
+	if !validDays[day[0]] {
+		return nil, fmt.Errorf("invalid day: %s", day[0])
+	}
+	// Check if a registration for the same call agent and day already exists.
+	var existingRegistration model.RegistrationByCallAgent
+	if err := r.DB.Where("call_agent_id = ? AND day @> ?", leader.ID, pq.Array(day)).First(&existingRegistration).Error; err == nil {
+		// Record already exists, return an error or handle it as needed.
+		return nil, fmt.Errorf(" Cant Add already existing Day to call agent ")
+	}
+	if err := r.DB.Where("call_agent_id = ? ", leader.ID).First(&existingRegistration).Error; err == nil {
+		// call_agent_id Record already exists, update the RegistrationByCallAgent by adding or appending the day.
+
+		// Update the fields with the new values
+		if day != nil {
+			existingRegistration.Day = append(existingRegistration.Day, day...)
+		}
+
+		// Save the updated registration to the database.
+		if err := r.DB.Save(&existingRegistration).Error; err != nil {
+			return nil, fmt.Errorf("failed to update registration: %w", err)
+		}
+
+		return []*model.RegistrationByCallAgent{&existingRegistration}, nil
+	}
+	// Create a new RegistrationByCallAgent instance.
+	newRegistration := model.RegistrationByCallAgent{
+		CallAgentID: leader.ID.String(),
+	}
+	newRegistration.Day = append(newRegistration.Day, day...)
+
+	// Save the new registration to the database.
+	if err := r.DB.Create(&newRegistration).Error; err != nil {
+		return nil, fmt.Errorf("failed to create registration: %w", err)
+	}
+
+	return []*model.RegistrationByCallAgent{&newRegistration}, nil
+}
+
+// AssignSubLeaderToMemberRegistrationArray is the resolver for the assignSubLeaderToMemberRegistrationArray field.
+func (r *mutationResolver) AssignSubLeaderToMemberRegistrationArray(ctx context.Context, input []*model.AssignSubLeaderToMemberRegistrationArrayInput) ([]*model.RegistrationByCallAgent, error) {
+	var registrations []*model.RegistrationByCallAgent
+
+	// Loop through the input from AssignSubLeaderToMemberRegistrationArrayInput
+	for _, in := range input {
+		var leader model.Member
+		if err := r.DB.Where("id = ? AND types && ?", in.CallAgentID, pq.Array([]string{"CallAgent"})).First(&leader).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, fmt.Errorf("leader with ID %s not found: %w", in.CallAgentID, err)
+			}
+			return nil, fmt.Errorf("failed to query leader: %w", err)
+		}
+
+		// Validate the day field.
+		if len(in.Day) == 0 {
+			return nil, fmt.Errorf("day cannot be empty")
+		}
+
+		// Validate the specified day.
+		validDays := map[string]bool{
+			"Monday":    true,
+			"Tuesday":   true,
+			"Wednesday": true,
+			"Thursday":  true,
+			"Friday":    true,
+			"Saturday":  true,
+			"Sunday":    true,
+		}
+		if !validDays[in.Day[0]] {
+			return nil, fmt.Errorf("invalid day: %s", in.Day[0])
+		}
+
+		// Check if a registration for the same call agent and day already exists.
+
+		var existingRegistration model.RegistrationByCallAgent
+		if err := r.DB.Where("call_agent_id = ? AND day @> ?", leader.ID, pq.Array(in.Day)).First(&existingRegistration).Error; err == nil {
+			// Record already exists, return an error or handle it as needed.
+			return nil, fmt.Errorf(" Cant Add already existing Day to call agent ")
+		}
+
+		if err := r.DB.Where("call_agent_id = ? ", leader.ID).First(&existingRegistration).Error; err == nil {
+			// call_agent_id Record already exists, update the RegistrationByCallAgent by adding or appending the day.
+
+			// Update the fields with the new values
+			if in.Day != nil {
+				existingRegistration.Day = append(existingRegistration.Day, in.Day...)
+			}
+
+			// Save the updated registration to the database.
+			if err := r.DB.Save(&existingRegistration).Error; err != nil {
+				return nil, fmt.Errorf("failed to update registration: %w", err)
+			}
+
+			registrations = append(registrations, &existingRegistration)
+		} else {
+			// Create a new RegistrationByCallAgent instance.
+			newRegistration := model.RegistrationByCallAgent{
+				CallAgentID: leader.ID.String(),
+				// SubChurchID: leader.SubChurchID,
+			}
+			newRegistration.Day = append(newRegistration.Day, in.Day...)
+
+			// Save the new registration to the database.
+			if err := r.DB.Create(&newRegistration).Error; err != nil {
+				return nil, fmt.Errorf("failed to create registration: %w", err)
+			}
+
+			registrations = append(registrations, &newRegistration)
+		}
+	}
+
+	return registrations, nil
+}
+
+// DeleteAssignSubLeaderToMemberRegistration is the resolver for the deleteAssignSubLeaderToMemberRegistration field.
+func (r *mutationResolver) DeleteAssignSubLeaderToMemberRegistration(ctx context.Context) (bool, error) {
+	// Provide a condition that always evaluates to true for all records
+	condition := "id IS NOT NULL"
+
+	if err := r.DB.Where(condition).Delete(&model.RegistrationByCallAgent{}).Error; err != nil {
+		return false, fmt.Errorf("failed to delete all data: %w", err)
+	}
+	return true, nil
 }
 
 // TempLeadercreateRegistrationArray is the resolver for the tempLeadercreateRegistrationArray field.
@@ -2137,6 +2333,21 @@ func (r *queryResolver) GetAllMembersBySubChurchID(ctx context.Context, subChurc
 	return members, nil
 }
 
+// GetAllMembersBySubChurchIDForCallAgent is the resolver for the GetAllMembersBySubChurchIDForCallAgent field.
+func (r *queryResolver) GetAllMembersBySubChurchIDForCallAgent(ctx context.Context, subChurchID string) ([]*model.Member, error) {
+	var members []*model.Member
+	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("SubChurch").Order("created_at DESC").Find(&members).Error; err != nil {
+		log.Printf("Error executing SQL query: %v", err)
+		return nil, fmt.Errorf(" Error executing SQL query: %w", err)
+	}
+
+	// Convert pq.StringArray to []string
+	for _, member := range members {
+		member.Types = []string(member.Types)
+	}
+	return members, nil
+}
+
 // GetAllSubChurchLeader is the resolver for the GetAllSubChurchLeader field.
 func (r *queryResolver) GetAllSubChurchLeader(ctx context.Context, subChurchID string) (*model.Member, error) {
 	var leader model.Member
@@ -2262,6 +2473,53 @@ func (r *queryResolver) GetAllRegistersByMemberID(ctx context.Context, memberID 
 	}
 
 	return Registrations, nil
+}
+
+// GetAllmembersByDaysForCallAgent is the resolver for the GetAllmembersByDaysForCallAgent field.
+func (r *queryResolver) GetAllmembersByDaysForCallAgent(ctx context.Context, callAgentID string) ([]*model.Member, error) {
+	var callAgent model.RegistrationByCallAgent
+
+	if err := r.DB.Where("call_agent_id = ?", callAgentID).First(&callAgent).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("call agent with ID %s not found", callAgentID)
+		}
+		return nil, fmt.Errorf("failed to get Call Agent: %w", err)
+	}
+
+	var members []*model.Member
+	for _, day := range callAgent.Day {
+		var tempMembers []*model.Member
+		if err := r.DB.Where("day = ?", day).Find(&tempMembers).Error; err != nil {
+			return nil, fmt.Errorf("failed to fetch members: %w", err)
+		}
+		members = append(members, tempMembers...)
+	}
+
+	// Now 'members' should contain all members for the specified days.
+	return members, nil
+}
+
+// GetAllDaysFormassignCallAgentToMemberRegistration is the resolver for the GetAllDaysFormassignCallAgentToMemberRegistration field.
+func (r *queryResolver) GetAllDaysFormassignCallAgentToMemberRegistration(ctx context.Context) ([]string, error) {
+	// Define all possible days
+	_ = []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}
+
+	// Fetch existing days for all call agents using raw SQL
+	var existingDays pq.StringArray
+	if err := r.DB.Raw(`
+		WITH all_days AS (
+			SELECT UNNEST('{Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday}'::text[]) AS day
+		)
+		SELECT day FROM all_days
+		EXCEPT
+		SELECT UNNEST(day) AS day FROM registration_by_call_agents
+	`).
+		Pluck("day", &existingDays).
+		Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch existing days: %w", err)
+	}
+
+	return existingDays, nil
 }
 
 // LastFourCommentsForMember is the resolver for the LastFourCommentsForMember field.
@@ -2627,6 +2885,27 @@ func (r *registrationResolver) ID(ctx context.Context, obj *model.Registration) 
 }
 
 // ID is the resolver for the id field.
+func (r *registrationByCallAgentResolver) ID(ctx context.Context, obj *model.RegistrationByCallAgent) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
+
+// Day is the resolver for the day field.
+func (r *registrationByCallAgentResolver) Day(ctx context.Context, obj *model.RegistrationByCallAgent) ([]string, error) {
+	if obj.Day == nil {
+		return nil, nil // Return null for the field when it's null in the database
+	}
+
+	// Convert the pq.StringArray to a slice of pointers to strings
+	Day := make([]*string, len(obj.Day))
+	for i, t := range obj.Day {
+		Day[i] = &t
+	}
+
+	return obj.Day, nil
+}
+
+// ID is the resolver for the id field.
 func (r *subChurchResolver) ID(ctx context.Context, obj *model.SubChurch) (string, error) {
 	id := obj.ID.String()
 	return id, nil
@@ -2653,6 +2932,11 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 // Registration returns RegistrationResolver implementation.
 func (r *Resolver) Registration() RegistrationResolver { return &registrationResolver{r} }
 
+// RegistrationByCallAgent returns RegistrationByCallAgentResolver implementation.
+func (r *Resolver) RegistrationByCallAgent() RegistrationByCallAgentResolver {
+	return &registrationByCallAgentResolver{r}
+}
+
 // SubChurch returns SubChurchResolver implementation.
 func (r *Resolver) SubChurch() SubChurchResolver { return &subChurchResolver{r} }
 
@@ -2663,4 +2947,5 @@ type migrationRequestResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type registrationResolver struct{ *Resolver }
+type registrationByCallAgentResolver struct{ *Resolver }
 type subChurchResolver struct{ *Resolver }

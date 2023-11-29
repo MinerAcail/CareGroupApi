@@ -82,7 +82,7 @@ type Member struct {
 	Types pq.StringArray `gorm:"type:text[]" `
 
 	Token            *string         `json:"token,omitempty"`
-	Leader       *Member    `json:"leader,omitempty"`
+	Leader           *Member         `json:"leader,omitempty"`
 	LeaderID         *string         `json:"LeaderID,omitempty"`
 	ReferenceIDCount *int            `json:"ReferenceIDCount,omitempty"`
 	Registrations    []*Registration `json:"registrations,omitempty"`
@@ -110,21 +110,29 @@ type Registration struct {
 	Done         *bool      `json:"done,omitempty"`
 	TempLeaderID *string    `json:"tempLeaderID,omitempty"`
 }
-
+type RegistrationByCallAgent struct {
+	ID            uuid.UUID       `gorm:"type:uuid;default:uuid_generate_v4()"`
+	CallAgentID   string          `json:"callAgentId"`
+	CallAgent     *Member         `json:"callAgent,omitempty"`
+	// SubChurch        *SubChurch      `json:"subChurch,omitempty"`
+	// SubChurchID      *string         `json:"subChurchID,omitempty"`
+	Day           pq.StringArray  `gorm:"type:text[]" `
+	// Registrations []*Registration `json:"registrations,omitempty"`
+}
 type SubChurch struct {
-	ID        uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
-	Name      string    `json:"name"`
-	Password  *string   `json:"password,omitempty"`
-	Email     *string   `json:"email,omitempty"`
-	Types     *string   `json:"types,omitempty"`
-	Token     *string   `json:"token,omitempty"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	CreatedAt time.Time `json:"createdAt"`
-	Church    *Church   `json:"church,omitempty"`
-	ChurchID  string    `json:"churchId"`
-	Leaders   []*Member `json:"leaders,omitempty"`
-	Members   []*Member `json:"members,omitempty"`
-	IsLocal   *bool      `json:"isLocal,omitempty"`
+	ID           uuid.UUID   `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Name         string      `json:"name"`
+	Password     *string     `json:"password,omitempty"`
+	Email        *string     `json:"email,omitempty"`
+	Types        *string     `json:"types,omitempty"`
+	Token        *string     `json:"token,omitempty"`
+	UpdatedAt    time.Time   `json:"updatedAt"`
+	CreatedAt    time.Time   `json:"createdAt"`
+	Church       *Church     `json:"church,omitempty"`
+	ChurchID     string      `json:"churchId"`
+	Leaders      []*Member   `json:"leaders,omitempty"`
+	Members      []*Member   `json:"members,omitempty"`
+	IsLocal      *bool       `json:"isLocal,omitempty"`
 	CallCenterID *string     `json:"callCenterId,omitempty"`
 	CallCenter   *CallCenter `json:"callCenter,omitempty"`
 }
@@ -139,8 +147,6 @@ type CallCenter struct {
 	CreatedAt time.Time `json:"createdAt"`
 	// SubChurches []*SubChurch `json:"subChurches,omitempty" `
 	SubChurches []*SubChurch `gorm:"foreignKey:CallCenterID" json:"subChurches,omitempty"`
-
-
 }
 type MigrationRequest struct {
 	ID                  uuid.UUID  `gorm:"type:uuid;default:uuid_generate_v4()"`
@@ -163,10 +169,9 @@ type Returns interface {
 
 func (Member) IsReturns() {}
 
-func (Church) IsReturns()    {}
-func (SubChurch) IsReturns() {}
+func (Church) IsReturns()     {}
+func (SubChurch) IsReturns()  {}
 func (CallCenter) IsReturns() {}
-
 
 func IsNumeric(s string) bool {
 	numericRegex := regexp.MustCompile(`^[0-9]+$`)

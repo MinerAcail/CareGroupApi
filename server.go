@@ -73,7 +73,7 @@ func main() {
 
 // PerformMigrations performs database migrations using Gorm's AutoMigrate function.
 func PerformMigrations(db *gorm.DB) error {
-	err := db.AutoMigrate(&model.Member{}, &model.Church{}, &model.SubChurch{}, &model.CallCenter{}, &model.Registration{}, &model.MigrationRequest{})
+	err := db.AutoMigrate(&model.Member{}, &model.Church{}, &model.SubChurch{}, &model.CallCenter{}, &model.Registration{}, &model.MigrationRequest{}, &model.RegistrationByCallAgent{})
 	if err != nil {
 		return err
 	}

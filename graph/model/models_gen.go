@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
 )
 
 type CreateMemberInput struct {
@@ -39,6 +40,18 @@ type DateInfo struct {
 	WeekOfMonth *int    `json:"weekOfMonth,omitempty"`
 }
 
+type Finance struct {
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Password    *string      `json:"password,omitempty"`
+	Email       *string      `json:"email,omitempty"`
+	Types       *string      `json:"types,omitempty"`
+	UpdatedAt   time.Time    `json:"updatedAt"`
+	CreatedAt   time.Time    `json:"createdAt"`
+	Token       *string      `json:"token,omitempty"`
+	SubChurches []*SubChurch `json:"subChurches"`
+}
+
 type LeaderRegistrationsDistribution struct {
 	LeaderID        string   `json:"leaderID"`
 	RegistrationIDs []string `json:"registrationIDs"`
@@ -53,12 +66,6 @@ type LoginLeaderInput struct {
 	Password    string  `json:"password"`
 	PhoneNumber *string `json:"phoneNumber,omitempty"`
 	Email       *string `json:"email,omitempty"`
-}
-
-type Person struct {
-	ID    string    `json:"id"`
-	Name  string    `json:"name"`
-	Email []*string `json:"email"`
 }
 
 type RegistrationArrayInput struct {
@@ -95,6 +102,11 @@ type AssignLeaderInput struct {
 	MemberID string  `json:"memberId"`
 	Password *string `json:"password,omitempty"`
 	Types    *string `json:"types,omitempty"`
+}
+
+type AssignSubLeaderToMemberRegistrationArrayInput struct {
+	CallAgentID string   `json:"callAgentId"`
+	Day         []string `json:"day"`
 }
 
 type UpdateLeaderProfileInput struct {
