@@ -40,6 +40,46 @@ func (r *churchResolver) ID(ctx context.Context, obj *model.Church) (string, err
 }
 
 // ID is the resolver for the id field.
+func (r *emergencyContactResolver) ID(ctx context.Context, obj *model.EmergencyContact) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
+
+// ID is the resolver for the id field.
+func (r *familyInfoResolver) ID(ctx context.Context, obj *model.FamilyInfo) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
+
+// ChildrenID is the resolver for the childrenId field.
+func (r *familyInfoResolver) ChildrenID(ctx context.Context, obj *model.FamilyInfo) ([]*string, error) {
+	// Assuming obj.ChildrenID is a pq.StringArray field in your model
+	childrenIDs := obj.ChildrenID
+
+	// Convert pq.StringArray to []*string
+	var result []*string
+	for _, id := range childrenIDs {
+		// Convert uuid.UUID to string
+		strID := id.String()
+		result = append(result, &strID)
+	}
+
+	return result, nil
+}
+
+// ID is the resolver for the id field.
+func (r *financeResolver) ID(ctx context.Context, obj *model.Finance) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
+
+// ID is the resolver for the id field.
+func (r *jobInfoResolver) ID(ctx context.Context, obj *model.JobInfo) (string, error) {
+	id := obj.ID.String()
+	return id, nil
+}
+
+// ID is the resolver for the id field.
 func (r *memberResolver) ID(ctx context.Context, obj *model.Member) (string, error) {
 	id := obj.ID.String()
 	return id, nil
@@ -553,6 +593,193 @@ func (r *mutationResolver) UpdateMember(ctx context.Context, input model.UpdateM
 
 	// Return the updated Member
 	return Member, nil
+}
+
+// UpdateMemberFamilyInfo is the resolver for the updateMemberFamilyInfo field.
+func (r *mutationResolver) UpdateMemberFamilyInfo(ctx context.Context, input model.UpdateMemberFamilyInfoInput, memberID string) (*model.FamilyInfo, error) {
+	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Retrieve the existing Member from the database based on memberID
+	member := &model.Member{}
+	if err := r.DB.First(member, "id = ?", memberID).Error; err != nil {
+		return nil, fmt.Errorf("failed to find member: %w", err)
+	}
+
+	// Retrieve the existing FamilyInfo based on the memberID
+	family := &model.FamilyInfo{}
+	err = r.DB.Where("member_id = ?", member.ID.String()).First(family).Error
+
+	if err != nil {
+		// Check if the error is due to the record not being found
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// FamilyInfo does not exist, create a new one
+			family = &model.FamilyInfo{
+				// initialize fields here
+				MemberID: member.ID.String(),
+			}
+		} else {
+			// Handle other errors
+			return nil, fmt.Errorf("failed to retrieve family info: %w", err)
+		}
+	}
+
+	// Update the FamilyInfo with the input values
+	if input.SpouseID != nil {
+		family.SpouseID = input.SpouseID
+	}
+	if input.DateOfBirth != nil {
+		family.DateOfBirth = input.DateOfBirth
+	}
+	if input.NextOfKin != nil {
+		family.NextOfKin = input.NextOfKin
+	}
+	if input.Relationship != nil {
+		family.Relationship = input.Relationship
+	}
+	if input.Education != nil {
+		family.Education = input.Education
+	}
+	if input.ChildrenID != nil {
+		family.ChildrenID = schemas.ConvertToUUIDSlice(input.ChildrenID)
+	}
+
+	// Save the FamilyInfo
+	if err := r.DB.Save(family).Error; err != nil {
+		return nil, fmt.Errorf("failed to save family info: %w", err)
+	}
+
+	// Append the FamilyInfo to the member's FamilyInfo slice
+	member.PersonalInfor = family
+
+	// Save the updated Member to update the relationship
+	if err := r.DB.Save(member).Error; err != nil {
+		return nil, fmt.Errorf("failed to save updated member: %w", err)
+	}
+
+	// Return the created or updated FamilyInfo
+	return family, nil
+
+}
+
+// UpdateMemberEmergencyContact is the resolver for the updateMemberEmergencyContact field.
+func (r *mutationResolver) UpdateMemberEmergencyContact(ctx context.Context, input model.EmergencyContactInput, memberID string) (*model.EmergencyContact, error) {
+	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Retrieve the existing Member from the database based on memberID
+	member := &model.Member{}
+	if err := r.DB.First(member, "id = ?", memberID).Error; err != nil {
+		return nil, fmt.Errorf("failed to find member: %w", err)
+	}
+
+	// Retrieve the FamilyInfo associated with the Member
+	family := &model.FamilyInfo{}
+	if err := r.DB.Where("member_id = ?", member.ID.String()).Preload("EmergencyContact").First(family).Error; err != nil {
+		return nil, fmt.Errorf("failed to find family info: %w", err)
+	}
+
+	// Retrieve the existing EmergencyContact associated with the FamilyInfo
+	emergencyContact := family.EmergencyContact
+	if emergencyContact == nil {
+		// If no EmergencyContact exists, create a new one
+		emergencyContact = &model.EmergencyContact{
+			// initialize fields here
+		}
+	}
+
+	// Update the EmergencyContact fields with the input values if they are provided
+	if input.Name != nil {
+		emergencyContact.Name = input.Name
+	}
+	if input.PhoneNumber != nil {
+		emergencyContact.PhoneNumber = input.PhoneNumber
+	}
+	if input.Relation != nil {
+		emergencyContact.Relation = input.Relation
+	}
+
+	// Save the EmergencyContact
+	if err := r.DB.Save(emergencyContact).Error; err != nil {
+		return nil, fmt.Errorf("failed to save emergency contact: %w", err)
+	}
+
+	// Associate the EmergencyContact with the FamilyInfo
+	family.EmergencyContact = emergencyContact
+
+	// Save the updated FamilyInfo to persist the relationship
+	if err := r.DB.Save(family).Error; err != nil {
+		return nil, fmt.Errorf("failed to save updated family info: %w", err)
+	}
+
+	return emergencyContact, nil
+
+}
+
+// UpdateMemberJobInfoInput is the resolver for the updateMemberJobInfoInput field.
+func (r *mutationResolver) UpdateMemberJobInfoInput(ctx context.Context, input model.JobInfoInput, memberID string) (*model.JobInfo, error) {
+	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Retrieve the existing Member from the database based on memberID
+	member := &model.Member{}
+	if err := r.DB.First(member, "id = ?", memberID).Error; err != nil {
+		return nil, fmt.Errorf("failed to find member: %w", err)
+	}
+
+	// Retrieve the FamilyInfo associated with the Member
+	family := &model.FamilyInfo{}
+	if err := r.DB.Where("member_id = ?", member.ID.String()).Preload("Occupation").First(family).Error; err != nil {
+		return nil, fmt.Errorf("failed to find family info: %w", err)
+	}
+
+	// Retrieve the existing EmergencyContact associated with the FamilyInfo
+	jobInfo := family.Occupation
+	if jobInfo == nil {
+		// If no jobInfo exists, create a new one
+		jobInfo = &model.JobInfo{
+			// initialize fields here
+		}
+	}
+
+	// Update the jobInfo fields with the input values if they are provided
+	if input.Company != nil {
+		jobInfo.Company = input.Company
+	}
+	if input.Position != nil {
+		jobInfo.Position = input.Position
+	}
+	if input.TypeOfWork != nil {
+		jobInfo.TypeOfWork = input.TypeOfWork
+	}
+
+	if input.WorkExperience != nil {
+		jobInfo.WorkExperience = input.WorkExperience
+	}
+
+	// Save the jobInfo
+	if err := r.DB.Save(jobInfo).Error; err != nil {
+		return nil, fmt.Errorf("failed to save jobInfo contact: %w", err)
+	}
+
+	// Associate the jobInfo with the FamilyInfo
+	family.Occupation = jobInfo
+
+	// Save the updated FamilyInfo to persist the relationship
+	if err := r.DB.Save(family).Error; err != nil {
+		return nil, fmt.Errorf("failed to save updated family info: %w", err)
+	}
+
+	return jobInfo, nil
 }
 
 // UpdateLeader is the resolver for the updateLeader field.
@@ -2321,7 +2548,7 @@ func (r *queryResolver) GetAllsubChurchByMemberID(ctx context.Context, memberID 
 // GetAllMembersBySubChurchID is the resolver for the GetAllMembersBySubChurchID field.
 func (r *queryResolver) GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error) {
 	var members []*model.Member
-	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("SubChurch").Order("created_at DESC").Find(&members).Error; err != nil {
+	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").Order("created_at DESC").Find(&members).Error; err != nil {
 		log.Printf("Error executing SQL query: %v", err)
 		return nil, fmt.Errorf(" Error executing SQL query: %w", err)
 	}
@@ -2620,7 +2847,7 @@ func (r *queryResolver) Getmember(ctx context.Context, id string) (*model.Member
 	var Member model.Member
 
 	// Use GORM to find the Member by its ID
-	if err := r.DB.Where("id = ?", id).Preload("SubChurch").First(&Member).Error; err != nil {
+	if err := r.DB.Where("id = ?", id).Preload("SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").First(&Member).Error; err != nil {
 		return nil, err
 	}
 
@@ -2917,6 +3144,18 @@ func (r *Resolver) CallCenter() CallCenterResolver { return &callCenterResolver{
 // Church returns ChurchResolver implementation.
 func (r *Resolver) Church() ChurchResolver { return &churchResolver{r} }
 
+// EmergencyContact returns EmergencyContactResolver implementation.
+func (r *Resolver) EmergencyContact() EmergencyContactResolver { return &emergencyContactResolver{r} }
+
+// FamilyInfo returns FamilyInfoResolver implementation.
+func (r *Resolver) FamilyInfo() FamilyInfoResolver { return &familyInfoResolver{r} }
+
+// Finance returns FinanceResolver implementation.
+func (r *Resolver) Finance() FinanceResolver { return &financeResolver{r} }
+
+// JobInfo returns JobInfoResolver implementation.
+func (r *Resolver) JobInfo() JobInfoResolver { return &jobInfoResolver{r} }
+
 // Member returns MemberResolver implementation.
 func (r *Resolver) Member() MemberResolver { return &memberResolver{r} }
 
@@ -2942,6 +3181,10 @@ func (r *Resolver) SubChurch() SubChurchResolver { return &subChurchResolver{r} 
 
 type callCenterResolver struct{ *Resolver }
 type churchResolver struct{ *Resolver }
+type emergencyContactResolver struct{ *Resolver }
+type familyInfoResolver struct{ *Resolver }
+type financeResolver struct{ *Resolver }
+type jobInfoResolver struct{ *Resolver }
 type memberResolver struct{ *Resolver }
 type migrationRequestResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }

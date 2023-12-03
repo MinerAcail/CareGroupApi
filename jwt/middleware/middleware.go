@@ -135,7 +135,7 @@ func ParseToken(tokenStr string) (string, string, map[string]interface{}, error)
 func ExtractCTXinfo(ctx context.Context) error {
 	_, ok := ctx.Value(IDContextKey).(string)
 	if !ok {
-		return fmt.Errorf("ID not found in request context")
+		return fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
 	if !ok {
@@ -155,7 +155,7 @@ func ExtractCTXinfo(ctx context.Context) error {
 func ExtractCTXinfo4AdminOnly(ctx context.Context) error {
 	_, ok := ctx.Value(IDContextKey).(string)
 	if !ok {
-		return fmt.Errorf("leader not found in request context")
+		return fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
 	if !ok {

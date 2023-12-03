@@ -18,9 +18,56 @@ type Member {
   registrations: [Registration] # Define a relationship to Registration
   subChurch: SubChurch # Define a relationship to SubChurch
   subChurchID: String
+  personalInfor: FamilyInfo # New nested field for family information
+  personalInforId: String # New nested field for family information
   updatedAt: Time!
   createdAt: Time!
 }
+type FamilyInfo {
+  id: String!
+  lastName: String
+  spouseId: String
+  dateOfBirth: String
+  member: Member
+  # child: [Member]
+  memberID: String!
+  spouse: Member
+  spouseNameNotVbci: String
+  spousePhoneNumberNotVbci: String
+  # children: [Member]
+  childrenId: [String]
+  relationship: String
+  nextOfKin: String
+  occupation: JobInfo
+  occupationId: String
+  education: String
+  emergencyContact: EmergencyContact
+  emergencyContactId: String
+  updatedAt: Time!
+  createdAt: Time!
+  # Add more family-related fields as needed
+}
+
+type EmergencyContact {
+  id: String!
+  name: String
+  phoneNumber: String
+  relation: String
+  updatedAt: Time!
+  createdAt: Time!
+}
+
+type JobInfo {
+  id: String!
+  position: String
+  typeOfWork: String
+  company: String
+  workExperience: String
+  updatedAt: Time!
+  createdAt: Time!
+  # Add more job-related fields as needed
+}
+
 type RegistrationByCallAgent {
   id: String!
   callAgentId: String!
@@ -127,10 +174,9 @@ type Query {
   GetNoteficationByLeader(subChurchID: String!, day: String): [Member]
   GetAllRegistersByMemberID(MemberId: String!): [Registration]
 
-
   GetAllmembersByDaysForCallAgent(CallAgentId: String!): [Member]
   GetAllDaysFormassignCallAgentToMemberRegistration: [String!]!
-  
+
   LastFourCommentsForMember(memberID: String!): [String]
 
   GetAllsubChurch: [SubChurch]
@@ -220,6 +266,26 @@ input updateMemberInput {
   day: String
   location: String
 }
+input updateMemberFamilyInfoInput {
+  spouseId: String
+  dateOfBirth: String
+  memberID: String
+  relationship: String
+  nextOfKin: String
+  education: String
+  childrenId: [String]
+}
+input EmergencyContactInput {
+  name: String
+  phoneNumber: String
+  relation: String
+}
+input JobInfoInput {
+  typeOfWork: String
+  position: String
+  company: String
+  workExperience: String
+}
 input updateLeaderProfileInput {
   name: String
   email: String
@@ -256,8 +322,8 @@ input RegistrationArrayInputs {
   createInput: CreateRegistrationInput!
 }
 input assignSubLeaderToMemberRegistrationArrayInput {
- callAgentId: String!
-    day: [String!]!
+  callAgentId: String!
+  day: [String!]!
 }
 type Mutation {
   requestSubChurchMigration(input: SubChurchMigrationInput!): MigrationRequest!
@@ -273,12 +339,23 @@ type Mutation {
 
   createMemberBysubLeader(input: CreateMemberInputBySub): Member!
   updateMember(input: updateMemberInput!, memberId: String!): Member!
+  updateMemberFamilyInfo(
+    input: updateMemberFamilyInfoInput!
+    memberId: String!
+  ): FamilyInfo!
+  updateMemberEmergencyContact(
+    input: EmergencyContactInput!
+    memberId: String!
+  ): EmergencyContact
+
+  updateMemberJobInfoInput(input: JobInfoInput!, memberId: String!): JobInfo!
+
   updateLeader(input: updateLeaderProfileInput!, memberId: String!): Member!
   updatesubChurch(
     input: updateLeaderProfileInput!
     subChurchId: String!
   ): SubChurch!
-    updateCallCenter(
+  updateCallCenter(
     input: updateLeaderProfileInput!
     callCenterId: String!
   ): CallCenter!
@@ -312,8 +389,8 @@ type Mutation {
     day: [String!]!
   ): [RegistrationByCallAgent]!
 
-   assignSubLeaderToMemberRegistrationArray(
-   input: [assignSubLeaderToMemberRegistrationArrayInput]
+  assignSubLeaderToMemberRegistrationArray(
+    input: [assignSubLeaderToMemberRegistrationArrayInput]
   ): [RegistrationByCallAgent]!
   deleteAssignSubLeaderToMemberRegistration: Boolean!
 

@@ -39,6 +39,11 @@ func main() {
 		// Handle the error
 		log.Fatal(err)
 	}
+	err = MigrateFamilyInfo(db)
+	if err != nil {
+		// Handle the error
+		log.Fatal(err)
+	}
 
 	resolver := &graph.Resolver{
 		DB: db,
@@ -73,10 +78,17 @@ func main() {
 
 // PerformMigrations performs database migrations using Gorm's AutoMigrate function.
 func PerformMigrations(db *gorm.DB) error {
-	err := db.AutoMigrate(&model.Member{}, &model.Church{}, &model.SubChurch{}, &model.CallCenter{}, &model.Registration{}, &model.MigrationRequest{}, &model.RegistrationByCallAgent{})
+	err := db.AutoMigrate(&model.Member{}, &model.Church{}, &model.SubChurch{}, &model.CallCenter{}, &model.Registration{}, &model.MigrationRequest{}, &model.RegistrationByCallAgent{}, &model.JobInfo{}, &model.EmergencyContact{})
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func  MigrateFamilyInfo(db *gorm.DB) error {
+    if err := db.AutoMigrate(&model.FamilyInfo{}); err != nil {
+        return err
+    }
+    return nil
 }

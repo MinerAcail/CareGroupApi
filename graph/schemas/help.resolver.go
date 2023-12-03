@@ -13,6 +13,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/google/uuid"
 	"github.com/kobbi/vbciapi/graph/model"
 	"github.com/kobbi/vbciapi/jwt/middleware"
 	"github.com/lib/pq"
@@ -672,7 +673,7 @@ func GetWeekNumber(date time.Time) int {
 	return weekNumber
 }
 func ArrayToString(arr []string) string {
-    return "{" + strings.Join(arr, ",") + "}"
+	return "{" + strings.Join(arr, ",") + "}"
 }
 
 // func ReadMembersFromCSV(csvFilePath string, churchID *string, db *gorm.DB) ([]*model.Member, error) {
@@ -803,4 +804,21 @@ func getLeaderName(db *gorm.DB, ctx context.Context, leaderID *string) (*string,
 	}
 
 	return &MStext, fmt.Errorf("failed to get leader name: %w", err)
+}
+
+// Function to convert []*string to []uuid.UUID
+func ConvertToUUIDSlice(strPtrSlice []*string) []uuid.UUID {
+	uuidSlice := make([]uuid.UUID, len(strPtrSlice))
+    for i, strPtr := range strPtrSlice {
+        if strPtr != nil {
+            uuidVal, err := uuid.Parse(*strPtr)
+            if err == nil {
+                uuidSlice[i] = uuidVal
+            } else {
+                // Handle parsing error appropriately
+                // You might want to log or return an error in your specific case
+            }
+        }
+    }
+    return uuidSlice
 }

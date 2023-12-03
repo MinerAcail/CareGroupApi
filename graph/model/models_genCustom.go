@@ -2,6 +2,8 @@ package model
 
 import (
 	"database/sql/driver"
+	// "encoding/json"
+	// "encoding/json"
 	"regexp"
 	"strings"
 	"time"
@@ -88,8 +90,71 @@ type Member struct {
 	Registrations    []*Registration `json:"registrations,omitempty"`
 	SubChurch        *SubChurch      `json:"subChurch,omitempty"`
 	SubChurchID      *string         `json:"subChurchID,omitempty"`
+	PersonalInfor    *FamilyInfo     `json:"personalInfor,omitempty"`
+	PersonalInforID  *string         `json:"personalInforId,omitempty"`
 	UpdatedAt        time.Time       `json:"updatedAt"`
 	CreatedAt        time.Time       `json:"createdAt"`
+}
+
+type FamilyInfo struct {
+	ID                       uuid.UUID         `gorm:"type:uuid;default:uuid_generate_v4()"`
+	LastName                 *string           `json:"lastName,omitempty"`
+	SpouseID                 *string           `json:"spouseId,omitempty"`
+	DateOfBirth              *string           `json:"dateOfBirth,omitempty"`
+	Member                   *Member           `gorm:"foreignKey:MemberID;references:ID" json:"member,omitempty"`
+	MemberID                 string            `json:"memberID"`
+	Spouse                   *Member           `json:"spouse,omitempty"`
+	SpouseNameNotVbci        *string           `json:"spouseNameNotVbci,omitempty"`
+	SpousePhoneNumberNotVbci *string           `json:"spousePhoneNumberNotVbci,omitempty"`
+	ChildrenID               []uuid.UUID       `gorm:"type:uuid[]" json:"childrenId,omitempty"`
+	Relationship             *string           `json:"relationship,omitempty"`
+	NextOfKin                *string           `json:"nextOfKin,omitempty"`
+	Occupation               *JobInfo          `json:"occupation,omitempty"`
+	OccupationID             *string           `json:"occupationId,omitempty"`
+	Education                *string           `json:"education,omitempty"`
+	EmergencyContact         *EmergencyContact `json:"emergencyContact,omitempty"`
+	EmergencyContactID       *string           `json:"emergencyContactId,omitempty"`
+	UpdatedAt                time.Time         `json:"updatedAt"`
+	CreatedAt                time.Time         `json:"createdAt"`
+}
+
+// func (fi FamilyInfo) Value() (driver.Value, error) {
+// 	return json.Marshal(fi.Children)
+// }
+
+// func (fi *FamilyInfo) Scan(value interface{}) error {
+// 	return json.Unmarshal(value.([]byte), &fi.Children)
+// }
+
+type EmergencyContact struct {
+	ID          uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Name        *string   `json:"name,omitempty"`
+	PhoneNumber *string   `json:"phoneNumber,omitempty"`
+
+	Relation  *string   `json:"relation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+type JobInfo struct {
+	ID             uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	TypeOfWork     *string   `json:"typeOfWork,omitempty"`
+	Position       *string   `json:"position,omitempty"`
+	Company        *string   `json:"company,omitempty"`
+	WorkExperience *string   `json:"workExperience,omitempty"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+	CreatedAt      time.Time `json:"createdAt"`
+}
+type Finance struct {
+	ID          uuid.UUID    `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Name        string       `json:"name"`
+	Password    *string      `json:"password,omitempty"`
+	Email       *string      `json:"email,omitempty"`
+	Types       *string      `json:"types,omitempty"`
+	UpdatedAt   time.Time    `json:"updatedAt"`
+	CreatedAt   time.Time    `json:"createdAt"`
+	Token       *string      `json:"token,omitempty"`
+	SubChurchID *string      `json:"subChurchID,omitempty"`
+	SubChurches []*SubChurch `json:"subChurches"`
 }
 
 type Registration struct {
@@ -111,12 +176,12 @@ type Registration struct {
 	TempLeaderID *string    `json:"tempLeaderID,omitempty"`
 }
 type RegistrationByCallAgent struct {
-	ID            uuid.UUID       `gorm:"type:uuid;default:uuid_generate_v4()"`
-	CallAgentID   string          `json:"callAgentId"`
-	CallAgent     *Member         `json:"callAgent,omitempty"`
+	ID          uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	CallAgentID string    `json:"callAgentId"`
+	CallAgent   *Member   `json:"callAgent,omitempty"`
 	// SubChurch        *SubChurch      `json:"subChurch,omitempty"`
 	// SubChurchID      *string         `json:"subChurchID,omitempty"`
-	Day           pq.StringArray  `gorm:"type:text[]" `
+	Day pq.StringArray `gorm:"type:text[]" `
 	// Registrations []*Registration `json:"registrations,omitempty"`
 }
 type SubChurch struct {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strconv"
-	"time"
 )
 
 type CreateMemberInput struct {
@@ -40,16 +39,17 @@ type DateInfo struct {
 	WeekOfMonth *int    `json:"weekOfMonth,omitempty"`
 }
 
-type Finance struct {
-	ID          string       `json:"id"`
-	Name        string       `json:"name"`
-	Password    *string      `json:"password,omitempty"`
-	Email       *string      `json:"email,omitempty"`
-	Types       *string      `json:"types,omitempty"`
-	UpdatedAt   time.Time    `json:"updatedAt"`
-	CreatedAt   time.Time    `json:"createdAt"`
-	Token       *string      `json:"token,omitempty"`
-	SubChurches []*SubChurch `json:"subChurches"`
+type EmergencyContactInput struct {
+	Name        *string `json:"name,omitempty"`
+	PhoneNumber *string `json:"phoneNumber,omitempty"`
+	Relation    *string `json:"relation,omitempty"`
+}
+
+type JobInfoInput struct {
+	TypeOfWork     *string `json:"typeOfWork,omitempty"`
+	Position       *string `json:"position,omitempty"`
+	Company        *string `json:"company,omitempty"`
+	WorkExperience *string `json:"workExperience,omitempty"`
 }
 
 type LeaderRegistrationsDistribution struct {
@@ -116,6 +116,16 @@ type UpdateLeaderProfileInput struct {
 	Oldpassword *string `json:"oldpassword,omitempty"`
 	Password    *string `json:"password,omitempty"`
 	Location    *string `json:"location,omitempty"`
+}
+
+type UpdateMemberFamilyInfoInput struct {
+	SpouseID     *string   `json:"spouseId,omitempty"`
+	DateOfBirth  *string   `json:"dateOfBirth,omitempty"`
+	MemberID     *string   `json:"memberID,omitempty"`
+	Relationship *string   `json:"relationship,omitempty"`
+	NextOfKin    *string   `json:"nextOfKin,omitempty"`
+	Education    *string   `json:"education,omitempty"`
+	ChildrenID   []*string `json:"childrenId,omitempty"`
 }
 
 type UpdateMemberInput struct {
