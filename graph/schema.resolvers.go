@@ -40,6 +40,11 @@ func (r *churchResolver) ID(ctx context.Context, obj *model.Church) (string, err
 }
 
 // ID is the resolver for the id field.
+func (r *churchMinistryRoleResolver) ID(ctx context.Context, obj *model.ChurchMinistryRole) (string, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// ID is the resolver for the id field.
 func (r *emergencyContactResolver) ID(ctx context.Context, obj *model.EmergencyContact) (string, error) {
 	id := obj.ID.String()
 	return id, nil
@@ -100,6 +105,16 @@ func (r *memberResolver) Types(ctx context.Context, obj *model.Member) ([]string
 	}
 
 	return obj.Types, nil
+}
+
+// ChurchMinistries is the resolver for the churchMinistries field.
+func (r *memberResolver) ChurchMinistries(ctx context.Context, obj *model.Member) ([]*model.ChurchMinistryRole, error) {
+	panic(fmt.Errorf("not implemented: ChurchMinistries - churchMinistries"))
+}
+
+// ID is the resolver for the id field.
+func (r *memberChurchMinistryRoleResolver) ID(ctx context.Context, obj *model.MemberChurchMinistryRole) (string, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
 }
 
 // ID is the resolver for the id field.
@@ -359,7 +374,7 @@ func (r *mutationResolver) CreateMemberbySubchurch(ctx context.Context, input *m
 	}
 	subChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf("leaderID not found in request context")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 	// Check if email already exists
 	members := &model.Member{}
@@ -515,7 +530,7 @@ func (r *mutationResolver) CreateMemberBysubLeader(ctx context.Context, input *m
 	}
 	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf("leaderID not found in request context")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 	// Query the leader
 	leader := &model.Member{}
@@ -662,7 +677,6 @@ func (r *mutationResolver) UpdateMemberFamilyInfo(ctx context.Context, input mod
 
 	// Return the created or updated FamilyInfo
 	return family, nil
-
 }
 
 // UpdateMemberEmergencyContact is the resolver for the updateMemberEmergencyContact field.
@@ -719,7 +733,6 @@ func (r *mutationResolver) UpdateMemberEmergencyContact(ctx context.Context, inp
 	}
 
 	return emergencyContact, nil
-
 }
 
 // UpdateMemberJobInfoInput is the resolver for the updateMemberJobInfoInput field.
@@ -786,7 +799,7 @@ func (r *mutationResolver) UpdateMemberJobInfoInput(ctx context.Context, input m
 func (r *mutationResolver) UpdateLeader(ctx context.Context, input model.UpdateLeaderProfileInput, memberID string) (*model.Member, error) {
 	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf("leaderID not found in request context")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 
 	// Check if the authenticated user is the same as the member being updated.
@@ -1879,7 +1892,7 @@ func (r *mutationResolver) CreateSubChurchesWithMainChurch(ctx context.Context, 
 
 	// leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	// if !ok {
-	// 	return nil, fmt.Errorf("leaderID not found in request context")
+	// 	return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	// }
 
 	// Find the main church by ID
@@ -1967,7 +1980,7 @@ func (r *mutationResolver) CreateRegistrationArray(ctx context.Context, input []
 	}
 	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf("leaderID not found in request context")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 	// Retrieve the SubChurchID associated with the leaderID
 	subChurchID, err := schemas.GetSubChurchIDForLeader(r.DB, leaderID)
@@ -2217,6 +2230,11 @@ func (r *mutationResolver) CreateCallCenterForSubChurchs(ctx context.Context, na
 	}
 
 	return callCenter, nil
+}
+
+// UpdateMinistryRoleByLeader is the resolver for the updateMinistryRoleByLeader field.
+func (r *mutationResolver) UpdateMinistryRoleByLeader(ctx context.Context, input model.ChurchMinistryRoleInpt, memberID string, churchMinistryRoleID string) (*model.ChurchMinistryRole, error) {
+	panic(fmt.Errorf("not implemented: UpdateMinistryRoleByLeader - updateMinistryRoleByLeader"))
 }
 
 // DistributeRegistrationsToLeaders is the resolver for the distributeRegistrationsToLeaders field.
@@ -2847,7 +2865,7 @@ func (r *queryResolver) Getmember(ctx context.Context, id string) (*model.Member
 	var Member model.Member
 
 	// Use GORM to find the Member by its ID
-	if err := r.DB.Where("id = ?", id).Preload("SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").First(&Member).Error; err != nil {
+	if err := r.DB.Where("id = ?", id).Preload("SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").Order("created_at DESC").First(&Member).Error; err != nil {
 		return nil, err
 	}
 
@@ -3049,7 +3067,7 @@ func (r *queryResolver) CurrentWeekRegistrationsforsub(ctx context.Context, subC
 func (r *queryResolver) CurrentWeekRegistrationsforCallCenter(ctx context.Context) ([]*model.SubChurch, error) {
 	callCenterID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf("leaderID not found in request context")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 	var subChurches []*model.SubChurch
 
@@ -3071,7 +3089,7 @@ func (r *queryResolver) CurrentWeekRegistrationsforCallCenter(ctx context.Contex
 func (r *queryResolver) WeekRegistrationsforSub(ctx context.Context) ([]*model.Registration, error) {
 	// leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	// if !ok {
-	// 	return nil, fmt.Errorf("leaderID not found in request context")
+	// 	return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	// }
 	var registrations []*model.Registration
 	if err := r.DB.Preload("Member").Order("created_at DESC").Find(&registrations).Error; err != nil {
@@ -3144,6 +3162,11 @@ func (r *Resolver) CallCenter() CallCenterResolver { return &callCenterResolver{
 // Church returns ChurchResolver implementation.
 func (r *Resolver) Church() ChurchResolver { return &churchResolver{r} }
 
+// ChurchMinistryRole returns ChurchMinistryRoleResolver implementation.
+func (r *Resolver) ChurchMinistryRole() ChurchMinistryRoleResolver {
+	return &churchMinistryRoleResolver{r}
+}
+
 // EmergencyContact returns EmergencyContactResolver implementation.
 func (r *Resolver) EmergencyContact() EmergencyContactResolver { return &emergencyContactResolver{r} }
 
@@ -3158,6 +3181,11 @@ func (r *Resolver) JobInfo() JobInfoResolver { return &jobInfoResolver{r} }
 
 // Member returns MemberResolver implementation.
 func (r *Resolver) Member() MemberResolver { return &memberResolver{r} }
+
+// MemberChurchMinistryRole returns MemberChurchMinistryRoleResolver implementation.
+func (r *Resolver) MemberChurchMinistryRole() MemberChurchMinistryRoleResolver {
+	return &memberChurchMinistryRoleResolver{r}
+}
 
 // MigrationRequest returns MigrationRequestResolver implementation.
 func (r *Resolver) MigrationRequest() MigrationRequestResolver { return &migrationRequestResolver{r} }
@@ -3181,11 +3209,13 @@ func (r *Resolver) SubChurch() SubChurchResolver { return &subChurchResolver{r} 
 
 type callCenterResolver struct{ *Resolver }
 type churchResolver struct{ *Resolver }
+type churchMinistryRoleResolver struct{ *Resolver }
 type emergencyContactResolver struct{ *Resolver }
 type familyInfoResolver struct{ *Resolver }
 type financeResolver struct{ *Resolver }
 type jobInfoResolver struct{ *Resolver }
 type memberResolver struct{ *Resolver }
+type memberChurchMinistryRoleResolver struct{ *Resolver }
 type migrationRequestResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }

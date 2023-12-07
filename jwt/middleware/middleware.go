@@ -175,11 +175,11 @@ func ExtractCTXinfo4AdminOnly(ctx context.Context) error {
 func ExtractCTXinfo4CallCenter(ctx context.Context) error {
 	_, ok := ctx.Value(IDContextKey).(string)
 	if !ok {
-		return fmt.Errorf("leader not found in request context")
+		return fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
 	if !ok {
-		return fmt.Errorf("leader Type not found in request context")
+		return fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 
 	leaderType = strings.ToUpper(leaderType) // Convert leaderType to uppercase

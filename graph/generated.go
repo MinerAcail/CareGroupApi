@@ -40,11 +40,13 @@ type Config struct {
 type ResolverRoot interface {
 	CallCenter() CallCenterResolver
 	Church() ChurchResolver
+	ChurchMinistryRole() ChurchMinistryRoleResolver
 	EmergencyContact() EmergencyContactResolver
 	FamilyInfo() FamilyInfoResolver
 	Finance() FinanceResolver
 	JobInfo() JobInfoResolver
 	Member() MemberResolver
+	MemberChurchMinistryRole() MemberChurchMinistryRoleResolver
 	MigrationRequest() MigrationRequestResolver
 	Mutation() MutationResolver
 	Query() QueryResolver
@@ -79,6 +81,11 @@ type ComplexityRoot struct {
 		Token       func(childComplexity int) int
 		Types       func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
+	}
+
+	ChurchMinistryRole struct {
+		ID   func(childComplexity int) int
+		Role func(childComplexity int) int
 	}
 
 	DateInfo struct {
@@ -145,6 +152,7 @@ type ComplexityRoot struct {
 	}
 
 	Member struct {
+		ChurchMinistries func(childComplexity int) int
 		CreatedAt        func(childComplexity int) int
 		Day              func(childComplexity int) int
 		Email            func(childComplexity int) int
@@ -157,6 +165,7 @@ type ComplexityRoot struct {
 		PersonalInfor    func(childComplexity int) int
 		PersonalInforID  func(childComplexity int) int
 		PhoneNumber      func(childComplexity int) int
+		Pwood            func(childComplexity int) int
 		ReferenceIDCount func(childComplexity int) int
 		Registrations    func(childComplexity int) int
 		SubChurch        func(childComplexity int) int
@@ -164,6 +173,12 @@ type ComplexityRoot struct {
 		Token            func(childComplexity int) int
 		Types            func(childComplexity int) int
 		UpdatedAt        func(childComplexity int) int
+	}
+
+	MemberChurchMinistryRole struct {
+		ChurchMinistryRoleID func(childComplexity int) int
+		ID                   func(childComplexity int) int
+		MemberID             func(childComplexity int) int
 	}
 
 	MigrationRequest struct {
@@ -221,6 +236,7 @@ type ComplexityRoot struct {
 		UpdateMemberEmergencyContact              func(childComplexity int, input model.EmergencyContactInput, memberID string) int
 		UpdateMemberFamilyInfo                    func(childComplexity int, input model.UpdateMemberFamilyInfoInput, memberID string) int
 		UpdateMemberJobInfoInput                  func(childComplexity int, input model.JobInfoInput, memberID string) int
+		UpdateMinistryRoleByLeader                func(childComplexity int, input model.ChurchMinistryRoleInpt, memberID string, churchMinistryRoleID string) int
 		UpdateRegistration                        func(childComplexity int, input model.CreateRegistrationInput, registrationID string) int
 		UpdateRegistrationArray                   func(childComplexity int, input []*model.RegistrationArrayInputs) int
 		UpdateRegistrationByLeader                func(childComplexity int, input model.CreateRegistrationInput, registrationID string, leaderID string) int
@@ -324,6 +340,9 @@ type CallCenterResolver interface {
 type ChurchResolver interface {
 	ID(ctx context.Context, obj *model.Church) (string, error)
 }
+type ChurchMinistryRoleResolver interface {
+	ID(ctx context.Context, obj *model.ChurchMinistryRole) (string, error)
+}
 type EmergencyContactResolver interface {
 	ID(ctx context.Context, obj *model.EmergencyContact) (string, error)
 }
@@ -342,6 +361,11 @@ type MemberResolver interface {
 	ID(ctx context.Context, obj *model.Member) (string, error)
 
 	Types(ctx context.Context, obj *model.Member) ([]string, error)
+
+	ChurchMinistries(ctx context.Context, obj *model.Member) ([]*model.ChurchMinistryRole, error)
+}
+type MemberChurchMinistryRoleResolver interface {
+	ID(ctx context.Context, obj *model.MemberChurchMinistryRole) (string, error)
 }
 type MigrationRequestResolver interface {
 	ID(ctx context.Context, obj *model.MigrationRequest) (string, error)
@@ -388,6 +412,7 @@ type MutationResolver interface {
 	UpdateRegistration(ctx context.Context, input model.CreateRegistrationInput, registrationID string) (*model.Registration, error)
 	UpdateRegistrationByLeader(ctx context.Context, input model.CreateRegistrationInput, registrationID string, leaderID string) (*model.Registration, error)
 	CreateCallCenterForSubChurchs(ctx context.Context, name string, subChurchIDs []string) (*model.CallCenter, error)
+	UpdateMinistryRoleByLeader(ctx context.Context, input model.ChurchMinistryRoleInpt, memberID string, churchMinistryRoleID string) (*model.ChurchMinistryRole, error)
 	DistributeRegistrationsToLeaders(ctx context.Context, leaderIds []string) ([]*model.LeaderRegistrationsDistribution, error)
 	ReportRegistrationByLeader(ctx context.Context, report *model.ReportRegistrationInput, registrationID string, leaderID string) (*model.Registration, error)
 	Login(ctx context.Context, input model.LoginLeaderInput) (model.Returns, error)
@@ -581,6 +606,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Church.UpdatedAt(childComplexity), true
+
+	case "ChurchMinistryRole.id":
+		if e.complexity.ChurchMinistryRole.ID == nil {
+			break
+		}
+
+		return e.complexity.ChurchMinistryRole.ID(childComplexity), true
+
+	case "ChurchMinistryRole.role":
+		if e.complexity.ChurchMinistryRole.Role == nil {
+			break
+		}
+
+		return e.complexity.ChurchMinistryRole.Role(childComplexity), true
 
 	case "DateInfo.month":
 		if e.complexity.DateInfo.Month == nil {
@@ -897,6 +936,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.LeaderRegistrationsDistribution.RegistrationIDs(childComplexity), true
 
+	case "Member.churchMinistries":
+		if e.complexity.Member.ChurchMinistries == nil {
+			break
+		}
+
+		return e.complexity.Member.ChurchMinistries(childComplexity), true
+
 	case "Member.createdAt":
 		if e.complexity.Member.CreatedAt == nil {
 			break
@@ -981,6 +1027,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Member.PhoneNumber(childComplexity), true
 
+	case "Member.pwood":
+		if e.complexity.Member.Pwood == nil {
+			break
+		}
+
+		return e.complexity.Member.Pwood(childComplexity), true
+
 	case "Member.ReferenceIDCount":
 		if e.complexity.Member.ReferenceIDCount == nil {
 			break
@@ -1029,6 +1082,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Member.UpdatedAt(childComplexity), true
+
+	case "MemberChurchMinistryRole.churchMinistryRoleID":
+		if e.complexity.MemberChurchMinistryRole.ChurchMinistryRoleID == nil {
+			break
+		}
+
+		return e.complexity.MemberChurchMinistryRole.ChurchMinistryRoleID(childComplexity), true
+
+	case "MemberChurchMinistryRole.id":
+		if e.complexity.MemberChurchMinistryRole.ID == nil {
+			break
+		}
+
+		return e.complexity.MemberChurchMinistryRole.ID(childComplexity), true
+
+	case "MemberChurchMinistryRole.memberID":
+		if e.complexity.MemberChurchMinistryRole.MemberID == nil {
+			break
+		}
+
+		return e.complexity.MemberChurchMinistryRole.MemberID(childComplexity), true
 
 	case "MigrationRequest.createdAt":
 		if e.complexity.MigrationRequest.CreatedAt == nil {
@@ -1576,6 +1650,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdateMemberJobInfoInput(childComplexity, args["input"].(model.JobInfoInput), args["memberId"].(string)), true
+
+	case "Mutation.updateMinistryRoleByLeader":
+		if e.complexity.Mutation.UpdateMinistryRoleByLeader == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMinistryRoleByLeader_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateMinistryRoleByLeader(childComplexity, args["input"].(model.ChurchMinistryRoleInpt), args["memberID"].(string), args["churchMinistryRoleID"].(string)), true
 
 	case "Mutation.updateRegistration":
 		if e.complexity.Mutation.UpdateRegistration == nil {
@@ -2247,6 +2333,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	rc := graphql.GetOperationContext(ctx)
 	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputChurchMinistryRoleInpt,
 		ec.unmarshalInputCreateMemberInput,
 		ec.unmarshalInputCreateMemberInputBySub,
 		ec.unmarshalInputCreateRegistrationInput,
@@ -3144,6 +3231,39 @@ func (ec *executionContext) field_Mutation_updateMember_args(ctx context.Context
 		}
 	}
 	args["memberId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMinistryRoleByLeader_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.ChurchMinistryRoleInpt
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNChurchMinistryRoleInpt2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRoleInpt(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["memberID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("memberID"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["memberID"] = arg1
+	var arg2 string
+	if tmp, ok := rawArgs["churchMinistryRoleID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("churchMinistryRoleID"))
+		arg2, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["churchMinistryRoleID"] = arg2
 	return args, nil
 }
 
@@ -4482,6 +4602,91 @@ func (ec *executionContext) fieldContext_Church_subChurches(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _ChurchMinistryRole_id(ctx context.Context, field graphql.CollectedField, obj *model.ChurchMinistryRole) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChurchMinistryRole_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ChurchMinistryRole().ID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChurchMinistryRole_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChurchMinistryRole",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChurchMinistryRole_role(ctx context.Context, field graphql.CollectedField, obj *model.ChurchMinistryRole) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChurchMinistryRole_role(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Role, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.ChurchMinistryRolesEnum)
+	fc.Result = res
+	return ec.marshalOChurchMinistryRolesEnum2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRolesEnum(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChurchMinistryRole_role(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChurchMinistryRole",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ChurchMinistryRolesEnum does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _DateInfo_month(ctx context.Context, field graphql.CollectedField, obj *model.DateInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_DateInfo_month(ctx, field)
 	if err != nil {
@@ -5036,6 +5241,8 @@ func (ec *executionContext) fieldContext_FamilyInfo_member(ctx context.Context, 
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -5054,6 +5261,8 @@ func (ec *executionContext) fieldContext_FamilyInfo_member(ctx context.Context, 
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -5161,6 +5370,8 @@ func (ec *executionContext) fieldContext_FamilyInfo_spouse(ctx context.Context, 
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -5179,6 +5390,8 @@ func (ec *executionContext) fieldContext_FamilyInfo_spouse(ctx context.Context, 
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -6819,6 +7032,47 @@ func (ec *executionContext) fieldContext_Member_password(ctx context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Member_pwood(ctx context.Context, field graphql.CollectedField, obj *model.Member) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Member_pwood(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pwood, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Member_pwood(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Member",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Member_types(ctx context.Context, field graphql.CollectedField, obj *model.Member) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Member_types(ctx, field)
 	if err != nil {
@@ -6954,6 +7208,8 @@ func (ec *executionContext) fieldContext_Member_leader(ctx context.Context, fiel
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -6972,6 +7228,8 @@ func (ec *executionContext) fieldContext_Member_leader(ctx context.Context, fiel
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -7337,6 +7595,53 @@ func (ec *executionContext) fieldContext_Member_personalInfor(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Member_churchMinistries(ctx context.Context, field graphql.CollectedField, obj *model.Member) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Member_churchMinistries(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Member().ChurchMinistries(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ChurchMinistryRole)
+	fc.Result = res
+	return ec.marshalOChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Member_churchMinistries(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Member",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ChurchMinistryRole_id(ctx, field)
+			case "role":
+				return ec.fieldContext_ChurchMinistryRole_role(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChurchMinistryRole", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Member_personalInforId(ctx context.Context, field graphql.CollectedField, obj *model.Member) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Member_personalInforId(ctx, field)
 	if err != nil {
@@ -7461,6 +7766,138 @@ func (ec *executionContext) fieldContext_Member_createdAt(ctx context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MemberChurchMinistryRole_id(ctx context.Context, field graphql.CollectedField, obj *model.MemberChurchMinistryRole) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MemberChurchMinistryRole_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.MemberChurchMinistryRole().ID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MemberChurchMinistryRole_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MemberChurchMinistryRole",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MemberChurchMinistryRole_memberID(ctx context.Context, field graphql.CollectedField, obj *model.MemberChurchMinistryRole) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MemberChurchMinistryRole_memberID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MemberID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MemberChurchMinistryRole_memberID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MemberChurchMinistryRole",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MemberChurchMinistryRole_churchMinistryRoleID(ctx context.Context, field graphql.CollectedField, obj *model.MemberChurchMinistryRole) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MemberChurchMinistryRole_churchMinistryRoleID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChurchMinistryRoleID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MemberChurchMinistryRole_churchMinistryRoleID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MemberChurchMinistryRole",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -8116,6 +8553,8 @@ func (ec *executionContext) fieldContext_Mutation_createMember(ctx context.Conte
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -8134,6 +8573,8 @@ func (ec *executionContext) fieldContext_Mutation_createMember(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -8211,6 +8652,8 @@ func (ec *executionContext) fieldContext_Mutation_createMemberbySubchurch(ctx co
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -8229,6 +8672,8 @@ func (ec *executionContext) fieldContext_Mutation_createMemberbySubchurch(ctx co
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -8303,6 +8748,8 @@ func (ec *executionContext) fieldContext_Mutation_importMemberData(ctx context.C
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -8321,6 +8768,8 @@ func (ec *executionContext) fieldContext_Mutation_importMemberData(ctx context.C
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -8480,6 +8929,8 @@ func (ec *executionContext) fieldContext_Mutation_createMemberBysubLeader(ctx co
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -8498,6 +8949,8 @@ func (ec *executionContext) fieldContext_Mutation_createMemberBysubLeader(ctx co
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -8575,6 +9028,8 @@ func (ec *executionContext) fieldContext_Mutation_updateMember(ctx context.Conte
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -8593,6 +9048,8 @@ func (ec *executionContext) fieldContext_Mutation_updateMember(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -8902,6 +9359,8 @@ func (ec *executionContext) fieldContext_Mutation_updateLeader(ctx context.Conte
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -8920,6 +9379,8 @@ func (ec *executionContext) fieldContext_Mutation_updateLeader(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -9659,6 +10120,8 @@ func (ec *executionContext) fieldContext_Mutation_assignLeader(ctx context.Conte
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -9677,6 +10140,8 @@ func (ec *executionContext) fieldContext_Mutation_assignLeader(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -9754,6 +10219,8 @@ func (ec *executionContext) fieldContext_Mutation_addAnotherType(ctx context.Con
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -9772,6 +10239,8 @@ func (ec *executionContext) fieldContext_Mutation_addAnotherType(ctx context.Con
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -9846,6 +10315,8 @@ func (ec *executionContext) fieldContext_Mutation_updateLeaderTypes(ctx context.
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -9864,6 +10335,8 @@ func (ec *executionContext) fieldContext_Mutation_updateLeaderTypes(ctx context.
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -9938,6 +10411,8 @@ func (ec *executionContext) fieldContext_Mutation_assignMemberToLeaderbySubchurc
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -9956,6 +10431,8 @@ func (ec *executionContext) fieldContext_Mutation_assignMemberToLeaderbySubchurc
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -10471,6 +10948,8 @@ func (ec *executionContext) fieldContext_Mutation_removeLeader(ctx context.Conte
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -10489,6 +10968,8 @@ func (ec *executionContext) fieldContext_Mutation_removeLeader(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -11007,6 +11488,64 @@ func (ec *executionContext) fieldContext_Mutation_CreateCallCenterForSubChurchs(
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_CreateCallCenterForSubChurchs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateMinistryRoleByLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateMinistryRoleByLeader(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateMinistryRoleByLeader(rctx, fc.Args["input"].(model.ChurchMinistryRoleInpt), fc.Args["memberID"].(string), fc.Args["churchMinistryRoleID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.ChurchMinistryRole)
+	fc.Result = res
+	return ec.marshalOChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateMinistryRoleByLeader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ChurchMinistryRole_id(ctx, field)
+			case "role":
+				return ec.fieldContext_ChurchMinistryRole_role(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChurchMinistryRole", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMinistryRoleByLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -11587,6 +12126,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchID(ctx co
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -11605,6 +12146,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchID(ctx co
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -11679,6 +12222,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchIDForCall
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -11697,6 +12242,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchIDForCall
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -11771,6 +12318,8 @@ func (ec *executionContext) fieldContext_Query_GetAllSubChurchLeader(ctx context
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -11789,6 +12338,8 @@ func (ec *executionContext) fieldContext_Query_GetAllSubChurchLeader(ctx context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -11863,6 +12414,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersByLeader(ctx context
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -11881,6 +12434,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersByLeader(ctx context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -11955,6 +12510,8 @@ func (ec *executionContext) fieldContext_Query_GetAllSubLeaderByLeader(ctx conte
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -11973,6 +12530,8 @@ func (ec *executionContext) fieldContext_Query_GetAllSubLeaderByLeader(ctx conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12047,6 +12606,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMemberBySubLeaderToLeader(c
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -12065,6 +12626,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMemberBySubLeaderToLeader(c
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12139,6 +12702,8 @@ func (ec *executionContext) fieldContext_Query_GetNoteficationByLeader(ctx conte
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -12157,6 +12722,8 @@ func (ec *executionContext) fieldContext_Query_GetNoteficationByLeader(ctx conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12317,6 +12884,8 @@ func (ec *executionContext) fieldContext_Query_GetAllmembersByDaysForCallAgent(c
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -12335,6 +12904,8 @@ func (ec *executionContext) fieldContext_Query_GetAllmembersByDaysForCallAgent(c
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12726,6 +13297,8 @@ func (ec *executionContext) fieldContext_Query_GetCaller(ctx context.Context, fi
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -12744,6 +13317,8 @@ func (ec *executionContext) fieldContext_Query_GetCaller(ctx context.Context, fi
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12807,6 +13382,8 @@ func (ec *executionContext) fieldContext_Query_GetCallAgent(ctx context.Context,
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -12825,6 +13402,8 @@ func (ec *executionContext) fieldContext_Query_GetCallAgent(ctx context.Context,
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12888,6 +13467,8 @@ func (ec *executionContext) fieldContext_Query_Getmember(ctx context.Context, fi
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -12906,6 +13487,8 @@ func (ec *executionContext) fieldContext_Query_Getmember(ctx context.Context, fi
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -13124,6 +13707,8 @@ func (ec *executionContext) fieldContext_Query_Getmembers(ctx context.Context, f
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -13142,6 +13727,8 @@ func (ec *executionContext) fieldContext_Query_Getmembers(ctx context.Context, f
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -13205,6 +13792,8 @@ func (ec *executionContext) fieldContext_Query_todaysMembers(ctx context.Context
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -13223,6 +13812,8 @@ func (ec *executionContext) fieldContext_Query_todaysMembers(ctx context.Context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -13373,6 +13964,8 @@ func (ec *executionContext) fieldContext_Query_MembersBySubChurchID(ctx context.
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -13391,6 +13984,8 @@ func (ec *executionContext) fieldContext_Query_MembersBySubChurchID(ctx context.
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -14557,6 +15152,8 @@ func (ec *executionContext) fieldContext_Registration_leader(ctx context.Context
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -14575,6 +15172,8 @@ func (ec *executionContext) fieldContext_Registration_leader(ctx context.Context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -14679,6 +15278,8 @@ func (ec *executionContext) fieldContext_Registration_member(ctx context.Context
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -14697,6 +15298,8 @@ func (ec *executionContext) fieldContext_Registration_member(ctx context.Context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -15050,6 +15653,8 @@ func (ec *executionContext) fieldContext_RegistrationByCallAgent_callAgent(ctx c
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -15068,6 +15673,8 @@ func (ec *executionContext) fieldContext_RegistrationByCallAgent_callAgent(ctx c
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -15749,6 +16356,8 @@ func (ec *executionContext) fieldContext_SubChurch_leaders(ctx context.Context, 
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -15767,6 +16376,8 @@ func (ec *executionContext) fieldContext_SubChurch_leaders(ctx context.Context, 
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -15830,6 +16441,8 @@ func (ec *executionContext) fieldContext_SubChurch_members(ctx context.Context, 
 				return ec.fieldContext_Member_day(ctx, field)
 			case "password":
 				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
 			case "types":
 				return ec.fieldContext_Member_types(ctx, field)
 			case "token":
@@ -15848,6 +16461,8 @@ func (ec *executionContext) fieldContext_SubChurch_members(ctx context.Context, 
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -17858,6 +18473,35 @@ func (ec *executionContext) fieldContext___Type_specifiedByURL(ctx context.Conte
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputChurchMinistryRoleInpt(ctx context.Context, obj interface{}) (model.ChurchMinistryRoleInpt, error) {
+	var it model.ChurchMinistryRoleInpt
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"role"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "role":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
+			data, err := ec.unmarshalOChurchMinistryRolesEnum2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRolesEnum(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Role = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateMemberInput(ctx context.Context, obj interface{}) (model.CreateMemberInput, error) {
 	var it model.CreateMemberInput
 	asMap := map[string]interface{}{}
@@ -18503,7 +19147,7 @@ func (ec *executionContext) unmarshalInputupdateLeaderProfileInput(ctx context.C
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "email", "phoneNumber", "oldpassword", "password", "location"}
+	fieldsInOrder := [...]string{"name", "email", "phoneNumber", "oldpassword", "password", "pwood", "location"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18555,6 +19199,15 @@ func (ec *executionContext) unmarshalInputupdateLeaderProfileInput(ctx context.C
 				return it, err
 			}
 			it.Password = data
+		case "pwood":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pwood"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Pwood = data
 		case "location":
 			var err error
 
@@ -18660,7 +19313,7 @@ func (ec *executionContext) unmarshalInputupdateMemberInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "email", "phoneNumber", "day", "location"}
+	fieldsInOrder := [...]string{"name", "email", "phoneNumber", "day", "location", "pwood"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18712,6 +19365,15 @@ func (ec *executionContext) unmarshalInputupdateMemberInput(ctx context.Context,
 				return it, err
 			}
 			it.Location = data
+		case "pwood":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pwood"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Pwood = data
 		}
 	}
 
@@ -18933,6 +19595,78 @@ func (ec *executionContext) _Church(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var churchMinistryRoleImplementors = []string{"ChurchMinistryRole"}
+
+func (ec *executionContext) _ChurchMinistryRole(ctx context.Context, sel ast.SelectionSet, obj *model.ChurchMinistryRole) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, churchMinistryRoleImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChurchMinistryRole")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ChurchMinistryRole_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "role":
+			out.Values[i] = ec._ChurchMinistryRole_role(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -19524,6 +20258,8 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "password":
 			out.Values[i] = ec._Member_password(ctx, field, obj)
+		case "pwood":
+			out.Values[i] = ec._Member_pwood(ctx, field, obj)
 		case "types":
 			field := field
 
@@ -19576,6 +20312,39 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Member_subChurchID(ctx, field, obj)
 		case "personalInfor":
 			out.Values[i] = ec._Member_personalInfor(ctx, field, obj)
+		case "churchMinistries":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Member_churchMinistries(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "personalInforId":
 			out.Values[i] = ec._Member_personalInforId(ctx, field, obj)
 		case "updatedAt":
@@ -19585,6 +20354,86 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 			}
 		case "createdAt":
 			out.Values[i] = ec._Member_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var memberChurchMinistryRoleImplementors = []string{"MemberChurchMinistryRole"}
+
+func (ec *executionContext) _MemberChurchMinistryRole(ctx context.Context, sel ast.SelectionSet, obj *model.MemberChurchMinistryRole) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, memberChurchMinistryRoleImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MemberChurchMinistryRole")
+		case "id":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._MemberChurchMinistryRole_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "memberID":
+			out.Values[i] = ec._MemberChurchMinistryRole_memberID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "churchMinistryRoleID":
+			out.Values[i] = ec._MemberChurchMinistryRole_churchMinistryRoleID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -19975,6 +20824,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "CreateCallCenterForSubChurchs":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_CreateCallCenterForSubChurchs(ctx, field)
+			})
+		case "updateMinistryRoleByLeader":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMinistryRoleByLeader(ctx, field)
 			})
 		case "distributeRegistrationsToLeaders":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -21515,6 +22368,11 @@ func (ec *executionContext) marshalNChurch2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋg
 	return ec._Church(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNChurchMinistryRoleInpt2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRoleInpt(ctx context.Context, v interface{}) (model.ChurchMinistryRoleInpt, error) {
+	res, err := ec.unmarshalInputChurchMinistryRoleInpt(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCreateRegistrationInput2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCreateRegistrationInput(ctx context.Context, v interface{}) (model.CreateRegistrationInput, error) {
 	res, err := ec.unmarshalInputCreateRegistrationInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -22408,6 +23266,70 @@ func (ec *executionContext) marshalOChurch2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋg
 		return graphql.Null
 	}
 	return ec._Church(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx context.Context, sel ast.SelectionSet, v []*model.ChurchMinistryRole) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx context.Context, sel ast.SelectionSet, v *model.ChurchMinistryRole) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChurchMinistryRole(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChurchMinistryRolesEnum2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRolesEnum(ctx context.Context, v interface{}) (*model.ChurchMinistryRolesEnum, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(model.ChurchMinistryRolesEnum)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOChurchMinistryRolesEnum2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRolesEnum(ctx context.Context, sel ast.SelectionSet, v *model.ChurchMinistryRolesEnum) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOCreateMemberInput2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐCreateMemberInput(ctx context.Context, v interface{}) (*model.CreateMemberInput, error) {

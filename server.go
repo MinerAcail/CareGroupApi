@@ -39,7 +39,7 @@ func main() {
 		// Handle the error
 		log.Fatal(err)
 	}
-	err = MigrateFamilyInfo(db)
+	err = MigrateInfor(db)
 	if err != nil {
 		// Handle the error
 		log.Fatal(err)
@@ -86,8 +86,8 @@ func PerformMigrations(db *gorm.DB) error {
 	return nil
 }
 
-func  MigrateFamilyInfo(db *gorm.DB) error {
-    if err := db.AutoMigrate(&model.FamilyInfo{}); err != nil {
+func  MigrateInfor(db *gorm.DB) error {
+    if err := db.AutoMigrate(&model.FamilyInfo{},&model.ChurchMinistryRole{},&model.MemberChurchMinistryRole{}); err != nil {
         return err
     }
     return nil

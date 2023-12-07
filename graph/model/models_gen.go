@@ -8,6 +8,10 @@ import (
 	"strconv"
 )
 
+type ChurchMinistryRoleInpt struct {
+	Role *ChurchMinistryRolesEnum `json:"role,omitempty"`
+}
+
 type CreateMemberInput struct {
 	Name        string  `json:"name"`
 	Email       string  `json:"email"`
@@ -115,6 +119,7 @@ type UpdateLeaderProfileInput struct {
 	PhoneNumber *string `json:"phoneNumber,omitempty"`
 	Oldpassword *string `json:"oldpassword,omitempty"`
 	Password    *string `json:"password,omitempty"`
+	Pwood       *string `json:"pwood,omitempty"`
 	Location    *string `json:"location,omitempty"`
 }
 
@@ -134,6 +139,64 @@ type UpdateMemberInput struct {
 	PhoneNumber *string `json:"phoneNumber,omitempty"`
 	Day         *string `json:"day,omitempty"`
 	Location    *string `json:"location,omitempty"`
+	Pwood       *string `json:"pwood,omitempty"`
+}
+
+type ChurchMinistryRolesEnum string
+
+const (
+	ChurchMinistryRolesEnumPastor              ChurchMinistryRolesEnum = "PASTOR"
+	ChurchMinistryRolesEnumRaven               ChurchMinistryRolesEnum = "RAVEN"
+	ChurchMinistryRolesEnumBishop              ChurchMinistryRolesEnum = "BISHOP"
+	ChurchMinistryRolesEnumSecurity            ChurchMinistryRolesEnum = "SECURITY"
+	ChurchMinistryRolesEnumSundaySchoolTeacher ChurchMinistryRolesEnum = "SUNDAY_SCHOOL_TEACHER"
+	ChurchMinistryRolesEnumFinance             ChurchMinistryRolesEnum = "FINANCE"
+	ChurchMinistryRolesEnumUsher               ChurchMinistryRolesEnum = "USHER"
+	ChurchMinistryRolesEnumMusic               ChurchMinistryRolesEnum = "MUSIC"
+	ChurchMinistryRolesEnumDomestic            ChurchMinistryRolesEnum = "DOMESTIC"
+	ChurchMinistryRolesEnumMedia               ChurchMinistryRolesEnum = "MEDIA"
+)
+
+var AllChurchMinistryRolesEnum = []ChurchMinistryRolesEnum{
+	ChurchMinistryRolesEnumPastor,
+	ChurchMinistryRolesEnumRaven,
+	ChurchMinistryRolesEnumBishop,
+	ChurchMinistryRolesEnumSecurity,
+	ChurchMinistryRolesEnumSundaySchoolTeacher,
+	ChurchMinistryRolesEnumFinance,
+	ChurchMinistryRolesEnumUsher,
+	ChurchMinistryRolesEnumMusic,
+	ChurchMinistryRolesEnumDomestic,
+	ChurchMinistryRolesEnumMedia,
+}
+
+func (e ChurchMinistryRolesEnum) IsValid() bool {
+	switch e {
+	case ChurchMinistryRolesEnumPastor, ChurchMinistryRolesEnumRaven, ChurchMinistryRolesEnumBishop, ChurchMinistryRolesEnumSecurity, ChurchMinistryRolesEnumSundaySchoolTeacher, ChurchMinistryRolesEnumFinance, ChurchMinistryRolesEnumUsher, ChurchMinistryRolesEnumMusic, ChurchMinistryRolesEnumDomestic, ChurchMinistryRolesEnumMedia:
+		return true
+	}
+	return false
+}
+
+func (e ChurchMinistryRolesEnum) String() string {
+	return string(e)
+}
+
+func (e *ChurchMinistryRolesEnum) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ChurchMinistryRolesEnum(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ChurchMinistryRolesEnum", str)
+	}
+	return nil
+}
+
+func (e ChurchMinistryRolesEnum) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
 type MigrationStatus string

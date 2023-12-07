@@ -82,6 +82,7 @@ type Member struct {
 	Password    *string   `json:"password,omitempty"`
 	// Types            *string       `json:"types"`
 	Types pq.StringArray `gorm:"type:text[]" `
+	Pwood *string              `json:"pwood,omitempty"`
 
 	Token            *string         `json:"token,omitempty"`
 	Leader           *Member         `json:"leader,omitempty"`
@@ -125,7 +126,15 @@ type FamilyInfo struct {
 // func (fi *FamilyInfo) Scan(value interface{}) error {
 // 	return json.Unmarshal(value.([]byte), &fi.Children)
 // }
-
+type ChurchMinistryRole struct {
+	ID                       uuid.UUID         `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Role  *ChurchMinistryRolesEnum `json:"role,omitempty"`
+}
+type MemberChurchMinistryRole struct {
+	ID                       uuid.UUID         `gorm:"type:uuid;default:uuid_generate_v4()"`
+	MemberID             string `json:"memberID"`
+	ChurchMinistryRoleID string `json:"churchMinistryRoleID"`
+}
 type EmergencyContact struct {
 	ID          uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
 	Name        *string   `json:"name,omitempty"`

@@ -10,6 +10,7 @@ type Member {
   location: String
   day: String!
   password: String
+  pwood: String
   types: [String!]!
   token: String
   leader: Member
@@ -19,22 +20,45 @@ type Member {
   subChurch: SubChurch # Define a relationship to SubChurch
   subChurchID: String
   personalInfor: FamilyInfo # New nested field for family information
+  churchMinistries: [ChurchMinistryRole]
   personalInforId: String # New nested field for family information
   updatedAt: Time!
   createdAt: Time!
 }
+enum ChurchMinistryRolesEnum {
+  PASTOR
+  RAVEN
+  BISHOP
+  SECURITY
+  SUNDAY_SCHOOL_TEACHER
+  FINANCE
+  USHER
+  MUSIC
+  DOMESTIC
+  MEDIA
+}
+
+type ChurchMinistryRole {
+  id: String!
+  role: ChurchMinistryRolesEnum
+}
+
+type MemberChurchMinistryRole {
+  id: String!
+  memberID: String!
+  churchMinistryRoleID: String!
+}
+
 type FamilyInfo {
   id: String!
   lastName: String
   spouseId: String
   dateOfBirth: String
   member: Member
-  # child: [Member]
   memberID: String!
   spouse: Member
   spouseNameNotVbci: String
   spousePhoneNumberNotVbci: String
-  # children: [Member]
   childrenId: [String]
   relationship: String
   nextOfKin: String
@@ -265,6 +289,8 @@ input updateMemberInput {
   phoneNumber: String
   day: String
   location: String
+  pwood: String
+
 }
 input updateMemberFamilyInfoInput {
   spouseId: String
@@ -292,6 +318,7 @@ input updateLeaderProfileInput {
   phoneNumber: String
   oldpassword: String
   password: String
+  pwood: String
   location: String
 }
 enum MigrationStatus {
@@ -325,6 +352,12 @@ input assignSubLeaderToMemberRegistrationArrayInput {
   callAgentId: String!
   day: [String!]!
 }
+
+input ChurchMinistryRoleInpt {
+  role: ChurchMinistryRolesEnum
+}
+
+
 type Mutation {
   requestSubChurchMigration(input: SubChurchMigrationInput!): MigrationRequest!
   approveSubChurchMigration(requestId: String!): MigrationRequest!
@@ -428,6 +461,15 @@ type Mutation {
     name: String!
     subChurchIDs: [String!]!
   ): CallCenter
+
+
+  updateMinistryRoleByLeader(
+    input: ChurchMinistryRoleInpt!
+    memberID: String!
+    churchMinistryRoleID: String!
+  ): ChurchMinistryRole
+
+  
   distributeRegistrationsToLeaders(
     leaderIds: [String!]!
   ): [LeaderRegistrationsDistribution]

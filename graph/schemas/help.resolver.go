@@ -202,7 +202,7 @@ func FindLeaderWithSameDay(ctx context.Context, db *gorm.DB, day string, subChur
 	// Call UpdateReferenceIDCounts to ensure the counts are up-to-date.
 	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf("leaderID not found in request context")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
 	}
 	if err := UpdateReferenceIDCounts(db, subChurchID); err != nil {
 		// Handle the error, such as logging or returning an error response.
@@ -809,16 +809,16 @@ func getLeaderName(db *gorm.DB, ctx context.Context, leaderID *string) (*string,
 // Function to convert []*string to []uuid.UUID
 func ConvertToUUIDSlice(strPtrSlice []*string) []uuid.UUID {
 	uuidSlice := make([]uuid.UUID, len(strPtrSlice))
-    for i, strPtr := range strPtrSlice {
-        if strPtr != nil {
-            uuidVal, err := uuid.Parse(*strPtr)
-            if err == nil {
-                uuidSlice[i] = uuidVal
-            } else {
-                // Handle parsing error appropriately
-                // You might want to log or return an error in your specific case
-            }
-        }
-    }
-    return uuidSlice
+	for i, strPtr := range strPtrSlice {
+		if strPtr != nil {
+			uuidVal, err := uuid.Parse(*strPtr)
+			if err == nil {
+				uuidSlice[i] = uuidVal
+			} else {
+				// Handle parsing error appropriately
+				// You might want to log or return an error in your specific case
+			}
+		}
+	}
+	return uuidSlice
 }
