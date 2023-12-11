@@ -81,8 +81,9 @@ type Member struct {
 	Day         string    `json:"day"`
 	Password    *string   `json:"password,omitempty"`
 	// Types            *string       `json:"types"`
-	Types pq.StringArray `gorm:"type:text[]" `
-	Pwood *string              `json:"pwood,omitempty"`
+	Types            pq.StringArray              `gorm:"type:text[]" `
+	Pwood            *string                     `json:"pwood,omitempty"`
+	ChurchMinistries []*MemberChurchMinistryRole `json:"churchMinistries,omitempty"`
 
 	Token            *string         `json:"token,omitempty"`
 	Leader           *Member         `json:"leader,omitempty"`
@@ -107,7 +108,9 @@ type FamilyInfo struct {
 	Spouse                   *Member           `json:"spouse,omitempty"`
 	SpouseNameNotVbci        *string           `json:"spouseNameNotVbci,omitempty"`
 	SpousePhoneNumberNotVbci *string           `json:"spousePhoneNumberNotVbci,omitempty"`
-	ChildrenID               []uuid.UUID       `gorm:"type:uuid[]" json:"childrenId,omitempty"`
+	ChildrenID               *string           `json:"childrenId,omitempty"`
+	// Children     []*Member `json:"children,omitempty" gorm:"foreignKey:ParentID;references:ID"`
+	Children                []Member `gorm:"many2many:family_info_children;"`
 	Relationship             *string           `json:"relationship,omitempty"`
 	NextOfKin                *string           `json:"nextOfKin,omitempty"`
 	Occupation               *JobInfo          `json:"occupation,omitempty"`
@@ -118,22 +121,30 @@ type FamilyInfo struct {
 	UpdatedAt                time.Time         `json:"updatedAt"`
 	CreatedAt                time.Time         `json:"createdAt"`
 }
+type MemberChildren struct {
+	ID         uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	ParentID   string    `json:"ParentID"`
+	ChildrenID string    `json:"childrenId"`
+}
+
+
 
 // func (fi FamilyInfo) Value() (driver.Value, error) {
 // 	return json.Marshal(fi.Children)
 // }
 
-// func (fi *FamilyInfo) Scan(value interface{}) error {
-// 	return json.Unmarshal(value.([]byte), &fi.Children)
-// }
+//	func (fi *FamilyInfo) Scan(value interface{}) error {
+//		return json.Unmarshal(value.([]byte), &fi.Children)
+//	}
 type ChurchMinistryRole struct {
-	ID                       uuid.UUID         `gorm:"type:uuid;default:uuid_generate_v4()"`
-	Role  *ChurchMinistryRolesEnum `json:"role,omitempty"`
+	ID   uuid.UUID                `gorm:"type:uuid;default:uuid_generate_v4()"`
+	Role *ChurchMinistryRolesEnum `json:"role,omitempty"`
 }
 type MemberChurchMinistryRole struct {
-	ID                       uuid.UUID         `gorm:"type:uuid;default:uuid_generate_v4()"`
-	MemberID             string `json:"memberID"`
-	ChurchMinistryRoleID string `json:"churchMinistryRoleID"`
+	ID                   uuid.UUID           `gorm:"type:uuid;default:uuid_generate_v4()"`
+	MemberID             string              `json:"memberID"`
+	ChurchMinistryRoleID string              `json:"churchMinistryRoleID"`
+	ChurchMinistryRole   *ChurchMinistryRole `json:"ChurchMinistryRole,omitempty"`
 }
 type EmergencyContact struct {
 	ID          uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`

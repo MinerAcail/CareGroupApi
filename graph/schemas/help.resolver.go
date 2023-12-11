@@ -202,7 +202,7 @@ func FindLeaderWithSameDay(ctx context.Context, db *gorm.DB, day string, subChur
 	// Call UpdateReferenceIDCounts to ensure the counts are up-to-date.
 	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 	if err := UpdateReferenceIDCounts(db, subChurchID); err != nil {
 		// Handle the error, such as logging or returning an error response.

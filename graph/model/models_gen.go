@@ -9,7 +9,7 @@ import (
 )
 
 type ChurchMinistryRoleInpt struct {
-	Role *ChurchMinistryRolesEnum `json:"role,omitempty"`
+	Role *string `json:"role,omitempty"`
 }
 
 type CreateMemberInput struct {
@@ -124,13 +124,13 @@ type UpdateLeaderProfileInput struct {
 }
 
 type UpdateMemberFamilyInfoInput struct {
-	SpouseID     *string   `json:"spouseId,omitempty"`
-	DateOfBirth  *string   `json:"dateOfBirth,omitempty"`
-	MemberID     *string   `json:"memberID,omitempty"`
-	Relationship *string   `json:"relationship,omitempty"`
-	NextOfKin    *string   `json:"nextOfKin,omitempty"`
-	Education    *string   `json:"education,omitempty"`
-	ChildrenID   []*string `json:"childrenId,omitempty"`
+	SpouseID     *string `json:"spouseId,omitempty"`
+	DateOfBirth  *string `json:"dateOfBirth,omitempty"`
+	MemberID     *string `json:"memberID,omitempty"`
+	Relationship *string `json:"relationship,omitempty"`
+	NextOfKin    *string `json:"nextOfKin,omitempty"`
+	Education    *string `json:"education,omitempty"`
+	ChildrenID   *string `json:"childrenId,omitempty"`
 }
 
 type UpdateMemberInput struct {

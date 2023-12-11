@@ -41,7 +41,8 @@ func (r *churchResolver) ID(ctx context.Context, obj *model.Church) (string, err
 
 // ID is the resolver for the id field.
 func (r *churchMinistryRoleResolver) ID(ctx context.Context, obj *model.ChurchMinistryRole) (string, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	id := obj.ID.String()
+	return id, nil
 }
 
 // ID is the resolver for the id field.
@@ -54,22 +55,6 @@ func (r *emergencyContactResolver) ID(ctx context.Context, obj *model.EmergencyC
 func (r *familyInfoResolver) ID(ctx context.Context, obj *model.FamilyInfo) (string, error) {
 	id := obj.ID.String()
 	return id, nil
-}
-
-// ChildrenID is the resolver for the childrenId field.
-func (r *familyInfoResolver) ChildrenID(ctx context.Context, obj *model.FamilyInfo) ([]*string, error) {
-	// Assuming obj.ChildrenID is a pq.StringArray field in your model
-	childrenIDs := obj.ChildrenID
-
-	// Convert pq.StringArray to []*string
-	var result []*string
-	for _, id := range childrenIDs {
-		// Convert uuid.UUID to string
-		strID := id.String()
-		result = append(result, &strID)
-	}
-
-	return result, nil
 }
 
 // ID is the resolver for the id field.
@@ -107,14 +92,16 @@ func (r *memberResolver) Types(ctx context.Context, obj *model.Member) ([]string
 	return obj.Types, nil
 }
 
-// ChurchMinistries is the resolver for the churchMinistries field.
-func (r *memberResolver) ChurchMinistries(ctx context.Context, obj *model.Member) ([]*model.ChurchMinistryRole, error) {
-	panic(fmt.Errorf("not implemented: ChurchMinistries - churchMinistries"))
+// ID is the resolver for the id field.
+func (r *memberChildrenResolver) ID(ctx context.Context, obj *model.MemberChildren) (string, error) {
+	id := obj.ID.String()
+	return id, nil
 }
 
 // ID is the resolver for the id field.
 func (r *memberChurchMinistryRoleResolver) ID(ctx context.Context, obj *model.MemberChurchMinistryRole) (string, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	id := obj.ID.String()
+	return id, nil
 }
 
 // ID is the resolver for the id field.
@@ -374,7 +361,7 @@ func (r *mutationResolver) CreateMemberbySubchurch(ctx context.Context, input *m
 	}
 	subChurchID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 	// Check if email already exists
 	members := &model.Member{}
@@ -530,7 +517,7 @@ func (r *mutationResolver) CreateMemberBysubLeader(ctx context.Context, input *m
 	}
 	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 	// Query the leader
 	leader := &model.Member{}
@@ -597,6 +584,9 @@ func (r *mutationResolver) UpdateMember(ctx context.Context, input model.UpdateM
 	if input.Day != nil {
 		Member.Day = *input.Day
 	}
+	if input.Pwood != nil {
+		Member.Pwood = input.Pwood
+	}
 	if input.Location != nil {
 		Member.Location = input.Location
 	}
@@ -646,6 +636,7 @@ func (r *mutationResolver) UpdateMemberFamilyInfo(ctx context.Context, input mod
 	if input.SpouseID != nil {
 		family.SpouseID = input.SpouseID
 	}
+
 	if input.DateOfBirth != nil {
 		family.DateOfBirth = input.DateOfBirth
 	}
@@ -658,9 +649,23 @@ func (r *mutationResolver) UpdateMemberFamilyInfo(ctx context.Context, input mod
 	if input.Education != nil {
 		family.Education = input.Education
 	}
+	// Inside the section where you handle ChildrenID
+	// Fetch the child from the database based on childID
 	if input.ChildrenID != nil {
-		family.ChildrenID = schemas.ConvertToUUIDSlice(input.ChildrenID)
+
+		child := &model.Member{}
+		if err := r.DB.First(child, "id = ?", input.ChildrenID).Error; err != nil {
+
+			return nil, fmt.Errorf("failed to find child: %w", err)
+		}
+		family.Children = append(family.Children, *child)
+		// Save the FamilyInfo
+		if err := r.DB.Save(family).Error; err != nil {
+			return nil, fmt.Errorf("failed to save family info: %w", err)
+		}
 	}
+
+	// Add the child to the children list in FamilyInfo
 
 	// Save the FamilyInfo
 	if err := r.DB.Save(family).Error; err != nil {
@@ -795,11 +800,88 @@ func (r *mutationResolver) UpdateMemberJobInfoInput(ctx context.Context, input m
 	return jobInfo, nil
 }
 
+// UpdateMinistryRoleByLeader is the resolver for the updateMinistryRoleByLeader field.
+func (r *mutationResolver) UpdateMinistryRoleByLeader(ctx context.Context, input model.ChurchMinistryRoleInpt, memberID string) (*model.MemberChurchMinistryRole, error) {
+	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
+	// err := middleware.ExtractCTXinfo(ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// Retrieve the existing Member from the database based on memberID.
+	member := &model.Member{}
+	if err := r.DB.First(member, "id = ?", memberID).Error; err != nil {
+		return nil, fmt.Errorf("failed to find member: %w", err)
+	}
+
+	// Check if the role value is provided in the input.
+	if input.Role == nil {
+		return nil, errors.New("role is required")
+	}
+
+	// Check if a ChurchMinistryRole with the same role value already exists for the given member.
+	existingRole := &model.ChurchMinistryRole{}
+	if err := r.DB.
+		Where("role = ?", (*model.ChurchMinistryRolesEnum)(input.Role)).
+		Where("id IN (?)", r.DB.Table("member_church_ministry_roles").Select("church_ministry_role_id").Where("member_id = ?", member.ID.String())).
+		First(existingRole).
+		Error; err != nil {
+		// If the error is not a record not found error, return the error.
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("failed to check existing role: %w", err)
+		}
+
+		// If the role doesn't exist for the given member, create a new ChurchMinistryRole.
+		existingRole.Role = (*model.ChurchMinistryRolesEnum)(input.Role)
+		if err := r.DB.Create(existingRole).Error; err != nil {
+			return nil, fmt.Errorf("failed to create church ministry role: %w", err)
+		}
+
+		// Create a new MemberChurchMinistryRole associated with the member and the newly created ChurchMinistryRole.
+		ministry := &model.MemberChurchMinistryRole{
+			MemberID:             member.ID.String(),
+			ChurchMinistryRoleID: existingRole.ID.String(),
+			ChurchMinistryRole:   existingRole,
+		}
+
+		// Save the MemberChurchMinistryRole.
+		if err := r.DB.Save(ministry).Error; err != nil {
+			return nil, fmt.Errorf("failed to save ministry info: %w", err)
+		}
+
+		// Append the MinistryInfo to the member's ChurchMinistries slice.
+		member.ChurchMinistries = append(member.ChurchMinistries, ministry)
+
+		// Save the updated Member to update the relationship.
+		if err := r.DB.Save(member).Error; err != nil {
+			return nil, fmt.Errorf("failed to save updated member: %w", err)
+		}
+
+		// Return the created or updated MinistryInfo.
+		return ministry, nil
+	}
+
+	// If the ChurchMinistryRole already exists for the member, return the existing MemberChurchMinistryRole.
+	existingMinistry := &model.MemberChurchMinistryRole{}
+	if err := r.DB.
+		Where("member_id = ?", member.ID.String()).
+		Where("church_ministry_role_id = ?", existingRole.ID.String()).
+		First(existingMinistry).
+		Error; err != nil {
+		// If the error is not a record not found error, return the error.
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("failed to check existing ministry: %w", err)
+		}
+	}
+
+	return existingMinistry, nil
+}
+
 // UpdateLeader is the resolver for the updateLeader field.
 func (r *mutationResolver) UpdateLeader(ctx context.Context, input model.UpdateLeaderProfileInput, memberID string) (*model.Member, error) {
 	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 
 	// Check if the authenticated user is the same as the member being updated.
@@ -1892,7 +1974,7 @@ func (r *mutationResolver) CreateSubChurchesWithMainChurch(ctx context.Context, 
 
 	// leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	// if !ok {
-	// 	return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+	// 	return nil, fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	// }
 
 	// Find the main church by ID
@@ -1980,7 +2062,7 @@ func (r *mutationResolver) CreateRegistrationArray(ctx context.Context, input []
 	}
 	leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 	// Retrieve the SubChurchID associated with the leaderID
 	subChurchID, err := schemas.GetSubChurchIDForLeader(r.DB, leaderID)
@@ -2230,11 +2312,6 @@ func (r *mutationResolver) CreateCallCenterForSubChurchs(ctx context.Context, na
 	}
 
 	return callCenter, nil
-}
-
-// UpdateMinistryRoleByLeader is the resolver for the updateMinistryRoleByLeader field.
-func (r *mutationResolver) UpdateMinistryRoleByLeader(ctx context.Context, input model.ChurchMinistryRoleInpt, memberID string, churchMinistryRoleID string) (*model.ChurchMinistryRole, error) {
-	panic(fmt.Errorf("not implemented: UpdateMinistryRoleByLeader - updateMinistryRoleByLeader"))
 }
 
 // DistributeRegistrationsToLeaders is the resolver for the distributeRegistrationsToLeaders field.
@@ -2566,7 +2643,7 @@ func (r *queryResolver) GetAllsubChurchByMemberID(ctx context.Context, memberID 
 // GetAllMembersBySubChurchID is the resolver for the GetAllMembersBySubChurchID field.
 func (r *queryResolver) GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error) {
 	var members []*model.Member
-	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").Order("created_at DESC").Find(&members).Error; err != nil {
+	if err := r.DB.Where("sub_church_id = ?", subChurchID).Preload("SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Children").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").Order("created_at DESC").Find(&members).Error; err != nil {
 		log.Printf("Error executing SQL query: %v", err)
 		return nil, fmt.Errorf(" Error executing SQL query: %w", err)
 	}
@@ -2865,7 +2942,7 @@ func (r *queryResolver) Getmember(ctx context.Context, id string) (*model.Member
 	var Member model.Member
 
 	// Use GORM to find the Member by its ID
-	if err := r.DB.Where("id = ?", id).Preload("SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").Order("created_at DESC").First(&Member).Error; err != nil {
+	if err := r.DB.Where("id = ?", id).Preload("SubChurch").Preload("ChurchMinistries.ChurchMinistryRole").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Children.SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").Order("created_at DESC").First(&Member).Error; err != nil {
 		return nil, err
 	}
 
@@ -3067,7 +3144,7 @@ func (r *queryResolver) CurrentWeekRegistrationsforsub(ctx context.Context, subC
 func (r *queryResolver) CurrentWeekRegistrationsforCallCenter(ctx context.Context) ([]*model.SubChurch, error) {
 	callCenterID, ok := ctx.Value(middleware.IDContextKey).(string)
 	if !ok {
-		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return nil, fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 	var subChurches []*model.SubChurch
 
@@ -3089,7 +3166,7 @@ func (r *queryResolver) CurrentWeekRegistrationsforCallCenter(ctx context.Contex
 func (r *queryResolver) WeekRegistrationsforSub(ctx context.Context) ([]*model.Registration, error) {
 	// leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
 	// if !ok {
-	// 	return nil, fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+	// 	return nil, fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	// }
 	var registrations []*model.Registration
 	if err := r.DB.Preload("Member").Order("created_at DESC").Find(&registrations).Error; err != nil {
@@ -3182,6 +3259,9 @@ func (r *Resolver) JobInfo() JobInfoResolver { return &jobInfoResolver{r} }
 // Member returns MemberResolver implementation.
 func (r *Resolver) Member() MemberResolver { return &memberResolver{r} }
 
+// MemberChildren returns MemberChildrenResolver implementation.
+func (r *Resolver) MemberChildren() MemberChildrenResolver { return &memberChildrenResolver{r} }
+
 // MemberChurchMinistryRole returns MemberChurchMinistryRoleResolver implementation.
 func (r *Resolver) MemberChurchMinistryRole() MemberChurchMinistryRoleResolver {
 	return &memberChurchMinistryRoleResolver{r}
@@ -3215,6 +3295,7 @@ type familyInfoResolver struct{ *Resolver }
 type financeResolver struct{ *Resolver }
 type jobInfoResolver struct{ *Resolver }
 type memberResolver struct{ *Resolver }
+type memberChildrenResolver struct{ *Resolver }
 type memberChurchMinistryRoleResolver struct{ *Resolver }
 type migrationRequestResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
@@ -3222,3 +3303,25 @@ type queryResolver struct{ *Resolver }
 type registrationResolver struct{ *Resolver }
 type registrationByCallAgentResolver struct{ *Resolver }
 type subChurchResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//     it when you're done.
+//   - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *familyInfoResolver) Children(ctx context.Context, obj *model.FamilyInfo) (*model.MemberChildren, error) {
+	panic(fmt.Errorf("not implemented: Children - children"))
+}
+func StringToChurchMinistryRolesEnum(role string) (model.ChurchMinistryRolesEnum, error) {
+	switch role {
+	case "PASTOR":
+		return model.ChurchMinistryRolesEnumPastor, nil
+	case "RAVEN":
+		return model.ChurchMinistryRolesEnumRaven, nil
+	// Add other cases for each enum value
+
+	default:
+		return "", fmt.Errorf("invalid ChurchMinistryRolesEnum value: %s", role)
+	}
+}

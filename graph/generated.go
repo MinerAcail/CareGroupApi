@@ -46,6 +46,7 @@ type ResolverRoot interface {
 	Finance() FinanceResolver
 	JobInfo() JobInfoResolver
 	Member() MemberResolver
+	MemberChildren() MemberChildrenResolver
 	MemberChurchMinistryRole() MemberChurchMinistryRoleResolver
 	MigrationRequest() MigrationRequestResolver
 	Mutation() MutationResolver
@@ -103,7 +104,7 @@ type ComplexityRoot struct {
 	}
 
 	FamilyInfo struct {
-		ChildrenID               func(childComplexity int) int
+		Children                 func(childComplexity int) int
 		CreatedAt                func(childComplexity int) int
 		DateOfBirth              func(childComplexity int) int
 		Education                func(childComplexity int) int
@@ -175,7 +176,14 @@ type ComplexityRoot struct {
 		UpdatedAt        func(childComplexity int) int
 	}
 
+	MemberChildren struct {
+		ChildrenID func(childComplexity int) int
+		ID         func(childComplexity int) int
+		ParentID   func(childComplexity int) int
+	}
+
 	MemberChurchMinistryRole struct {
+		ChurchMinistryRole   func(childComplexity int) int
 		ChurchMinistryRoleID func(childComplexity int) int
 		ID                   func(childComplexity int) int
 		MemberID             func(childComplexity int) int
@@ -236,7 +244,7 @@ type ComplexityRoot struct {
 		UpdateMemberEmergencyContact              func(childComplexity int, input model.EmergencyContactInput, memberID string) int
 		UpdateMemberFamilyInfo                    func(childComplexity int, input model.UpdateMemberFamilyInfoInput, memberID string) int
 		UpdateMemberJobInfoInput                  func(childComplexity int, input model.JobInfoInput, memberID string) int
-		UpdateMinistryRoleByLeader                func(childComplexity int, input model.ChurchMinistryRoleInpt, memberID string, churchMinistryRoleID string) int
+		UpdateMinistryRoleByLeader                func(childComplexity int, input model.ChurchMinistryRoleInpt, memberID string) int
 		UpdateRegistration                        func(childComplexity int, input model.CreateRegistrationInput, registrationID string) int
 		UpdateRegistrationArray                   func(childComplexity int, input []*model.RegistrationArrayInputs) int
 		UpdateRegistrationByLeader                func(childComplexity int, input model.CreateRegistrationInput, registrationID string, leaderID string) int
@@ -348,8 +356,6 @@ type EmergencyContactResolver interface {
 }
 type FamilyInfoResolver interface {
 	ID(ctx context.Context, obj *model.FamilyInfo) (string, error)
-
-	ChildrenID(ctx context.Context, obj *model.FamilyInfo) ([]*string, error)
 }
 type FinanceResolver interface {
 	ID(ctx context.Context, obj *model.Finance) (string, error)
@@ -361,8 +367,9 @@ type MemberResolver interface {
 	ID(ctx context.Context, obj *model.Member) (string, error)
 
 	Types(ctx context.Context, obj *model.Member) ([]string, error)
-
-	ChurchMinistries(ctx context.Context, obj *model.Member) ([]*model.ChurchMinistryRole, error)
+}
+type MemberChildrenResolver interface {
+	ID(ctx context.Context, obj *model.MemberChildren) (string, error)
 }
 type MemberChurchMinistryRoleResolver interface {
 	ID(ctx context.Context, obj *model.MemberChurchMinistryRole) (string, error)
@@ -384,6 +391,7 @@ type MutationResolver interface {
 	UpdateMemberFamilyInfo(ctx context.Context, input model.UpdateMemberFamilyInfoInput, memberID string) (*model.FamilyInfo, error)
 	UpdateMemberEmergencyContact(ctx context.Context, input model.EmergencyContactInput, memberID string) (*model.EmergencyContact, error)
 	UpdateMemberJobInfoInput(ctx context.Context, input model.JobInfoInput, memberID string) (*model.JobInfo, error)
+	UpdateMinistryRoleByLeader(ctx context.Context, input model.ChurchMinistryRoleInpt, memberID string) (*model.MemberChurchMinistryRole, error)
 	UpdateLeader(ctx context.Context, input model.UpdateLeaderProfileInput, memberID string) (*model.Member, error)
 	UpdatesubChurch(ctx context.Context, input model.UpdateLeaderProfileInput, subChurchID string) (*model.SubChurch, error)
 	UpdateCallCenter(ctx context.Context, input model.UpdateLeaderProfileInput, callCenterID string) (*model.CallCenter, error)
@@ -412,7 +420,6 @@ type MutationResolver interface {
 	UpdateRegistration(ctx context.Context, input model.CreateRegistrationInput, registrationID string) (*model.Registration, error)
 	UpdateRegistrationByLeader(ctx context.Context, input model.CreateRegistrationInput, registrationID string, leaderID string) (*model.Registration, error)
 	CreateCallCenterForSubChurchs(ctx context.Context, name string, subChurchIDs []string) (*model.CallCenter, error)
-	UpdateMinistryRoleByLeader(ctx context.Context, input model.ChurchMinistryRoleInpt, memberID string, churchMinistryRoleID string) (*model.ChurchMinistryRole, error)
 	DistributeRegistrationsToLeaders(ctx context.Context, leaderIds []string) ([]*model.LeaderRegistrationsDistribution, error)
 	ReportRegistrationByLeader(ctx context.Context, report *model.ReportRegistrationInput, registrationID string, leaderID string) (*model.Registration, error)
 	Login(ctx context.Context, input model.LoginLeaderInput) (model.Returns, error)
@@ -677,12 +684,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.EmergencyContact.UpdatedAt(childComplexity), true
 
-	case "FamilyInfo.childrenId":
-		if e.complexity.FamilyInfo.ChildrenID == nil {
+	case "FamilyInfo.children":
+		if e.complexity.FamilyInfo.Children == nil {
 			break
 		}
 
-		return e.complexity.FamilyInfo.ChildrenID(childComplexity), true
+		return e.complexity.FamilyInfo.Children(childComplexity), true
 
 	case "FamilyInfo.createdAt":
 		if e.complexity.FamilyInfo.CreatedAt == nil {
@@ -1082,6 +1089,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Member.UpdatedAt(childComplexity), true
+
+	case "MemberChildren.childrenId":
+		if e.complexity.MemberChildren.ChildrenID == nil {
+			break
+		}
+
+		return e.complexity.MemberChildren.ChildrenID(childComplexity), true
+
+	case "MemberChildren.id":
+		if e.complexity.MemberChildren.ID == nil {
+			break
+		}
+
+		return e.complexity.MemberChildren.ID(childComplexity), true
+
+	case "MemberChildren.ParentID":
+		if e.complexity.MemberChildren.ParentID == nil {
+			break
+		}
+
+		return e.complexity.MemberChildren.ParentID(childComplexity), true
+
+	case "MemberChurchMinistryRole.ChurchMinistryRole":
+		if e.complexity.MemberChurchMinistryRole.ChurchMinistryRole == nil {
+			break
+		}
+
+		return e.complexity.MemberChurchMinistryRole.ChurchMinistryRole(childComplexity), true
 
 	case "MemberChurchMinistryRole.churchMinistryRoleID":
 		if e.complexity.MemberChurchMinistryRole.ChurchMinistryRoleID == nil {
@@ -1661,7 +1696,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UpdateMinistryRoleByLeader(childComplexity, args["input"].(model.ChurchMinistryRoleInpt), args["memberID"].(string), args["churchMinistryRoleID"].(string)), true
+		return e.complexity.Mutation.UpdateMinistryRoleByLeader(childComplexity, args["input"].(model.ChurchMinistryRoleInpt), args["memberID"].(string)), true
 
 	case "Mutation.updateRegistration":
 		if e.complexity.Mutation.UpdateRegistration == nil {
@@ -3255,15 +3290,6 @@ func (ec *executionContext) field_Mutation_updateMinistryRoleByLeader_args(ctx c
 		}
 	}
 	args["memberID"] = arg1
-	var arg2 string
-	if tmp, ok := rawArgs["churchMinistryRoleID"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("churchMinistryRoleID"))
-		arg2, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["churchMinistryRoleID"] = arg2
 	return args, nil
 }
 
@@ -5487,8 +5513,8 @@ func (ec *executionContext) fieldContext_FamilyInfo_spousePhoneNumberNotVbci(ctx
 	return fc, nil
 }
 
-func (ec *executionContext) _FamilyInfo_childrenId(ctx context.Context, field graphql.CollectedField, obj *model.FamilyInfo) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_FamilyInfo_childrenId(ctx, field)
+func (ec *executionContext) _FamilyInfo_children(ctx context.Context, field graphql.CollectedField, obj *model.FamilyInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_FamilyInfo_children(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -5501,7 +5527,7 @@ func (ec *executionContext) _FamilyInfo_childrenId(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.FamilyInfo().ChildrenID(rctx, obj)
+		return obj.Children, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -5510,19 +5536,63 @@ func (ec *executionContext) _FamilyInfo_childrenId(ctx context.Context, field gr
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*string)
+	res := resTmp.([]model.Member)
 	fc.Result = res
-	return ec.marshalOString2ᚕᚖstring(ctx, field.Selections, res)
+	return ec.marshalOMember2ᚕgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_FamilyInfo_childrenId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_FamilyInfo_children(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "FamilyInfo",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Member_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Member_name(ctx, field)
+			case "email":
+				return ec.fieldContext_Member_email(ctx, field)
+			case "phoneNumber":
+				return ec.fieldContext_Member_phoneNumber(ctx, field)
+			case "location":
+				return ec.fieldContext_Member_location(ctx, field)
+			case "day":
+				return ec.fieldContext_Member_day(ctx, field)
+			case "password":
+				return ec.fieldContext_Member_password(ctx, field)
+			case "pwood":
+				return ec.fieldContext_Member_pwood(ctx, field)
+			case "types":
+				return ec.fieldContext_Member_types(ctx, field)
+			case "token":
+				return ec.fieldContext_Member_token(ctx, field)
+			case "leader":
+				return ec.fieldContext_Member_leader(ctx, field)
+			case "LeaderID":
+				return ec.fieldContext_Member_LeaderID(ctx, field)
+			case "ReferenceIDCount":
+				return ec.fieldContext_Member_ReferenceIDCount(ctx, field)
+			case "registrations":
+				return ec.fieldContext_Member_registrations(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Member_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Member_subChurchID(ctx, field)
+			case "personalInfor":
+				return ec.fieldContext_Member_personalInfor(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
+			case "personalInforId":
+				return ec.fieldContext_Member_personalInforId(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Member_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Member_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
 		},
 	}
 	return fc, nil
@@ -7568,8 +7638,8 @@ func (ec *executionContext) fieldContext_Member_personalInfor(ctx context.Contex
 				return ec.fieldContext_FamilyInfo_spouseNameNotVbci(ctx, field)
 			case "spousePhoneNumberNotVbci":
 				return ec.fieldContext_FamilyInfo_spousePhoneNumberNotVbci(ctx, field)
-			case "childrenId":
-				return ec.fieldContext_FamilyInfo_childrenId(ctx, field)
+			case "children":
+				return ec.fieldContext_FamilyInfo_children(ctx, field)
 			case "relationship":
 				return ec.fieldContext_FamilyInfo_relationship(ctx, field)
 			case "nextOfKin":
@@ -7609,7 +7679,7 @@ func (ec *executionContext) _Member_churchMinistries(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Member().ChurchMinistries(rctx, obj)
+		return obj.ChurchMinistries, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7618,25 +7688,29 @@ func (ec *executionContext) _Member_churchMinistries(ctx context.Context, field 
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.([]*model.ChurchMinistryRole)
+	res := resTmp.([]*model.MemberChurchMinistryRole)
 	fc.Result = res
-	return ec.marshalOChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx, field.Selections, res)
+	return ec.marshalOMemberChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Member_churchMinistries(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Member",
 		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_ChurchMinistryRole_id(ctx, field)
-			case "role":
-				return ec.fieldContext_ChurchMinistryRole_role(ctx, field)
+				return ec.fieldContext_MemberChurchMinistryRole_id(ctx, field)
+			case "memberID":
+				return ec.fieldContext_MemberChurchMinistryRole_memberID(ctx, field)
+			case "churchMinistryRoleID":
+				return ec.fieldContext_MemberChurchMinistryRole_churchMinistryRoleID(ctx, field)
+			case "ChurchMinistryRole":
+				return ec.fieldContext_MemberChurchMinistryRole_ChurchMinistryRole(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type ChurchMinistryRole", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type MemberChurchMinistryRole", field.Name)
 		},
 	}
 	return fc, nil
@@ -7771,6 +7845,138 @@ func (ec *executionContext) fieldContext_Member_createdAt(ctx context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _MemberChildren_id(ctx context.Context, field graphql.CollectedField, obj *model.MemberChildren) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MemberChildren_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.MemberChildren().ID(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MemberChildren_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MemberChildren",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MemberChildren_ParentID(ctx context.Context, field graphql.CollectedField, obj *model.MemberChildren) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MemberChildren_ParentID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ParentID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MemberChildren_ParentID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MemberChildren",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MemberChildren_childrenId(ctx context.Context, field graphql.CollectedField, obj *model.MemberChildren) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MemberChildren_childrenId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChildrenID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MemberChildren_childrenId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MemberChildren",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MemberChurchMinistryRole_id(ctx context.Context, field graphql.CollectedField, obj *model.MemberChurchMinistryRole) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_MemberChurchMinistryRole_id(ctx, field)
 	if err != nil {
@@ -7898,6 +8104,53 @@ func (ec *executionContext) fieldContext_MemberChurchMinistryRole_churchMinistry
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MemberChurchMinistryRole_ChurchMinistryRole(ctx context.Context, field graphql.CollectedField, obj *model.MemberChurchMinistryRole) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_MemberChurchMinistryRole_ChurchMinistryRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChurchMinistryRole, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.ChurchMinistryRole)
+	fc.Result = res
+	return ec.marshalOChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_MemberChurchMinistryRole_ChurchMinistryRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MemberChurchMinistryRole",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_ChurchMinistryRole_id(ctx, field)
+			case "role":
+				return ec.fieldContext_ChurchMinistryRole_role(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChurchMinistryRole", field.Name)
 		},
 	}
 	return fc, nil
@@ -9131,8 +9384,8 @@ func (ec *executionContext) fieldContext_Mutation_updateMemberFamilyInfo(ctx con
 				return ec.fieldContext_FamilyInfo_spouseNameNotVbci(ctx, field)
 			case "spousePhoneNumberNotVbci":
 				return ec.fieldContext_FamilyInfo_spousePhoneNumberNotVbci(ctx, field)
-			case "childrenId":
-				return ec.fieldContext_FamilyInfo_childrenId(ctx, field)
+			case "children":
+				return ec.fieldContext_FamilyInfo_children(ctx, field)
 			case "relationship":
 				return ec.fieldContext_FamilyInfo_relationship(ctx, field)
 			case "nextOfKin":
@@ -9300,6 +9553,68 @@ func (ec *executionContext) fieldContext_Mutation_updateMemberJobInfoInput(ctx c
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateMemberJobInfoInput_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateMinistryRoleByLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateMinistryRoleByLeader(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateMinistryRoleByLeader(rctx, fc.Args["input"].(model.ChurchMinistryRoleInpt), fc.Args["memberID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.MemberChurchMinistryRole)
+	fc.Result = res
+	return ec.marshalOMemberChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateMinistryRoleByLeader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MemberChurchMinistryRole_id(ctx, field)
+			case "memberID":
+				return ec.fieldContext_MemberChurchMinistryRole_memberID(ctx, field)
+			case "churchMinistryRoleID":
+				return ec.fieldContext_MemberChurchMinistryRole_churchMinistryRoleID(ctx, field)
+			case "ChurchMinistryRole":
+				return ec.fieldContext_MemberChurchMinistryRole_ChurchMinistryRole(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MemberChurchMinistryRole", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMinistryRoleByLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -11488,64 +11803,6 @@ func (ec *executionContext) fieldContext_Mutation_CreateCallCenterForSubChurchs(
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_CreateCallCenterForSubChurchs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_updateMinistryRoleByLeader(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_updateMinistryRoleByLeader(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UpdateMinistryRoleByLeader(rctx, fc.Args["input"].(model.ChurchMinistryRoleInpt), fc.Args["memberID"].(string), fc.Args["churchMinistryRoleID"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*model.ChurchMinistryRole)
-	fc.Result = res
-	return ec.marshalOChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Mutation_updateMinistryRoleByLeader(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_ChurchMinistryRole_id(ctx, field)
-			case "role":
-				return ec.fieldContext_ChurchMinistryRole_role(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ChurchMinistryRole", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_updateMinistryRoleByLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18491,7 +18748,7 @@ func (ec *executionContext) unmarshalInputChurchMinistryRoleInpt(ctx context.Con
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
-			data, err := ec.unmarshalOChurchMinistryRolesEnum2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRolesEnum(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -19295,7 +19552,7 @@ func (ec *executionContext) unmarshalInputupdateMemberFamilyInfoInput(ctx contex
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("childrenId"))
-			data, err := ec.unmarshalOString2ᚕᚖstring(ctx, v)
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -19880,39 +20137,8 @@ func (ec *executionContext) _FamilyInfo(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._FamilyInfo_spouseNameNotVbci(ctx, field, obj)
 		case "spousePhoneNumberNotVbci":
 			out.Values[i] = ec._FamilyInfo_spousePhoneNumberNotVbci(ctx, field, obj)
-		case "childrenId":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._FamilyInfo_childrenId(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "children":
+			out.Values[i] = ec._FamilyInfo_children(ctx, field, obj)
 		case "relationship":
 			out.Values[i] = ec._FamilyInfo_relationship(ctx, field, obj)
 		case "nextOfKin":
@@ -20313,6 +20539,54 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 		case "personalInfor":
 			out.Values[i] = ec._Member_personalInfor(ctx, field, obj)
 		case "churchMinistries":
+			out.Values[i] = ec._Member_churchMinistries(ctx, field, obj)
+		case "personalInforId":
+			out.Values[i] = ec._Member_personalInforId(ctx, field, obj)
+		case "updatedAt":
+			out.Values[i] = ec._Member_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "createdAt":
+			out.Values[i] = ec._Member_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var memberChildrenImplementors = []string{"MemberChildren"}
+
+func (ec *executionContext) _MemberChildren(ctx context.Context, sel ast.SelectionSet, obj *model.MemberChildren) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, memberChildrenImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MemberChildren")
+		case "id":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -20321,7 +20595,10 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Member_churchMinistries(ctx, field, obj)
+				res = ec._MemberChildren_id(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -20345,15 +20622,13 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "personalInforId":
-			out.Values[i] = ec._Member_personalInforId(ctx, field, obj)
-		case "updatedAt":
-			out.Values[i] = ec._Member_updatedAt(ctx, field, obj)
+		case "ParentID":
+			out.Values[i] = ec._MemberChildren_ParentID(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "createdAt":
-			out.Values[i] = ec._Member_createdAt(ctx, field, obj)
+		case "childrenId":
+			out.Values[i] = ec._MemberChildren_childrenId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -20437,6 +20712,8 @@ func (ec *executionContext) _MemberChurchMinistryRole(ctx context.Context, sel a
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "ChurchMinistryRole":
+			out.Values[i] = ec._MemberChurchMinistryRole_ChurchMinistryRole(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -20644,6 +20921,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateMinistryRoleByLeader":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMinistryRoleByLeader(ctx, field)
+			})
 		case "updateLeader":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateLeader(ctx, field)
@@ -20824,10 +21105,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "CreateCallCenterForSubChurchs":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_CreateCallCenterForSubChurchs(ctx, field)
-			})
-		case "updateMinistryRoleByLeader":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_updateMinistryRoleByLeader(ctx, field)
 			})
 		case "distributeRegistrationsToLeaders":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -23268,47 +23545,6 @@ func (ec *executionContext) marshalOChurch2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋg
 	return ec._Church(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx context.Context, sel ast.SelectionSet, v []*model.ChurchMinistryRole) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalOChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	return ret
-}
-
 func (ec *executionContext) marshalOChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurchMinistryRole(ctx context.Context, sel ast.SelectionSet, v *model.ChurchMinistryRole) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -23448,6 +23684,51 @@ func (ec *executionContext) marshalOLeaderRegistrationsDistribution2ᚖgithubᚗ
 	return ec._LeaderRegistrationsDistribution(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOMember2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx context.Context, sel ast.SelectionSet, v model.Member) graphql.Marshaler {
+	return ec._Member(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalOMember2ᚕgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx context.Context, sel ast.SelectionSet, v []model.Member) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOMember2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
 func (ec *executionContext) marshalOMember2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx context.Context, sel ast.SelectionSet, v []*model.Member) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -23494,6 +23775,54 @@ func (ec *executionContext) marshalOMember2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋg
 		return graphql.Null
 	}
 	return ec._Member(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOMemberChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx context.Context, sel ast.SelectionSet, v []*model.MemberChurchMinistryRole) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOMemberChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOMemberChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx context.Context, sel ast.SelectionSet, v *model.MemberChurchMinistryRole) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MemberChurchMinistryRole(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOMigrationRequest2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx context.Context, sel ast.SelectionSet, v []*model.MigrationRequest) graphql.Marshaler {

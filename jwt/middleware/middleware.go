@@ -135,7 +135,7 @@ func ParseToken(tokenStr string) (string, string, map[string]interface{}, error)
 func ExtractCTXinfo(ctx context.Context) error {
 	_, ok := ctx.Value(IDContextKey).(string)
 	if !ok {
-		return fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
 	if !ok {
@@ -145,17 +145,16 @@ func ExtractCTXinfo(ctx context.Context) error {
 	leaderType = strings.ToUpper(leaderType) // Convert leaderType to uppercase
 
 	// Check if the leaderType is not one of the allowed values
-	if leaderType != "ADMIN"&& leaderType != "SUBCHURCH" && leaderType != "SUBLEADER" && leaderType != "LEADER" && leaderType != "CALLAGENT" {
+	if leaderType != "ADMIN" && leaderType != "SUBCHURCH" && leaderType != "SUBLEADER" && leaderType != "LEADER" && leaderType != "CALLAGENT" {
 		return fmt.Errorf("%s is not allowed", leaderType)
 	}
-	
-	
+
 	return nil
 }
 func ExtractCTXinfo4AdminOnly(ctx context.Context) error {
 	_, ok := ctx.Value(IDContextKey).(string)
 	if !ok {
-		return fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
 	if !ok {
@@ -175,17 +174,17 @@ func ExtractCTXinfo4AdminOnly(ctx context.Context) error {
 func ExtractCTXinfo4CallCenter(ctx context.Context) error {
 	_, ok := ctx.Value(IDContextKey).(string)
 	if !ok {
-		return fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 	leaderType, ok := ctx.Value(LeaderTypeContextKey).(string)
 	if !ok {
-		return fmt.Errorf(" Token Expired or you don't have Assess request context Try then Login Again")
+		return fmt.Errorf(" Token Expired or you don't have Assess request context, try and Login Again")
 	}
 
 	leaderType = strings.ToUpper(leaderType) // Convert leaderType to uppercase
 
 	// Check if the leaderType is not one of the allowed values
-	if leaderType != "CALLCENTER"{
+	if leaderType != "CALLCENTER" {
 		return fmt.Errorf("%s is not allowed", leaderType)
 	}
 
@@ -252,7 +251,7 @@ func ValidateTokens(signedToken string) (*helpers.TokenStruct, error) {
 	}
 
 	// Verify if the token has expired.
-	if claims.ExpiresAt> time.Now().UTC().Unix() {
+	if claims.ExpiresAt > time.Now().UTC().Unix() {
 		return nil, errors.New("token has expired")
 	}
 

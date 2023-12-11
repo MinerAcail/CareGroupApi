@@ -86,9 +86,9 @@ func PerformMigrations(db *gorm.DB) error {
 	return nil
 }
 
-func  MigrateInfor(db *gorm.DB) error {
-    if err := db.AutoMigrate(&model.FamilyInfo{},&model.ChurchMinistryRole{},&model.MemberChurchMinistryRole{}); err != nil {
-        return err
-    }
-    return nil
+func MigrateInfor(db *gorm.DB) error {
+	if err := db.AutoMigrate(&model.FamilyInfo{}, &model.ChurchMinistryRole{}, &model.MemberChurchMinistryRole{}, &model.MemberChildren{}); err != nil {
+		return err
+	}
+	return nil
 }
