@@ -9,7 +9,13 @@ import (
 )
 
 type ChurchMinistryRoleInpt struct {
-	Role *string `json:"role,omitempty"`
+	Role        *string `json:"role,omitempty"`
+	SubChurchID *string `json:"subChurchId,omitempty"`
+}
+
+type ChurchMinistryRoleWithCount struct {
+	MemberChurchMinistryRole *MemberChurchMinistryRole `json:"memberChurchMinistryRole,omitempty"`
+	RoleCount                *int                      `json:"roleCount,omitempty"`
 }
 
 type CreateMemberInput struct {
@@ -56,6 +62,11 @@ type JobInfoInput struct {
 	WorkExperience *string `json:"workExperience,omitempty"`
 }
 
+type KeyValue struct {
+	Key   string `json:"key"`
+	Value int    `json:"value"`
+}
+
 type LeaderRegistrationsDistribution struct {
 	LeaderID        string   `json:"leaderID"`
 	RegistrationIDs []string `json:"registrationIDs"`
@@ -82,6 +93,25 @@ type RegistrationArrayInputs struct {
 	CreateInput     *CreateRegistrationInput `json:"createInput"`
 }
 
+type RegistrationWeekly struct {
+	Data                             []string `json:"data"`
+	WeekNumber                       *string  `json:"weekNumber,omitempty"`
+	SubChurchMemberRegistrationCount int      `json:"SubChurchMemberRegistrationCount"`
+	SubChurchName                    string   `json:"SubChurchName"`
+}
+
+type RegistrationWeeklyMap struct {
+	WeekNumber    string                `json:"weekNumber"`
+	Registrations []*RegistrationWeekly `json:"registrations"`
+}
+
+type RegistrationWeeklys struct {
+	Data                             []string `json:"data"`
+	WeekNumber                       []string `json:"weekNumber"`
+	SubChurchMemberRegistrationCount int      `json:"SubChurchMemberRegistrationCount"`
+	SubChurchName                    string   `json:"SubChurchName"`
+}
+
 type RegistrationsDistribution struct {
 	LeaderID        string   `json:"leaderID"`
 	RegistrationIDs []string `json:"registrationIDs"`
@@ -92,9 +122,51 @@ type ReportRegistrationInput struct {
 	Done   *bool `json:"done,omitempty"`
 }
 
+type RoleCount struct {
+	RoleName *string `json:"roleName,omitempty"`
+	Count    *int    `json:"count,omitempty"`
+}
+
+type RoleCountResult struct {
+	RoleName string                      `json:"roleName"`
+	Count    int                         `json:"count"`
+	Roles    []*MemberChurchMinistryRole `json:"roles"`
+}
+
+type RoleCounts struct {
+	Members              int `json:"members"`
+	Pastors              int `json:"pastors"`
+	Ravens               int `json:"ravens"`
+	Bishops              int `json:"bishops"`
+	Security             int `json:"security"`
+	SundaySchoolTeachers int `json:"sundaySchoolTeachers"`
+	Finance              int `json:"finance"`
+	Ushers               int `json:"ushers"`
+	Music                int `json:"music"`
+	Domestic             int `json:"domestic"`
+	Media                int `json:"media"`
+	AllRoles             int `json:"allRoles"`
+}
+
+type SortDatesReturn struct {
+	RegistrationDataDates            []string `json:"registrationDataDates"`
+	SubChurchMemberRegistrationCount int      `json:"SubChurchMemberRegistrationCount"`
+}
+
+type SubChurchCount struct {
+	SubChurchName                    string                   `json:"subChurchName"`
+	SubChurchMemberRegistrationCount []map[string]interface{} `json:"subChurchMemberRegistrationCount,omitempty"`
+}
+
 type SubChurchMigrationInput struct {
 	MemberID            string `json:"memberId"`
 	DestinationChurchID string `json:"destinationChurchId"`
+}
+
+type SubChurchReturn struct {
+	SubChurchName                    string                 `json:"subChurchName"`
+	WeekNumber                       *string                `json:"weekNumber,omitempty"`
+	SubChurchMemberRegistrationCount map[string]interface{} `json:"subChurchMemberRegistrationCount,omitempty"`
 }
 
 type WeeklyResults struct {

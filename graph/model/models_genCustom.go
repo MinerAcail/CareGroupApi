@@ -75,6 +75,7 @@ type MyArr struct {
 type Member struct {
 	ID          uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
 	Name        string    `json:"name"`
+	ChurchMinistries []*MemberChurchMinistryRole `json:"churchMinistries,omitempty"`
 	Email       string    `json:"email"`
 	PhoneNumber *string   `json:"phoneNumber,omitempty"`
 	Location    *string   `json:"location,omitempty"`
@@ -83,7 +84,6 @@ type Member struct {
 	// Types            *string       `json:"types"`
 	Types            pq.StringArray              `gorm:"type:text[]" `
 	Pwood            *string                     `json:"pwood,omitempty"`
-	ChurchMinistries []*MemberChurchMinistryRole `json:"churchMinistries,omitempty"`
 
 	Token            *string         `json:"token,omitempty"`
 	Leader           *Member         `json:"leader,omitempty"`
@@ -136,9 +136,13 @@ type MemberChildren struct {
 //	func (fi *FamilyInfo) Scan(value interface{}) error {
 //		return json.Unmarshal(value.([]byte), &fi.Children)
 //	}
+
 type ChurchMinistryRole struct {
 	ID   uuid.UUID                `gorm:"type:uuid;default:uuid_generate_v4()"`
-	Role *ChurchMinistryRolesEnum `json:"role,omitempty"`
+
+	Role                *ChurchMinistryRolesEnum `json:"role,omitempty"`
+	AssignedSubChurch   *SubChurch               `json:"assignedSubChurch,omitempty"`
+	AssignedSubChurchID *string                  `json:"assignedSubChurchId,omitempty"`
 }
 type MemberChurchMinistryRole struct {
 	ID                   uuid.UUID           `gorm:"type:uuid;default:uuid_generate_v4()"`

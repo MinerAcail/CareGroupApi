@@ -85,8 +85,15 @@ type ComplexityRoot struct {
 	}
 
 	ChurchMinistryRole struct {
-		ID   func(childComplexity int) int
-		Role func(childComplexity int) int
+		AssignedSubChurch   func(childComplexity int) int
+		AssignedSubChurchID func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		Role                func(childComplexity int) int
+	}
+
+	ChurchMinistryRoleWithCount struct {
+		MemberChurchMinistryRole func(childComplexity int) int
+		RoleCount                func(childComplexity int) int
 	}
 
 	DateInfo struct {
@@ -145,6 +152,11 @@ type ComplexityRoot struct {
 		TypeOfWork     func(childComplexity int) int
 		UpdatedAt      func(childComplexity int) int
 		WorkExperience func(childComplexity int) int
+	}
+
+	KeyValue struct {
+		Key   func(childComplexity int) int
+		Value func(childComplexity int) int
 	}
 
 	LeaderRegistrationsDistribution struct {
@@ -233,7 +245,9 @@ type ComplexityRoot struct {
 		Login                                     func(childComplexity int, input model.LoginLeaderInput) int
 		Memberlogin                               func(childComplexity int, input model.LoginLeaderInput) int
 		RejectSubChurchMigration                  func(childComplexity int, requestID string) int
+		RemoveChild                               func(childComplexity int, childrenID string) int
 		RemoveLeader                              func(childComplexity int, memberID string) int
+		RemoveSpouse                              func(childComplexity int, spouseID string) int
 		ReportRegistrationByLeader                func(childComplexity int, report *model.ReportRegistrationInput, registrationID string, leaderID string) int
 		RequestSubChurchMigration                 func(childComplexity int, input model.SubChurchMigrationInput) int
 		TempLeadercreateRegistrationArray         func(childComplexity int, input []*model.CreateRegistrationInput, registrationID []*string) int
@@ -255,7 +269,9 @@ type ComplexityRoot struct {
 		CallRoom                                          func(childComplexity int, subChurchID string) int
 		CurrentWeekRegistrations                          func(childComplexity int) int
 		CurrentWeekRegistrationsforCallCenter             func(childComplexity int) int
+		CurrentWeekRegistrationsforMainChuech             func(childComplexity int, churchID string) int
 		CurrentWeekRegistrationsforsub                    func(childComplexity int, subChurchID string) int
+		FilterAndSortDates                                func(childComplexity int, dateStrings []string, churchID string) int
 		GetAllDaysFormassignCallAgentToMemberRegistration func(childComplexity int) int
 		GetAllMainChurch                                  func(childComplexity int) int
 		GetAllMemberBySubLeaderToLeader                   func(childComplexity int, subChurchID string, day string) int
@@ -274,17 +290,24 @@ type ComplexityRoot struct {
 		GetCallAgent                                      func(childComplexity int) int
 		GetCallCenter                                     func(childComplexity int) int
 		GetCaller                                         func(childComplexity int) int
+		GetChurchMinistryRolesBySubChurchID               func(childComplexity int, subChurchID string) int
 		GetMigration                                      func(childComplexity int, id string) int
 		GetMigrationdestinationID                         func(childComplexity int, destinationChurchID string) int
 		GetNoteficationByLeader                           func(childComplexity int, subChurchID string, day *string) int
+		GetRoleCountsBySubChurch                          func(childComplexity int, subChurchID string) int
+		GetWeekNumberOfMonth                              func(childComplexity int, dayNumber *int) int
 		Getmember                                         func(childComplexity int, id string) int
 		Getmembers                                        func(childComplexity int) int
 		GetsubChurchByID                                  func(childComplexity int, id string) int
+		GetsubChurchTotalMember                           func(childComplexity int, subChurchID string) int
 		LastFourCommentsForMember                         func(childComplexity int, memberID string) int
 		MembersBySubChurchID                              func(childComplexity int, subChurchID string) int
 		RegistrationsByLeader                             func(childComplexity int, mleaderID string) int
+		SortDates                                         func(childComplexity int, churchID string) int
 		TodaysMembers                                     func(childComplexity int) int
+		WeekRegistrations                                 func(childComplexity int, churchID string) int
 		WeekRegistrationsforSub                           func(childComplexity int) int
+		WeeklyRegistrations                               func(childComplexity int, churchID string) int
 	}
 
 	Registration struct {
@@ -313,9 +336,59 @@ type ComplexityRoot struct {
 		ID          func(childComplexity int) int
 	}
 
+	RegistrationWeekly struct {
+		Data                             func(childComplexity int) int
+		SubChurchMemberRegistrationCount func(childComplexity int) int
+		SubChurchName                    func(childComplexity int) int
+		WeekNumber                       func(childComplexity int) int
+	}
+
+	RegistrationWeeklyMap struct {
+		Registrations func(childComplexity int) int
+		WeekNumber    func(childComplexity int) int
+	}
+
+	RegistrationWeeklys struct {
+		Data                             func(childComplexity int) int
+		SubChurchMemberRegistrationCount func(childComplexity int) int
+		SubChurchName                    func(childComplexity int) int
+		WeekNumber                       func(childComplexity int) int
+	}
+
 	RegistrationsDistribution struct {
 		LeaderID        func(childComplexity int) int
 		RegistrationIDs func(childComplexity int) int
+	}
+
+	RoleCount struct {
+		Count    func(childComplexity int) int
+		RoleName func(childComplexity int) int
+	}
+
+	RoleCountResult struct {
+		Count    func(childComplexity int) int
+		RoleName func(childComplexity int) int
+		Roles    func(childComplexity int) int
+	}
+
+	RoleCounts struct {
+		AllRoles             func(childComplexity int) int
+		Bishops              func(childComplexity int) int
+		Domestic             func(childComplexity int) int
+		Finance              func(childComplexity int) int
+		Media                func(childComplexity int) int
+		Members              func(childComplexity int) int
+		Music                func(childComplexity int) int
+		Pastors              func(childComplexity int) int
+		Ravens               func(childComplexity int) int
+		Security             func(childComplexity int) int
+		SundaySchoolTeachers func(childComplexity int) int
+		Ushers               func(childComplexity int) int
+	}
+
+	SortDatesReturn struct {
+		RegistrationDataDates            func(childComplexity int) int
+		SubChurchMemberRegistrationCount func(childComplexity int) int
 	}
 
 	SubChurch struct {
@@ -334,6 +407,17 @@ type ComplexityRoot struct {
 		Token        func(childComplexity int) int
 		Types        func(childComplexity int) int
 		UpdatedAt    func(childComplexity int) int
+	}
+
+	SubChurchCount struct {
+		SubChurchMemberRegistrationCount func(childComplexity int) int
+		SubChurchName                    func(childComplexity int) int
+	}
+
+	SubChurchReturn struct {
+		SubChurchMemberRegistrationCount func(childComplexity int) int
+		SubChurchName                    func(childComplexity int) int
+		WeekNumber                       func(childComplexity int) int
 	}
 
 	WeeklyResults struct {
@@ -414,6 +498,8 @@ type MutationResolver interface {
 	TempLeadercreateRegistrationArray(ctx context.Context, input []*model.CreateRegistrationInput, registrationID []*string) ([]*model.Registration, error)
 	UpdateRegistrationArray(ctx context.Context, input []*model.RegistrationArrayInputs) ([]*model.Registration, error)
 	RemoveLeader(ctx context.Context, memberID string) (*model.Member, error)
+	RemoveChild(ctx context.Context, childrenID string) (bool, error)
+	RemoveSpouse(ctx context.Context, spouseID string) (bool, error)
 	CreateSubChurchesWithMainChurch(ctx context.Context, mainChurchID string, subChurchNames []string) (*model.Church, error)
 	CreateRegistration(ctx context.Context, memberID string, input model.CreateRegistrationInput) (*model.Registration, error)
 	CreateRegistrationArray(ctx context.Context, input []*model.RegistrationArrayInput) ([]*model.Registration, error)
@@ -431,6 +517,9 @@ type QueryResolver interface {
 	GetAllsubChurchByMainChurchID(ctx context.Context, mainChurchID string) ([]*model.SubChurch, error)
 	GetAllsubChurchByMemberID(ctx context.Context, memberID string) ([]*model.SubChurch, error)
 	GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error)
+	GetsubChurchTotalMember(ctx context.Context, subChurchID string) (*int, error)
+	GetRoleCountsBySubChurch(ctx context.Context, subChurchID string) ([]*model.RoleCounts, error)
+	GetChurchMinistryRolesBySubChurchID(ctx context.Context, subChurchID string) ([]*model.RoleCountResult, error)
 	GetAllMembersBySubChurchIDForCallAgent(ctx context.Context, subChurchID string) ([]*model.Member, error)
 	GetAllSubChurchLeader(ctx context.Context, subChurchID string) (*model.Member, error)
 	GetAllMembersByLeader(ctx context.Context, leaderID string) ([]*model.Member, error)
@@ -446,6 +535,9 @@ type QueryResolver interface {
 	GetAllSubChurchByCallCenter(ctx context.Context, callCenterID string) ([]*model.SubChurch, error)
 	GetCaller(ctx context.Context) ([]*model.Member, error)
 	GetCallAgent(ctx context.Context) ([]*model.Member, error)
+	GetWeekNumberOfMonth(ctx context.Context, dayNumber *int) (string, error)
+	FilterAndSortDates(ctx context.Context, dateStrings []string, churchID string) ([]*model.RegistrationWeekly, error)
+	SortDates(ctx context.Context, churchID string) ([]string, error)
 	Getmember(ctx context.Context, id string) (*model.Member, error)
 	GetMigration(ctx context.Context, id string) (*model.MigrationRequest, error)
 	GetMigrationdestinationID(ctx context.Context, destinationChurchID string) ([]*model.MigrationRequest, error)
@@ -459,6 +551,9 @@ type QueryResolver interface {
 	CurrentWeekRegistrations(ctx context.Context) ([]*model.Registration, error)
 	CurrentWeekRegistrationsforsub(ctx context.Context, subChurchID string) ([]*model.Registration, error)
 	CurrentWeekRegistrationsforCallCenter(ctx context.Context) ([]*model.SubChurch, error)
+	CurrentWeekRegistrationsforMainChuech(ctx context.Context, churchID string) ([]*model.RegistrationWeeklyMap, error)
+	WeekRegistrations(ctx context.Context, churchID string) ([]*model.Registration, error)
+	WeeklyRegistrations(ctx context.Context, churchID string) ([]map[string]interface{}, error)
 	WeekRegistrationsforSub(ctx context.Context) ([]*model.Registration, error)
 }
 type RegistrationResolver interface {
@@ -614,6 +709,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Church.UpdatedAt(childComplexity), true
 
+	case "ChurchMinistryRole.assignedSubChurch":
+		if e.complexity.ChurchMinistryRole.AssignedSubChurch == nil {
+			break
+		}
+
+		return e.complexity.ChurchMinistryRole.AssignedSubChurch(childComplexity), true
+
+	case "ChurchMinistryRole.assignedSubChurchId":
+		if e.complexity.ChurchMinistryRole.AssignedSubChurchID == nil {
+			break
+		}
+
+		return e.complexity.ChurchMinistryRole.AssignedSubChurchID(childComplexity), true
+
 	case "ChurchMinistryRole.id":
 		if e.complexity.ChurchMinistryRole.ID == nil {
 			break
@@ -627,6 +736,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ChurchMinistryRole.Role(childComplexity), true
+
+	case "ChurchMinistryRoleWithCount.memberChurchMinistryRole":
+		if e.complexity.ChurchMinistryRoleWithCount.MemberChurchMinistryRole == nil {
+			break
+		}
+
+		return e.complexity.ChurchMinistryRoleWithCount.MemberChurchMinistryRole(childComplexity), true
+
+	case "ChurchMinistryRoleWithCount.roleCount":
+		if e.complexity.ChurchMinistryRoleWithCount.RoleCount == nil {
+			break
+		}
+
+		return e.complexity.ChurchMinistryRoleWithCount.RoleCount(childComplexity), true
 
 	case "DateInfo.month":
 		if e.complexity.DateInfo.Month == nil {
@@ -928,6 +1051,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.JobInfo.WorkExperience(childComplexity), true
+
+	case "KeyValue.key":
+		if e.complexity.KeyValue.Key == nil {
+			break
+		}
+
+		return e.complexity.KeyValue.Key(childComplexity), true
+
+	case "KeyValue.value":
+		if e.complexity.KeyValue.Value == nil {
+			break
+		}
+
+		return e.complexity.KeyValue.Value(childComplexity), true
 
 	case "LeaderRegistrationsDistribution.leaderID":
 		if e.complexity.LeaderRegistrationsDistribution.LeaderID == nil {
@@ -1554,6 +1691,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.RejectSubChurchMigration(childComplexity, args["requestId"].(string)), true
 
+	case "Mutation.removeChild":
+		if e.complexity.Mutation.RemoveChild == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeChild_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveChild(childComplexity, args["childrenId"].(string)), true
+
 	case "Mutation.removeLeader":
 		if e.complexity.Mutation.RemoveLeader == nil {
 			break
@@ -1565,6 +1714,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveLeader(childComplexity, args["memberId"].(string)), true
+
+	case "Mutation.removeSpouse":
+		if e.complexity.Mutation.RemoveSpouse == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeSpouse_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveSpouse(childComplexity, args["SpouseId"].(string)), true
 
 	case "Mutation.ReportRegistrationByLeader":
 		if e.complexity.Mutation.ReportRegistrationByLeader == nil {
@@ -1772,6 +1933,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.CurrentWeekRegistrationsforCallCenter(childComplexity), true
 
+	case "Query.currentWeekRegistrationsforMainChuech":
+		if e.complexity.Query.CurrentWeekRegistrationsforMainChuech == nil {
+			break
+		}
+
+		args, err := ec.field_Query_currentWeekRegistrationsforMainChuech_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CurrentWeekRegistrationsforMainChuech(childComplexity, args["churchId"].(string)), true
+
 	case "Query.currentWeekRegistrationsforsub":
 		if e.complexity.Query.CurrentWeekRegistrationsforsub == nil {
 			break
@@ -1783,6 +1956,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.CurrentWeekRegistrationsforsub(childComplexity, args["subChurchId"].(string)), true
+
+	case "Query.filterAndSortDates":
+		if e.complexity.Query.FilterAndSortDates == nil {
+			break
+		}
+
+		args, err := ec.field_Query_filterAndSortDates_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.FilterAndSortDates(childComplexity, args["dateStrings"].([]string), args["churchId"].(string)), true
 
 	case "Query.GetAllDaysFormassignCallAgentToMemberRegistration":
 		if e.complexity.Query.GetAllDaysFormassignCallAgentToMemberRegistration == nil {
@@ -1970,6 +2155,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.GetCaller(childComplexity), true
 
+	case "Query.GetChurchMinistryRolesBySubChurchID":
+		if e.complexity.Query.GetChurchMinistryRolesBySubChurchID == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetChurchMinistryRolesBySubChurchID_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetChurchMinistryRolesBySubChurchID(childComplexity, args["subChurchId"].(string)), true
+
 	case "Query.GetMigration":
 		if e.complexity.Query.GetMigration == nil {
 			break
@@ -2006,6 +2203,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.GetNoteficationByLeader(childComplexity, args["subChurchID"].(string), args["day"].(*string)), true
 
+	case "Query.getRoleCountsBySubChurch":
+		if e.complexity.Query.GetRoleCountsBySubChurch == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getRoleCountsBySubChurch_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetRoleCountsBySubChurch(childComplexity, args["subChurchID"].(string)), true
+
+	case "Query.getWeekNumberOfMonth":
+		if e.complexity.Query.GetWeekNumberOfMonth == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getWeekNumberOfMonth_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetWeekNumberOfMonth(childComplexity, args["dayNumber"].(*int)), true
+
 	case "Query.Getmember":
 		if e.complexity.Query.Getmember == nil {
 			break
@@ -2036,6 +2257,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetsubChurchByID(childComplexity, args["id"].(string)), true
+
+	case "Query.GetsubChurchTotalMember":
+		if e.complexity.Query.GetsubChurchTotalMember == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetsubChurchTotalMember_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetsubChurchTotalMember(childComplexity, args["subChurchId"].(string)), true
 
 	case "Query.LastFourCommentsForMember":
 		if e.complexity.Query.LastFourCommentsForMember == nil {
@@ -2073,6 +2306,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.RegistrationsByLeader(childComplexity, args["mleaderID"].(string)), true
 
+	case "Query.SortDates":
+		if e.complexity.Query.SortDates == nil {
+			break
+		}
+
+		args, err := ec.field_Query_SortDates_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.SortDates(childComplexity, args["churchId"].(string)), true
+
 	case "Query.todaysMembers":
 		if e.complexity.Query.TodaysMembers == nil {
 			break
@@ -2080,12 +2325,36 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.TodaysMembers(childComplexity), true
 
+	case "Query.WeekRegistrations":
+		if e.complexity.Query.WeekRegistrations == nil {
+			break
+		}
+
+		args, err := ec.field_Query_WeekRegistrations_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.WeekRegistrations(childComplexity, args["churchId"].(string)), true
+
 	case "Query.WeekRegistrationsforSub":
 		if e.complexity.Query.WeekRegistrationsforSub == nil {
 			break
 		}
 
 		return e.complexity.Query.WeekRegistrationsforSub(childComplexity), true
+
+	case "Query.WeeklyRegistrations":
+		if e.complexity.Query.WeeklyRegistrations == nil {
+			break
+		}
+
+		args, err := ec.field_Query_WeeklyRegistrations_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.WeeklyRegistrations(childComplexity, args["churchId"].(string)), true
 
 	case "Registration.absence":
 		if e.complexity.Registration.Absence == nil {
@@ -2227,6 +2496,76 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RegistrationByCallAgent.ID(childComplexity), true
 
+	case "RegistrationWeekly.data":
+		if e.complexity.RegistrationWeekly.Data == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeekly.Data(childComplexity), true
+
+	case "RegistrationWeekly.SubChurchMemberRegistrationCount":
+		if e.complexity.RegistrationWeekly.SubChurchMemberRegistrationCount == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeekly.SubChurchMemberRegistrationCount(childComplexity), true
+
+	case "RegistrationWeekly.SubChurchName":
+		if e.complexity.RegistrationWeekly.SubChurchName == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeekly.SubChurchName(childComplexity), true
+
+	case "RegistrationWeekly.weekNumber":
+		if e.complexity.RegistrationWeekly.WeekNumber == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeekly.WeekNumber(childComplexity), true
+
+	case "RegistrationWeeklyMap.registrations":
+		if e.complexity.RegistrationWeeklyMap.Registrations == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeeklyMap.Registrations(childComplexity), true
+
+	case "RegistrationWeeklyMap.weekNumber":
+		if e.complexity.RegistrationWeeklyMap.WeekNumber == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeeklyMap.WeekNumber(childComplexity), true
+
+	case "RegistrationWeeklys.data":
+		if e.complexity.RegistrationWeeklys.Data == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeeklys.Data(childComplexity), true
+
+	case "RegistrationWeeklys.SubChurchMemberRegistrationCount":
+		if e.complexity.RegistrationWeeklys.SubChurchMemberRegistrationCount == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeeklys.SubChurchMemberRegistrationCount(childComplexity), true
+
+	case "RegistrationWeeklys.SubChurchName":
+		if e.complexity.RegistrationWeeklys.SubChurchName == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeeklys.SubChurchName(childComplexity), true
+
+	case "RegistrationWeeklys.weekNumber":
+		if e.complexity.RegistrationWeeklys.WeekNumber == nil {
+			break
+		}
+
+		return e.complexity.RegistrationWeeklys.WeekNumber(childComplexity), true
+
 	case "RegistrationsDistribution.leaderID":
 		if e.complexity.RegistrationsDistribution.LeaderID == nil {
 			break
@@ -2240,6 +2579,139 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.RegistrationsDistribution.RegistrationIDs(childComplexity), true
+
+	case "RoleCount.count":
+		if e.complexity.RoleCount.Count == nil {
+			break
+		}
+
+		return e.complexity.RoleCount.Count(childComplexity), true
+
+	case "RoleCount.roleName":
+		if e.complexity.RoleCount.RoleName == nil {
+			break
+		}
+
+		return e.complexity.RoleCount.RoleName(childComplexity), true
+
+	case "RoleCountResult.count":
+		if e.complexity.RoleCountResult.Count == nil {
+			break
+		}
+
+		return e.complexity.RoleCountResult.Count(childComplexity), true
+
+	case "RoleCountResult.roleName":
+		if e.complexity.RoleCountResult.RoleName == nil {
+			break
+		}
+
+		return e.complexity.RoleCountResult.RoleName(childComplexity), true
+
+	case "RoleCountResult.roles":
+		if e.complexity.RoleCountResult.Roles == nil {
+			break
+		}
+
+		return e.complexity.RoleCountResult.Roles(childComplexity), true
+
+	case "RoleCounts.allRoles":
+		if e.complexity.RoleCounts.AllRoles == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.AllRoles(childComplexity), true
+
+	case "RoleCounts.bishops":
+		if e.complexity.RoleCounts.Bishops == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Bishops(childComplexity), true
+
+	case "RoleCounts.domestic":
+		if e.complexity.RoleCounts.Domestic == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Domestic(childComplexity), true
+
+	case "RoleCounts.finance":
+		if e.complexity.RoleCounts.Finance == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Finance(childComplexity), true
+
+	case "RoleCounts.media":
+		if e.complexity.RoleCounts.Media == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Media(childComplexity), true
+
+	case "RoleCounts.members":
+		if e.complexity.RoleCounts.Members == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Members(childComplexity), true
+
+	case "RoleCounts.music":
+		if e.complexity.RoleCounts.Music == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Music(childComplexity), true
+
+	case "RoleCounts.pastors":
+		if e.complexity.RoleCounts.Pastors == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Pastors(childComplexity), true
+
+	case "RoleCounts.ravens":
+		if e.complexity.RoleCounts.Ravens == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Ravens(childComplexity), true
+
+	case "RoleCounts.security":
+		if e.complexity.RoleCounts.Security == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Security(childComplexity), true
+
+	case "RoleCounts.sundaySchoolTeachers":
+		if e.complexity.RoleCounts.SundaySchoolTeachers == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.SundaySchoolTeachers(childComplexity), true
+
+	case "RoleCounts.ushers":
+		if e.complexity.RoleCounts.Ushers == nil {
+			break
+		}
+
+		return e.complexity.RoleCounts.Ushers(childComplexity), true
+
+	case "SortDatesReturn.registrationDataDates":
+		if e.complexity.SortDatesReturn.RegistrationDataDates == nil {
+			break
+		}
+
+		return e.complexity.SortDatesReturn.RegistrationDataDates(childComplexity), true
+
+	case "SortDatesReturn.SubChurchMemberRegistrationCount":
+		if e.complexity.SortDatesReturn.SubChurchMemberRegistrationCount == nil {
+			break
+		}
+
+		return e.complexity.SortDatesReturn.SubChurchMemberRegistrationCount(childComplexity), true
 
 	case "SubChurch.CallCenter":
 		if e.complexity.SubChurch.CallCenter == nil {
@@ -2345,6 +2817,41 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.SubChurch.UpdatedAt(childComplexity), true
+
+	case "SubChurchCount.subChurchMemberRegistrationCount":
+		if e.complexity.SubChurchCount.SubChurchMemberRegistrationCount == nil {
+			break
+		}
+
+		return e.complexity.SubChurchCount.SubChurchMemberRegistrationCount(childComplexity), true
+
+	case "SubChurchCount.subChurchName":
+		if e.complexity.SubChurchCount.SubChurchName == nil {
+			break
+		}
+
+		return e.complexity.SubChurchCount.SubChurchName(childComplexity), true
+
+	case "SubChurchReturn.subChurchMemberRegistrationCount":
+		if e.complexity.SubChurchReturn.SubChurchMemberRegistrationCount == nil {
+			break
+		}
+
+		return e.complexity.SubChurchReturn.SubChurchMemberRegistrationCount(childComplexity), true
+
+	case "SubChurchReturn.subChurchName":
+		if e.complexity.SubChurchReturn.SubChurchName == nil {
+			break
+		}
+
+		return e.complexity.SubChurchReturn.SubChurchName(childComplexity), true
+
+	case "SubChurchReturn.weekNumber":
+		if e.complexity.SubChurchReturn.WeekNumber == nil {
+			break
+		}
+
+		return e.complexity.SubChurchReturn.WeekNumber(childComplexity), true
 
 	case "WeeklyResults.date":
 		if e.complexity.WeeklyResults.Date == nil {
@@ -3047,6 +3554,21 @@ func (ec *executionContext) field_Mutation_rejectSubChurchMigration_args(ctx con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_removeChild_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["childrenId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("childrenId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["childrenId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_removeLeader_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3059,6 +3581,21 @@ func (ec *executionContext) field_Mutation_removeLeader_args(ctx context.Context
 		}
 	}
 	args["memberId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeSpouse_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["SpouseId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("SpouseId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["SpouseId"] = arg0
 	return args, nil
 }
 
@@ -3602,6 +4139,21 @@ func (ec *executionContext) field_Query_GetAllsubChurchByMemberId_args(ctx conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_GetChurchMinistryRolesBySubChurchID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["subChurchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subChurchId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_GetMigration_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3686,6 +4238,21 @@ func (ec *executionContext) field_Query_GetsubChurchByID_args(ctx context.Contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_GetsubChurchTotalMember_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["subChurchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subChurchId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_LastFourCommentsForMember_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3716,6 +4283,51 @@ func (ec *executionContext) field_Query_MembersBySubChurchID_args(ctx context.Co
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_SortDates_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["churchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("churchId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["churchId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_WeekRegistrations_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["churchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("churchId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["churchId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_WeeklyRegistrations_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["churchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("churchId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["churchId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3731,6 +4343,21 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_currentWeekRegistrationsforMainChuech_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["churchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("churchId"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["churchId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_currentWeekRegistrationsforsub_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3743,6 +4370,60 @@ func (ec *executionContext) field_Query_currentWeekRegistrationsforsub_args(ctx 
 		}
 	}
 	args["subChurchId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_filterAndSortDates_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 []string
+	if tmp, ok := rawArgs["dateStrings"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dateStrings"))
+		arg0, err = ec.unmarshalNString2ᚕstringᚄ(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["dateStrings"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["churchId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("churchId"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["churchId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_getRoleCountsBySubChurch_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["subChurchID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["subChurchID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_getWeekNumberOfMonth_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *int
+	if tmp, ok := rawArgs["dayNumber"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("dayNumber"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["dayNumber"] = arg0
 	return args, nil
 }
 
@@ -4713,6 +5394,212 @@ func (ec *executionContext) fieldContext_ChurchMinistryRole_role(ctx context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _ChurchMinistryRole_assignedSubChurch(ctx context.Context, field graphql.CollectedField, obj *model.ChurchMinistryRole) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChurchMinistryRole_assignedSubChurch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AssignedSubChurch, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.SubChurch)
+	fc.Result = res
+	return ec.marshalOSubChurch2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐSubChurch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChurchMinistryRole_assignedSubChurch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChurchMinistryRole",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SubChurch_id(ctx, field)
+			case "name":
+				return ec.fieldContext_SubChurch_name(ctx, field)
+			case "password":
+				return ec.fieldContext_SubChurch_password(ctx, field)
+			case "email":
+				return ec.fieldContext_SubChurch_email(ctx, field)
+			case "types":
+				return ec.fieldContext_SubChurch_types(ctx, field)
+			case "token":
+				return ec.fieldContext_SubChurch_token(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SubChurch_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SubChurch_createdAt(ctx, field)
+			case "church":
+				return ec.fieldContext_SubChurch_church(ctx, field)
+			case "churchId":
+				return ec.fieldContext_SubChurch_churchId(ctx, field)
+			case "isLocal":
+				return ec.fieldContext_SubChurch_isLocal(ctx, field)
+			case "leaders":
+				return ec.fieldContext_SubChurch_leaders(ctx, field)
+			case "members":
+				return ec.fieldContext_SubChurch_members(ctx, field)
+			case "CallCenterID":
+				return ec.fieldContext_SubChurch_CallCenterID(ctx, field)
+			case "CallCenter":
+				return ec.fieldContext_SubChurch_CallCenter(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SubChurch", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChurchMinistryRole_assignedSubChurchId(ctx context.Context, field graphql.CollectedField, obj *model.ChurchMinistryRole) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChurchMinistryRole_assignedSubChurchId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AssignedSubChurchID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChurchMinistryRole_assignedSubChurchId(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChurchMinistryRole",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChurchMinistryRoleWithCount_memberChurchMinistryRole(ctx context.Context, field graphql.CollectedField, obj *model.ChurchMinistryRoleWithCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChurchMinistryRoleWithCount_memberChurchMinistryRole(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MemberChurchMinistryRole, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.MemberChurchMinistryRole)
+	fc.Result = res
+	return ec.marshalOMemberChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChurchMinistryRoleWithCount_memberChurchMinistryRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChurchMinistryRoleWithCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MemberChurchMinistryRole_id(ctx, field)
+			case "memberID":
+				return ec.fieldContext_MemberChurchMinistryRole_memberID(ctx, field)
+			case "churchMinistryRoleID":
+				return ec.fieldContext_MemberChurchMinistryRole_churchMinistryRoleID(ctx, field)
+			case "ChurchMinistryRole":
+				return ec.fieldContext_MemberChurchMinistryRole_ChurchMinistryRole(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MemberChurchMinistryRole", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChurchMinistryRoleWithCount_roleCount(ctx context.Context, field graphql.CollectedField, obj *model.ChurchMinistryRoleWithCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ChurchMinistryRoleWithCount_roleCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoleCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ChurchMinistryRoleWithCount_roleCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChurchMinistryRoleWithCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _DateInfo_month(ctx context.Context, field graphql.CollectedField, obj *model.DateInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_DateInfo_month(ctx, field)
 	if err != nil {
@@ -5257,6 +6144,8 @@ func (ec *executionContext) fieldContext_FamilyInfo_member(ctx context.Context, 
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -5287,8 +6176,6 @@ func (ec *executionContext) fieldContext_FamilyInfo_member(ctx context.Context, 
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -5386,6 +6273,8 @@ func (ec *executionContext) fieldContext_FamilyInfo_spouse(ctx context.Context, 
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -5416,8 +6305,6 @@ func (ec *executionContext) fieldContext_FamilyInfo_spouse(ctx context.Context, 
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -5553,6 +6440,8 @@ func (ec *executionContext) fieldContext_FamilyInfo_children(ctx context.Context
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -5583,8 +6472,6 @@ func (ec *executionContext) fieldContext_FamilyInfo_children(ctx context.Context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -6715,6 +7602,94 @@ func (ec *executionContext) fieldContext_JobInfo_createdAt(ctx context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _KeyValue_key(ctx context.Context, field graphql.CollectedField, obj *model.KeyValue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_KeyValue_key(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Key, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_KeyValue_key(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KeyValue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _KeyValue_value(ctx context.Context, field graphql.CollectedField, obj *model.KeyValue) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_KeyValue_value(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_KeyValue_value(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KeyValue",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _LeaderRegistrationsDistribution_leaderID(ctx context.Context, field graphql.CollectedField, obj *model.LeaderRegistrationsDistribution) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_LeaderRegistrationsDistribution_leaderID(ctx, field)
 	if err != nil {
@@ -6886,6 +7861,57 @@ func (ec *executionContext) fieldContext_Member_name(ctx context.Context, field 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Member_churchMinistries(ctx context.Context, field graphql.CollectedField, obj *model.Member) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Member_churchMinistries(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ChurchMinistries, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.MemberChurchMinistryRole)
+	fc.Result = res
+	return ec.marshalOMemberChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Member_churchMinistries(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Member",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MemberChurchMinistryRole_id(ctx, field)
+			case "memberID":
+				return ec.fieldContext_MemberChurchMinistryRole_memberID(ctx, field)
+			case "churchMinistryRoleID":
+				return ec.fieldContext_MemberChurchMinistryRole_churchMinistryRoleID(ctx, field)
+			case "ChurchMinistryRole":
+				return ec.fieldContext_MemberChurchMinistryRole_ChurchMinistryRole(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MemberChurchMinistryRole", field.Name)
 		},
 	}
 	return fc, nil
@@ -7268,6 +8294,8 @@ func (ec *executionContext) fieldContext_Member_leader(ctx context.Context, fiel
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -7298,8 +8326,6 @@ func (ec *executionContext) fieldContext_Member_leader(ctx context.Context, fiel
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -7660,57 +8686,6 @@ func (ec *executionContext) fieldContext_Member_personalInfor(ctx context.Contex
 				return ec.fieldContext_FamilyInfo_createdAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type FamilyInfo", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Member_churchMinistries(ctx context.Context, field graphql.CollectedField, obj *model.Member) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Member_churchMinistries(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ChurchMinistries, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.([]*model.MemberChurchMinistryRole)
-	fc.Result = res
-	return ec.marshalOMemberChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Member_churchMinistries(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Member",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_MemberChurchMinistryRole_id(ctx, field)
-			case "memberID":
-				return ec.fieldContext_MemberChurchMinistryRole_memberID(ctx, field)
-			case "churchMinistryRoleID":
-				return ec.fieldContext_MemberChurchMinistryRole_churchMinistryRoleID(ctx, field)
-			case "ChurchMinistryRole":
-				return ec.fieldContext_MemberChurchMinistryRole_ChurchMinistryRole(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type MemberChurchMinistryRole", field.Name)
 		},
 	}
 	return fc, nil
@@ -8149,6 +9124,10 @@ func (ec *executionContext) fieldContext_MemberChurchMinistryRole_ChurchMinistry
 				return ec.fieldContext_ChurchMinistryRole_id(ctx, field)
 			case "role":
 				return ec.fieldContext_ChurchMinistryRole_role(ctx, field)
+			case "assignedSubChurch":
+				return ec.fieldContext_ChurchMinistryRole_assignedSubChurch(ctx, field)
+			case "assignedSubChurchId":
+				return ec.fieldContext_ChurchMinistryRole_assignedSubChurchId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChurchMinistryRole", field.Name)
 		},
@@ -8796,6 +9775,8 @@ func (ec *executionContext) fieldContext_Mutation_createMember(ctx context.Conte
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -8826,8 +9807,6 @@ func (ec *executionContext) fieldContext_Mutation_createMember(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -8895,6 +9874,8 @@ func (ec *executionContext) fieldContext_Mutation_createMemberbySubchurch(ctx co
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -8925,8 +9906,6 @@ func (ec *executionContext) fieldContext_Mutation_createMemberbySubchurch(ctx co
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -8991,6 +9970,8 @@ func (ec *executionContext) fieldContext_Mutation_importMemberData(ctx context.C
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -9021,8 +10002,6 @@ func (ec *executionContext) fieldContext_Mutation_importMemberData(ctx context.C
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -9172,6 +10151,8 @@ func (ec *executionContext) fieldContext_Mutation_createMemberBysubLeader(ctx co
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -9202,8 +10183,6 @@ func (ec *executionContext) fieldContext_Mutation_createMemberBysubLeader(ctx co
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -9271,6 +10250,8 @@ func (ec *executionContext) fieldContext_Mutation_updateMember(ctx context.Conte
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -9301,8 +10282,6 @@ func (ec *executionContext) fieldContext_Mutation_updateMember(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -9664,6 +10643,8 @@ func (ec *executionContext) fieldContext_Mutation_updateLeader(ctx context.Conte
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -9694,8 +10675,6 @@ func (ec *executionContext) fieldContext_Mutation_updateLeader(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -10425,6 +11404,8 @@ func (ec *executionContext) fieldContext_Mutation_assignLeader(ctx context.Conte
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -10455,8 +11436,6 @@ func (ec *executionContext) fieldContext_Mutation_assignLeader(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -10524,6 +11503,8 @@ func (ec *executionContext) fieldContext_Mutation_addAnotherType(ctx context.Con
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -10554,8 +11535,6 @@ func (ec *executionContext) fieldContext_Mutation_addAnotherType(ctx context.Con
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -10620,6 +11599,8 @@ func (ec *executionContext) fieldContext_Mutation_updateLeaderTypes(ctx context.
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -10650,8 +11631,6 @@ func (ec *executionContext) fieldContext_Mutation_updateLeaderTypes(ctx context.
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -10716,6 +11695,8 @@ func (ec *executionContext) fieldContext_Mutation_assignMemberToLeaderbySubchurc
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -10746,8 +11727,6 @@ func (ec *executionContext) fieldContext_Mutation_assignMemberToLeaderbySubchurc
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -11253,6 +12232,8 @@ func (ec *executionContext) fieldContext_Mutation_removeLeader(ctx context.Conte
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -11283,8 +12264,6 @@ func (ec *executionContext) fieldContext_Mutation_removeLeader(ctx context.Conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -11303,6 +12282,116 @@ func (ec *executionContext) fieldContext_Mutation_removeLeader(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeLeader_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeChild(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeChild(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveChild(rctx, fc.Args["childrenId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeChild(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeChild_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeSpouse(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeSpouse(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveSpouse(rctx, fc.Args["SpouseId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeSpouse(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeSpouse_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -12373,6 +13462,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchID(ctx co
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -12403,8 +13494,6 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchID(ctx co
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12423,6 +13512,196 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchID(ctx co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_GetAllMembersBySubChurchID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_GetsubChurchTotalMember(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetsubChurchTotalMember(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetsubChurchTotalMember(rctx, fc.Args["subChurchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetsubChurchTotalMember(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetsubChurchTotalMember_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getRoleCountsBySubChurch(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_getRoleCountsBySubChurch(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetRoleCountsBySubChurch(rctx, fc.Args["subChurchID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.RoleCounts)
+	fc.Result = res
+	return ec.marshalORoleCounts2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRoleCounts(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_getRoleCountsBySubChurch(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "members":
+				return ec.fieldContext_RoleCounts_members(ctx, field)
+			case "pastors":
+				return ec.fieldContext_RoleCounts_pastors(ctx, field)
+			case "ravens":
+				return ec.fieldContext_RoleCounts_ravens(ctx, field)
+			case "bishops":
+				return ec.fieldContext_RoleCounts_bishops(ctx, field)
+			case "security":
+				return ec.fieldContext_RoleCounts_security(ctx, field)
+			case "sundaySchoolTeachers":
+				return ec.fieldContext_RoleCounts_sundaySchoolTeachers(ctx, field)
+			case "finance":
+				return ec.fieldContext_RoleCounts_finance(ctx, field)
+			case "ushers":
+				return ec.fieldContext_RoleCounts_ushers(ctx, field)
+			case "music":
+				return ec.fieldContext_RoleCounts_music(ctx, field)
+			case "domestic":
+				return ec.fieldContext_RoleCounts_domestic(ctx, field)
+			case "media":
+				return ec.fieldContext_RoleCounts_media(ctx, field)
+			case "allRoles":
+				return ec.fieldContext_RoleCounts_allRoles(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoleCounts", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getRoleCountsBySubChurch_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_GetChurchMinistryRolesBySubChurchID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetChurchMinistryRolesBySubChurchID(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetChurchMinistryRolesBySubChurchID(rctx, fc.Args["subChurchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.RoleCountResult)
+	fc.Result = res
+	return ec.marshalORoleCountResult2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRoleCountResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetChurchMinistryRolesBySubChurchID(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "roleName":
+				return ec.fieldContext_RoleCountResult_roleName(ctx, field)
+			case "count":
+				return ec.fieldContext_RoleCountResult_count(ctx, field)
+			case "roles":
+				return ec.fieldContext_RoleCountResult_roles(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RoleCountResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetChurchMinistryRolesBySubChurchID_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -12469,6 +13748,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchIDForCall
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -12499,8 +13780,6 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersBySubChurchIDForCall
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12565,6 +13844,8 @@ func (ec *executionContext) fieldContext_Query_GetAllSubChurchLeader(ctx context
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -12595,8 +13876,6 @@ func (ec *executionContext) fieldContext_Query_GetAllSubChurchLeader(ctx context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12661,6 +13940,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersByLeader(ctx context
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -12691,8 +13972,6 @@ func (ec *executionContext) fieldContext_Query_GetAllMembersByLeader(ctx context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12757,6 +14036,8 @@ func (ec *executionContext) fieldContext_Query_GetAllSubLeaderByLeader(ctx conte
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -12787,8 +14068,6 @@ func (ec *executionContext) fieldContext_Query_GetAllSubLeaderByLeader(ctx conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12853,6 +14132,8 @@ func (ec *executionContext) fieldContext_Query_GetAllMemberBySubLeaderToLeader(c
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -12883,8 +14164,6 @@ func (ec *executionContext) fieldContext_Query_GetAllMemberBySubLeaderToLeader(c
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -12949,6 +14228,8 @@ func (ec *executionContext) fieldContext_Query_GetNoteficationByLeader(ctx conte
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -12979,8 +14260,6 @@ func (ec *executionContext) fieldContext_Query_GetNoteficationByLeader(ctx conte
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -13131,6 +14410,8 @@ func (ec *executionContext) fieldContext_Query_GetAllmembersByDaysForCallAgent(c
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -13161,8 +14442,6 @@ func (ec *executionContext) fieldContext_Query_GetAllmembersByDaysForCallAgent(c
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -13544,6 +14823,8 @@ func (ec *executionContext) fieldContext_Query_GetCaller(ctx context.Context, fi
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -13574,8 +14855,6 @@ func (ec *executionContext) fieldContext_Query_GetCaller(ctx context.Context, fi
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -13629,6 +14908,8 @@ func (ec *executionContext) fieldContext_Query_GetCallAgent(ctx context.Context,
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -13659,8 +14940,6 @@ func (ec *executionContext) fieldContext_Query_GetCallAgent(ctx context.Context,
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -13670,6 +14949,181 @@ func (ec *executionContext) fieldContext_Query_GetCallAgent(ctx context.Context,
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Member", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getWeekNumberOfMonth(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_getWeekNumberOfMonth(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetWeekNumberOfMonth(rctx, fc.Args["dayNumber"].(*int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_getWeekNumberOfMonth(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getWeekNumberOfMonth_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_filterAndSortDates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_filterAndSortDates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().FilterAndSortDates(rctx, fc.Args["dateStrings"].([]string), fc.Args["churchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.RegistrationWeekly)
+	fc.Result = res
+	return ec.marshalNRegistrationWeekly2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationWeeklyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_filterAndSortDates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "data":
+				return ec.fieldContext_RegistrationWeekly_data(ctx, field)
+			case "weekNumber":
+				return ec.fieldContext_RegistrationWeekly_weekNumber(ctx, field)
+			case "SubChurchMemberRegistrationCount":
+				return ec.fieldContext_RegistrationWeekly_SubChurchMemberRegistrationCount(ctx, field)
+			case "SubChurchName":
+				return ec.fieldContext_RegistrationWeekly_SubChurchName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RegistrationWeekly", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_filterAndSortDates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_SortDates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_SortDates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().SortDates(rctx, fc.Args["churchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_SortDates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_SortDates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -13714,6 +15168,8 @@ func (ec *executionContext) fieldContext_Query_Getmember(ctx context.Context, fi
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -13744,8 +15200,6 @@ func (ec *executionContext) fieldContext_Query_Getmember(ctx context.Context, fi
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -13954,6 +15408,8 @@ func (ec *executionContext) fieldContext_Query_Getmembers(ctx context.Context, f
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -13984,8 +15440,6 @@ func (ec *executionContext) fieldContext_Query_Getmembers(ctx context.Context, f
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -14039,6 +15493,8 @@ func (ec *executionContext) fieldContext_Query_todaysMembers(ctx context.Context
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -14069,8 +15525,6 @@ func (ec *executionContext) fieldContext_Query_todaysMembers(ctx context.Context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -14211,6 +15665,8 @@ func (ec *executionContext) fieldContext_Query_MembersBySubChurchID(ctx context.
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -14241,8 +15697,6 @@ func (ec *executionContext) fieldContext_Query_MembersBySubChurchID(ctx context.
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -14764,6 +16218,211 @@ func (ec *executionContext) fieldContext_Query_currentWeekRegistrationsforCallCe
 			}
 			return nil, fmt.Errorf("no field named %q was found under type SubChurch", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_currentWeekRegistrationsforMainChuech(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_currentWeekRegistrationsforMainChuech(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().CurrentWeekRegistrationsforMainChuech(rctx, fc.Args["churchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.RegistrationWeeklyMap)
+	fc.Result = res
+	return ec.marshalNRegistrationWeeklyMap2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationWeeklyMapᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_currentWeekRegistrationsforMainChuech(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "weekNumber":
+				return ec.fieldContext_RegistrationWeeklyMap_weekNumber(ctx, field)
+			case "registrations":
+				return ec.fieldContext_RegistrationWeeklyMap_registrations(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RegistrationWeeklyMap", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_currentWeekRegistrationsforMainChuech_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_WeekRegistrations(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_WeekRegistrations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().WeekRegistrations(rctx, fc.Args["churchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Registration)
+	fc.Result = res
+	return ec.marshalNRegistration2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_WeekRegistrations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Registration_id(ctx, field)
+			case "lastComment":
+				return ec.fieldContext_Registration_lastComment(ctx, field)
+			case "absence":
+				return ec.fieldContext_Registration_absence(ctx, field)
+			case "present":
+				return ec.fieldContext_Registration_present(ctx, field)
+			case "report":
+				return ec.fieldContext_Registration_report(ctx, field)
+			case "done":
+				return ec.fieldContext_Registration_done(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Registration_createdAt(ctx, field)
+			case "leaderName":
+				return ec.fieldContext_Registration_leaderName(ctx, field)
+			case "memberName":
+				return ec.fieldContext_Registration_memberName(ctx, field)
+			case "leader":
+				return ec.fieldContext_Registration_leader(ctx, field)
+			case "leaderID":
+				return ec.fieldContext_Registration_leaderID(ctx, field)
+			case "member":
+				return ec.fieldContext_Registration_member(ctx, field)
+			case "subChurch":
+				return ec.fieldContext_Registration_subChurch(ctx, field)
+			case "subChurchID":
+				return ec.fieldContext_Registration_subChurchID(ctx, field)
+			case "tempLeaderID":
+				return ec.fieldContext_Registration_tempLeaderID(ctx, field)
+			case "memberID":
+				return ec.fieldContext_Registration_memberID(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Registration", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_WeekRegistrations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_WeeklyRegistrations(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_WeeklyRegistrations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().WeeklyRegistrations(rctx, fc.Args["churchId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]map[string]interface{})
+	fc.Result = res
+	return ec.marshalNMap2ᚕmapᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_WeeklyRegistrations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_WeeklyRegistrations_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -15399,6 +17058,8 @@ func (ec *executionContext) fieldContext_Registration_leader(ctx context.Context
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -15429,8 +17090,6 @@ func (ec *executionContext) fieldContext_Registration_leader(ctx context.Context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -15525,6 +17184,8 @@ func (ec *executionContext) fieldContext_Registration_member(ctx context.Context
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -15555,8 +17216,6 @@ func (ec *executionContext) fieldContext_Registration_member(ctx context.Context
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -15900,6 +17559,8 @@ func (ec *executionContext) fieldContext_RegistrationByCallAgent_callAgent(ctx c
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -15930,8 +17591,6 @@ func (ec *executionContext) fieldContext_RegistrationByCallAgent_callAgent(ctx c
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -15982,6 +17641,453 @@ func (ec *executionContext) fieldContext_RegistrationByCallAgent_day(ctx context
 		Field:      field,
 		IsMethod:   true,
 		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeekly_data(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeekly) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeekly_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeekly_data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeekly",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeekly_weekNumber(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeekly) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeekly_weekNumber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeekNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeekly_weekNumber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeekly",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeekly_SubChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeekly) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeekly_SubChurchMemberRegistrationCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchMemberRegistrationCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeekly_SubChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeekly",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeekly_SubChurchName(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeekly) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeekly_SubChurchName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeekly_SubChurchName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeekly",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeeklyMap_weekNumber(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeeklyMap) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeeklyMap_weekNumber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeekNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeeklyMap_weekNumber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeeklyMap",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeeklyMap_registrations(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeeklyMap) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeeklyMap_registrations(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Registrations, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.RegistrationWeekly)
+	fc.Result = res
+	return ec.marshalNRegistrationWeekly2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationWeeklyᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeeklyMap_registrations(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeeklyMap",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "data":
+				return ec.fieldContext_RegistrationWeekly_data(ctx, field)
+			case "weekNumber":
+				return ec.fieldContext_RegistrationWeekly_weekNumber(ctx, field)
+			case "SubChurchMemberRegistrationCount":
+				return ec.fieldContext_RegistrationWeekly_SubChurchMemberRegistrationCount(ctx, field)
+			case "SubChurchName":
+				return ec.fieldContext_RegistrationWeekly_SubChurchName(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RegistrationWeekly", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeeklys_data(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeeklys) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeeklys_data(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Data, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeeklys_data(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeeklys",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeeklys_weekNumber(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeeklys) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeeklys_weekNumber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeekNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeeklys_weekNumber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeeklys",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeeklys_SubChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeeklys) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeeklys_SubChurchMemberRegistrationCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchMemberRegistrationCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeeklys_SubChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeeklys",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RegistrationWeeklys_SubChurchName(ctx context.Context, field graphql.CollectedField, obj *model.RegistrationWeeklys) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RegistrationWeeklys_SubChurchName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RegistrationWeeklys_SubChurchName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RegistrationWeeklys",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
 		},
@@ -16072,6 +18178,846 @@ func (ec *executionContext) fieldContext_RegistrationsDistribution_registrationI
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCount_roleName(ctx context.Context, field graphql.CollectedField, obj *model.RoleCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCount_roleName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoleName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCount_roleName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCount_count(ctx context.Context, field graphql.CollectedField, obj *model.RoleCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCount_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCount_count(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCountResult_roleName(ctx context.Context, field graphql.CollectedField, obj *model.RoleCountResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCountResult_roleName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RoleName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCountResult_roleName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCountResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCountResult_count(ctx context.Context, field graphql.CollectedField, obj *model.RoleCountResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCountResult_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCountResult_count(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCountResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCountResult_roles(ctx context.Context, field graphql.CollectedField, obj *model.RoleCountResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCountResult_roles(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Roles, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*model.MemberChurchMinistryRole)
+	fc.Result = res
+	return ec.marshalNMemberChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCountResult_roles(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCountResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MemberChurchMinistryRole_id(ctx, field)
+			case "memberID":
+				return ec.fieldContext_MemberChurchMinistryRole_memberID(ctx, field)
+			case "churchMinistryRoleID":
+				return ec.fieldContext_MemberChurchMinistryRole_churchMinistryRoleID(ctx, field)
+			case "ChurchMinistryRole":
+				return ec.fieldContext_MemberChurchMinistryRole_ChurchMinistryRole(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MemberChurchMinistryRole", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_members(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_members(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Members, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_members(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_pastors(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_pastors(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Pastors, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_pastors(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_ravens(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_ravens(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ravens, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_ravens(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_bishops(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_bishops(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Bishops, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_bishops(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_security(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_security(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Security, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_security(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_sundaySchoolTeachers(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_sundaySchoolTeachers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SundaySchoolTeachers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_sundaySchoolTeachers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_finance(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_finance(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Finance, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_finance(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_ushers(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_ushers(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Ushers, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_ushers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_music(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_music(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Music, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_music(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_domestic(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_domestic(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Domestic, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_domestic(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_media(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_media(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Media, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_media(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RoleCounts_allRoles(ctx context.Context, field graphql.CollectedField, obj *model.RoleCounts) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RoleCounts_allRoles(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AllRoles, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RoleCounts_allRoles(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RoleCounts",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SortDatesReturn_registrationDataDates(ctx context.Context, field graphql.CollectedField, obj *model.SortDatesReturn) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SortDatesReturn_registrationDataDates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RegistrationDataDates, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]string)
+	fc.Result = res
+	return ec.marshalNString2ᚕstringᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SortDatesReturn_registrationDataDates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SortDatesReturn",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SortDatesReturn_SubChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField, obj *model.SortDatesReturn) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SortDatesReturn_SubChurchMemberRegistrationCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchMemberRegistrationCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SortDatesReturn_SubChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SortDatesReturn",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -16603,6 +19549,8 @@ func (ec *executionContext) fieldContext_SubChurch_leaders(ctx context.Context, 
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -16633,8 +19581,6 @@ func (ec *executionContext) fieldContext_SubChurch_leaders(ctx context.Context, 
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -16688,6 +19634,8 @@ func (ec *executionContext) fieldContext_SubChurch_members(ctx context.Context, 
 				return ec.fieldContext_Member_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Member_name(ctx, field)
+			case "churchMinistries":
+				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "email":
 				return ec.fieldContext_Member_email(ctx, field)
 			case "phoneNumber":
@@ -16718,8 +19666,6 @@ func (ec *executionContext) fieldContext_SubChurch_members(ctx context.Context, 
 				return ec.fieldContext_Member_subChurchID(ctx, field)
 			case "personalInfor":
 				return ec.fieldContext_Member_personalInfor(ctx, field)
-			case "churchMinistries":
-				return ec.fieldContext_Member_churchMinistries(ctx, field)
 			case "personalInforId":
 				return ec.fieldContext_Member_personalInforId(ctx, field)
 			case "updatedAt":
@@ -16830,6 +19776,217 @@ func (ec *executionContext) fieldContext_SubChurch_CallCenter(ctx context.Contex
 				return ec.fieldContext_CallCenter_SubChurches(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CallCenter", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubChurchCount_subChurchName(ctx context.Context, field graphql.CollectedField, obj *model.SubChurchCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubChurchCount_subChurchName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubChurchCount_subChurchName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubChurchCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubChurchCount_subChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField, obj *model.SubChurchCount) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubChurchCount_subChurchMemberRegistrationCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchMemberRegistrationCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]map[string]interface{})
+	fc.Result = res
+	return ec.marshalOMap2ᚕmap(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubChurchCount_subChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubChurchCount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubChurchReturn_subChurchName(ctx context.Context, field graphql.CollectedField, obj *model.SubChurchReturn) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubChurchReturn_subChurchName(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchName, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubChurchReturn_subChurchName(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubChurchReturn",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubChurchReturn_weekNumber(ctx context.Context, field graphql.CollectedField, obj *model.SubChurchReturn) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubChurchReturn_weekNumber(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WeekNumber, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubChurchReturn_weekNumber(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubChurchReturn",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SubChurchReturn_subChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField, obj *model.SubChurchReturn) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SubChurchReturn_subChurchMemberRegistrationCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SubChurchMemberRegistrationCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(map[string]interface{})
+	fc.Result = res
+	return ec.marshalOMap2map(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SubChurchReturn_subChurchMemberRegistrationCount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SubChurchReturn",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Map does not have child fields")
 		},
 	}
 	return fc, nil
@@ -18737,7 +21894,7 @@ func (ec *executionContext) unmarshalInputChurchMinistryRoleInpt(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"role"}
+	fieldsInOrder := [...]string{"role", "subChurchId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18753,6 +21910,15 @@ func (ec *executionContext) unmarshalInputChurchMinistryRoleInpt(ctx context.Con
 				return it, err
 			}
 			it.Role = data
+		case "subChurchId":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("subChurchId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SubChurchID = data
 		}
 	}
 
@@ -19924,6 +23090,48 @@ func (ec *executionContext) _ChurchMinistryRole(ctx context.Context, sel ast.Sel
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "role":
 			out.Values[i] = ec._ChurchMinistryRole_role(ctx, field, obj)
+		case "assignedSubChurch":
+			out.Values[i] = ec._ChurchMinistryRole_assignedSubChurch(ctx, field, obj)
+		case "assignedSubChurchId":
+			out.Values[i] = ec._ChurchMinistryRole_assignedSubChurchId(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var churchMinistryRoleWithCountImplementors = []string{"ChurchMinistryRoleWithCount"}
+
+func (ec *executionContext) _ChurchMinistryRoleWithCount(ctx context.Context, sel ast.SelectionSet, obj *model.ChurchMinistryRoleWithCount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, churchMinistryRoleWithCountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChurchMinistryRoleWithCount")
+		case "memberChurchMinistryRole":
+			out.Values[i] = ec._ChurchMinistryRoleWithCount_memberChurchMinistryRole(ctx, field, obj)
+		case "roleCount":
+			out.Values[i] = ec._ChurchMinistryRoleWithCount_roleCount(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -20372,6 +23580,50 @@ func (ec *executionContext) _JobInfo(ctx context.Context, sel ast.SelectionSet, 
 	return out
 }
 
+var keyValueImplementors = []string{"KeyValue"}
+
+func (ec *executionContext) _KeyValue(ctx context.Context, sel ast.SelectionSet, obj *model.KeyValue) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, keyValueImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("KeyValue")
+		case "key":
+			out.Values[i] = ec._KeyValue_key(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._KeyValue_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var leaderRegistrationsDistributionImplementors = []string{"LeaderRegistrationsDistribution"}
 
 func (ec *executionContext) _LeaderRegistrationsDistribution(ctx context.Context, sel ast.SelectionSet, obj *model.LeaderRegistrationsDistribution) graphql.Marshaler {
@@ -20468,6 +23720,8 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "churchMinistries":
+			out.Values[i] = ec._Member_churchMinistries(ctx, field, obj)
 		case "email":
 			out.Values[i] = ec._Member_email(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -20538,8 +23792,6 @@ func (ec *executionContext) _Member(ctx context.Context, sel ast.SelectionSet, o
 			out.Values[i] = ec._Member_subChurchID(ctx, field, obj)
 		case "personalInfor":
 			out.Values[i] = ec._Member_personalInfor(ctx, field, obj)
-		case "churchMinistries":
-			out.Values[i] = ec._Member_churchMinistries(ctx, field, obj)
 		case "personalInforId":
 			out.Values[i] = ec._Member_personalInforId(ctx, field, obj)
 		case "updatedAt":
@@ -21070,6 +24322,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeLeader(ctx, field)
 			})
+		case "removeChild":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeChild(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeSpouse":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeSpouse(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createSubChurchesWithMainChurch":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createSubChurchesWithMainChurch(ctx, field)
@@ -21241,6 +24507,63 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_GetAllMembersBySubChurchID(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetsubChurchTotalMember":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetsubChurchTotalMember(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "getRoleCountsBySubChurch":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getRoleCountsBySubChurch(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetChurchMinistryRolesBySubChurchID":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetChurchMinistryRolesBySubChurchID(ctx, field)
 				return res
 			}
 
@@ -21541,6 +24864,72 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "getWeekNumberOfMonth":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getWeekNumberOfMonth(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "filterAndSortDates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_filterAndSortDates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "SortDates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_SortDates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "Getmember":
 			field := field
 
@@ -21788,6 +25177,72 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_currentWeekRegistrationsforCallCenter(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "currentWeekRegistrationsforMainChuech":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_currentWeekRegistrationsforMainChuech(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "WeekRegistrations":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_WeekRegistrations(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "WeeklyRegistrations":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_WeeklyRegistrations(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -22084,6 +25539,155 @@ func (ec *executionContext) _RegistrationByCallAgent(ctx context.Context, sel as
 	return out
 }
 
+var registrationWeeklyImplementors = []string{"RegistrationWeekly"}
+
+func (ec *executionContext) _RegistrationWeekly(ctx context.Context, sel ast.SelectionSet, obj *model.RegistrationWeekly) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, registrationWeeklyImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RegistrationWeekly")
+		case "data":
+			out.Values[i] = ec._RegistrationWeekly_data(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weekNumber":
+			out.Values[i] = ec._RegistrationWeekly_weekNumber(ctx, field, obj)
+		case "SubChurchMemberRegistrationCount":
+			out.Values[i] = ec._RegistrationWeekly_SubChurchMemberRegistrationCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "SubChurchName":
+			out.Values[i] = ec._RegistrationWeekly_SubChurchName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var registrationWeeklyMapImplementors = []string{"RegistrationWeeklyMap"}
+
+func (ec *executionContext) _RegistrationWeeklyMap(ctx context.Context, sel ast.SelectionSet, obj *model.RegistrationWeeklyMap) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, registrationWeeklyMapImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RegistrationWeeklyMap")
+		case "weekNumber":
+			out.Values[i] = ec._RegistrationWeeklyMap_weekNumber(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "registrations":
+			out.Values[i] = ec._RegistrationWeeklyMap_registrations(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var registrationWeeklysImplementors = []string{"RegistrationWeeklys"}
+
+func (ec *executionContext) _RegistrationWeeklys(ctx context.Context, sel ast.SelectionSet, obj *model.RegistrationWeeklys) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, registrationWeeklysImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RegistrationWeeklys")
+		case "data":
+			out.Values[i] = ec._RegistrationWeeklys_data(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weekNumber":
+			out.Values[i] = ec._RegistrationWeeklys_weekNumber(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "SubChurchMemberRegistrationCount":
+			out.Values[i] = ec._RegistrationWeeklys_SubChurchMemberRegistrationCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "SubChurchName":
+			out.Values[i] = ec._RegistrationWeeklys_SubChurchName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var registrationsDistributionImplementors = []string{"RegistrationsDistribution"}
 
 func (ec *executionContext) _RegistrationsDistribution(ctx context.Context, sel ast.SelectionSet, obj *model.RegistrationsDistribution) graphql.Marshaler {
@@ -22102,6 +25706,231 @@ func (ec *executionContext) _RegistrationsDistribution(ctx context.Context, sel 
 			}
 		case "registrationIDs":
 			out.Values[i] = ec._RegistrationsDistribution_registrationIDs(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var roleCountImplementors = []string{"RoleCount"}
+
+func (ec *executionContext) _RoleCount(ctx context.Context, sel ast.SelectionSet, obj *model.RoleCount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, roleCountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RoleCount")
+		case "roleName":
+			out.Values[i] = ec._RoleCount_roleName(ctx, field, obj)
+		case "count":
+			out.Values[i] = ec._RoleCount_count(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var roleCountResultImplementors = []string{"RoleCountResult"}
+
+func (ec *executionContext) _RoleCountResult(ctx context.Context, sel ast.SelectionSet, obj *model.RoleCountResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, roleCountResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RoleCountResult")
+		case "roleName":
+			out.Values[i] = ec._RoleCountResult_roleName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._RoleCountResult_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "roles":
+			out.Values[i] = ec._RoleCountResult_roles(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var roleCountsImplementors = []string{"RoleCounts"}
+
+func (ec *executionContext) _RoleCounts(ctx context.Context, sel ast.SelectionSet, obj *model.RoleCounts) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, roleCountsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RoleCounts")
+		case "members":
+			out.Values[i] = ec._RoleCounts_members(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pastors":
+			out.Values[i] = ec._RoleCounts_pastors(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ravens":
+			out.Values[i] = ec._RoleCounts_ravens(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bishops":
+			out.Values[i] = ec._RoleCounts_bishops(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "security":
+			out.Values[i] = ec._RoleCounts_security(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sundaySchoolTeachers":
+			out.Values[i] = ec._RoleCounts_sundaySchoolTeachers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "finance":
+			out.Values[i] = ec._RoleCounts_finance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "ushers":
+			out.Values[i] = ec._RoleCounts_ushers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "music":
+			out.Values[i] = ec._RoleCounts_music(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "domestic":
+			out.Values[i] = ec._RoleCounts_domestic(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "media":
+			out.Values[i] = ec._RoleCounts_media(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "allRoles":
+			out.Values[i] = ec._RoleCounts_allRoles(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sortDatesReturnImplementors = []string{"SortDatesReturn"}
+
+func (ec *executionContext) _SortDatesReturn(ctx context.Context, sel ast.SelectionSet, obj *model.SortDatesReturn) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sortDatesReturnImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SortDatesReturn")
+		case "registrationDataDates":
+			out.Values[i] = ec._SortDatesReturn_registrationDataDates(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "SubChurchMemberRegistrationCount":
+			out.Values[i] = ec._SortDatesReturn_SubChurchMemberRegistrationCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -22215,6 +26044,90 @@ func (ec *executionContext) _SubChurch(ctx context.Context, sel ast.SelectionSet
 			out.Values[i] = ec._SubChurch_CallCenterID(ctx, field, obj)
 		case "CallCenter":
 			out.Values[i] = ec._SubChurch_CallCenter(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var subChurchCountImplementors = []string{"SubChurchCount"}
+
+func (ec *executionContext) _SubChurchCount(ctx context.Context, sel ast.SelectionSet, obj *model.SubChurchCount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subChurchCountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SubChurchCount")
+		case "subChurchName":
+			out.Values[i] = ec._SubChurchCount_subChurchName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "subChurchMemberRegistrationCount":
+			out.Values[i] = ec._SubChurchCount_subChurchMemberRegistrationCount(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var subChurchReturnImplementors = []string{"SubChurchReturn"}
+
+func (ec *executionContext) _SubChurchReturn(ctx context.Context, sel ast.SelectionSet, obj *model.SubChurchReturn) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subChurchReturnImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SubChurchReturn")
+		case "subChurchName":
+			out.Values[i] = ec._SubChurchReturn_subChurchName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "weekNumber":
+			out.Values[i] = ec._SubChurchReturn_weekNumber(ctx, field, obj)
+		case "subChurchMemberRegistrationCount":
+			out.Values[i] = ec._SubChurchReturn_subChurchMemberRegistrationCount(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -22711,6 +26624,21 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	res := graphql.MarshalInt(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) marshalNJobInfo2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐJobInfo(ctx context.Context, sel ast.SelectionSet, v model.JobInfo) graphql.Marshaler {
 	return ec._JobInfo(ctx, sel, &v)
 }
@@ -22733,6 +26661,59 @@ func (ec *executionContext) unmarshalNJobInfoInput2githubᚗcomᚋkobbiᚋvbciap
 func (ec *executionContext) unmarshalNLoginLeaderInput2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐLoginLeaderInput(ctx context.Context, v interface{}) (model.LoginLeaderInput, error) {
 	res, err := ec.unmarshalInputLoginLeaderInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNMap2map(ctx context.Context, v interface{}) (map[string]interface{}, error) {
+	res, err := graphql.UnmarshalMap(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]interface{}) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	res := graphql.MarshalMap(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNMap2ᚕmapᚄ(ctx context.Context, v interface{}) ([]map[string]interface{}, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]map[string]interface{}, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNMap2map(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNMap2ᚕmapᚄ(ctx context.Context, sel ast.SelectionSet, v []map[string]interface{}) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNMap2map(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNMember2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx context.Context, sel ast.SelectionSet, v model.Member) graphql.Marshaler {
@@ -22791,6 +26772,44 @@ func (ec *executionContext) marshalNMember2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋg
 		return graphql.Null
 	}
 	return ec._Member(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMemberChurchMinistryRole2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx context.Context, sel ast.SelectionSet, v []*model.MemberChurchMinistryRole) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOMemberChurchMinistryRole2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMemberChurchMinistryRole(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
 }
 
 func (ec *executionContext) marshalNMigrationRequest2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMigrationRequest(ctx context.Context, sel ast.SelectionSet, v model.MigrationRequest) graphql.Marshaler {
@@ -22956,6 +26975,114 @@ func (ec *executionContext) marshalNRegistrationByCallAgent2ᚕᚖgithubᚗcom�
 	wg.Wait()
 
 	return ret
+}
+
+func (ec *executionContext) marshalNRegistrationWeekly2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationWeeklyᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RegistrationWeekly) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRegistrationWeekly2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationWeekly(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRegistrationWeekly2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationWeekly(ctx context.Context, sel ast.SelectionSet, v *model.RegistrationWeekly) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RegistrationWeekly(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRegistrationWeeklyMap2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationWeeklyMapᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.RegistrationWeeklyMap) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNRegistrationWeeklyMap2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationWeeklyMap(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNRegistrationWeeklyMap2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRegistrationWeeklyMap(ctx context.Context, sel ast.SelectionSet, v *model.RegistrationWeeklyMap) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RegistrationWeeklyMap(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNReturns2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐReturns(ctx context.Context, sel ast.SelectionSet, v model.Returns) graphql.Marshaler {
@@ -23684,6 +27811,54 @@ func (ec *executionContext) marshalOLeaderRegistrationsDistribution2ᚖgithubᚗ
 	return ec._LeaderRegistrationsDistribution(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalOMap2map(ctx context.Context, v interface{}) (map[string]interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalMap(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOMap2map(ctx context.Context, sel ast.SelectionSet, v map[string]interface{}) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalMap(v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOMap2ᚕmap(ctx context.Context, v interface{}) ([]map[string]interface{}, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]map[string]interface{}, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalOMap2map(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOMap2ᚕmap(ctx context.Context, sel ast.SelectionSet, v []map[string]interface{}) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalOMap2map(ctx, sel, v[i])
+	}
+
+	return ret
+}
+
 func (ec *executionContext) marshalOMember2githubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐMember(ctx context.Context, sel ast.SelectionSet, v model.Member) graphql.Marshaler {
 	return ec._Member(ctx, sel, &v)
 }
@@ -23993,6 +28168,102 @@ func (ec *executionContext) marshalOReturns2githubᚗcomᚋkobbiᚋvbciapiᚋgra
 		return graphql.Null
 	}
 	return ec._Returns(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORoleCountResult2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRoleCountResult(ctx context.Context, sel ast.SelectionSet, v []*model.RoleCountResult) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalORoleCountResult2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRoleCountResult(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalORoleCountResult2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRoleCountResult(ctx context.Context, sel ast.SelectionSet, v *model.RoleCountResult) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RoleCountResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORoleCounts2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRoleCounts(ctx context.Context, sel ast.SelectionSet, v []*model.RoleCounts) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalORoleCounts2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRoleCounts(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalORoleCounts2ᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐRoleCounts(ctx context.Context, sel ast.SelectionSet, v *model.RoleCounts) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RoleCounts(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {

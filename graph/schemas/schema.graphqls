@@ -1,10 +1,12 @@
 scalar Time
 scalar Upload
 scalar Myarray
+scalar Map
 
 type Member {
   id: String!
   name: String!
+  churchMinistries: [MemberChurchMinistryRole]
   email: String!
   phoneNumber: String
   location: String
@@ -20,7 +22,6 @@ type Member {
   subChurch: SubChurch # Define a relationship to SubChurch
   subChurchID: String
   personalInfor: FamilyInfo # New nested field for family information
-  churchMinistries: [MemberChurchMinistryRole]
   personalInforId: String # New nested field for family information
   updatedAt: Time!
   createdAt: Time!
@@ -41,6 +42,8 @@ enum ChurchMinistryRolesEnum {
 type ChurchMinistryRole {
   id: String!
   role: ChurchMinistryRolesEnum
+  assignedSubChurch: SubChurch
+  assignedSubChurchId: String
 }
 
 type MemberChurchMinistryRole {
@@ -191,12 +194,80 @@ type DateInfo {
   month: String
   weekOfMonth: Int
 }
+type RoleCounts {
+  members: Int!
+  pastors: Int!
+  ravens: Int!
+  bishops: Int!
+  security: Int!
+  sundaySchoolTeachers: Int!
+  finance: Int!
+  ushers: Int!
+  music: Int!
+  domestic: Int!
+  media: Int!
+  allRoles: Int!
+}
+type ChurchMinistryRoleWithCount {
+  memberChurchMinistryRole: MemberChurchMinistryRole
+  roleCount: Int
+}
 
+type RoleCount {
+  roleName: String
+  count: Int
+}
+type RoleCountResult {
+  roleName: String!
+  count: Int!
+  roles: [MemberChurchMinistryRole]!
+}
+type RegistrationWeekly{
+  data:[String!]!
+  weekNumber: String
+  SubChurchMemberRegistrationCount: Int!
+  SubChurchName: String!
+
+
+}
+type RegistrationWeeklys{
+  data:[String!]!
+  weekNumber: [String!]!
+  SubChurchMemberRegistrationCount: Int!
+  SubChurchName: String!
+
+
+}
+type SortDatesReturn{
+  registrationDataDates:[String!]!
+  SubChurchMemberRegistrationCount: Int!
+ 
+
+}
+type SubChurchReturn {
+  subChurchName: String!
+  weekNumber: String
+
+  subChurchMemberRegistrationCount: Map
+}
+
+type SubChurchCount {
+  subChurchName: String!
+  subChurchMemberRegistrationCount: [Map]
+}
+
+type KeyValue {
+  key: String!
+  value: Int!
+}
 type Query {
   GetAllMainChurch: [Church]
   GetAllsubChurchByMainChurchID(mainChurchId: String!): [SubChurch]
   GetAllsubChurchByMemberId(memberId: String!): [SubChurch]
   GetAllMembersBySubChurchID(subChurchId: String!): [Member]
+  GetsubChurchTotalMember(subChurchId: String!): Int
+getRoleCountsBySubChurch(subChurchID: String!): [RoleCounts]
+ GetChurchMinistryRolesBySubChurchID(subChurchId: String!): [RoleCountResult]
   # GetAllBySubChChildrenByMemberID(memberId: String!): [Member]
   GetAllMembersBySubChurchIDForCallAgent(subChurchId: String!): [Member]
   GetAllSubChurchLeader(subChurchId: String!): Member
@@ -219,6 +290,9 @@ type Query {
   GetCallAgent: [Member]
 
   # amember(id: String!): member
+getWeekNumberOfMonth(dayNumber:Int):String!
+filterAndSortDates(dateStrings: [String!]!,churchId: String!):[RegistrationWeekly!]!
+SortDates(churchId: String!):[String!]!
 
   Getmember(id: String!): Member
   GetMigration(id: String!): MigrationRequest
@@ -238,9 +312,15 @@ type Query {
   currentWeekRegistrations: [Registration!]!
   currentWeekRegistrationsforsub(subChurchId: String!): [Registration!]!
   currentWeekRegistrationsforCallCenter: [SubChurch!]!
+  currentWeekRegistrationsforMainChuech(churchId: String!): [RegistrationWeeklyMap!]!
+  WeekRegistrations(churchId: String!): [Registration!]!
+  WeeklyRegistrations(churchId: String!): [Map!]!
   WeekRegistrationsforSub: [Registration!]!
 }
-
+type RegistrationWeeklyMap {
+  weekNumber: String!
+  registrations: [RegistrationWeekly!]!
+}
 input CreateRegistrationInput {
   absence: Boolean
   lastComment: String
@@ -362,6 +442,7 @@ input assignSubLeaderToMemberRegistrationArrayInput {
 
 input ChurchMinistryRoleInpt {
   role: String
+  subChurchId: String
 }
 
 type Mutation {
@@ -393,6 +474,7 @@ type Mutation {
   updateMinistryRoleByLeader(
     input: ChurchMinistryRoleInpt!
     memberID: String!
+    
   ): MemberChurchMinistryRole
 
   updateLeader(input: updateLeaderProfileInput!, memberId: String!): Member!
@@ -447,6 +529,8 @@ type Mutation {
   updateRegistrationArray(input: [RegistrationArrayInputs]!): [Registration]!
 
   removeLeader(memberId: String!): Member
+  removeChild(childrenId: String!): Boolean!
+  removeSpouse(SpouseId: String!): Boolean!
 
   createSubChurchesWithMainChurch(
     mainChurchId: String!
@@ -494,3 +578,9 @@ input LoginLeaderInput {
   phoneNumber: String
   email: String
 }
+
+
+
+
+
+

@@ -13,6 +13,7 @@ import (
 	"log"
 	"math/rand"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -803,10 +804,10 @@ func (r *mutationResolver) UpdateMemberJobInfoInput(ctx context.Context, input m
 // UpdateMinistryRoleByLeader is the resolver for the updateMinistryRoleByLeader field.
 func (r *mutationResolver) UpdateMinistryRoleByLeader(ctx context.Context, input model.ChurchMinistryRoleInpt, memberID string) (*model.MemberChurchMinistryRole, error) {
 	// Extract LeaderID from the request context (provided by AuthenticationMiddleware).
-	// err := middleware.ExtractCTXinfo(ctx)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err := middleware.ExtractCTXinfo(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	// Retrieve the existing Member from the database based on memberID.
 	member := &model.Member{}
@@ -818,7 +819,7 @@ func (r *mutationResolver) UpdateMinistryRoleByLeader(ctx context.Context, input
 	if input.Role == nil {
 		return nil, errors.New("role is required")
 	}
-
+	// .Preload("ChurchMinistries.ChurchMinistryRole").Preload("ChurchMinistries.ChurchMinistryRole.AssignedSubChurch")
 	// Check if a ChurchMinistryRole with the same role value already exists for the given member.
 	existingRole := &model.ChurchMinistryRole{}
 	if err := r.DB.
@@ -833,6 +834,7 @@ func (r *mutationResolver) UpdateMinistryRoleByLeader(ctx context.Context, input
 
 		// If the role doesn't exist for the given member, create a new ChurchMinistryRole.
 		existingRole.Role = (*model.ChurchMinistryRolesEnum)(input.Role)
+		existingRole.AssignedSubChurchID = input.SubChurchID
 		if err := r.DB.Create(existingRole).Error; err != nil {
 			return nil, fmt.Errorf("failed to create church ministry role: %w", err)
 		}
@@ -1964,6 +1966,45 @@ func (r *mutationResolver) RemoveLeader(ctx context.Context, memberID string) (*
 	return nil, fmt.Errorf("member is not currently assigned as a leader")
 }
 
+// RemoveChild is the resolver for the removeChild field.
+func (r *mutationResolver) RemoveChild(ctx context.Context, childrenID string) (bool, error) {
+	// Convert childrenID to uuid.UUID
+	childID, err := uuid.Parse(childrenID)
+	if err != nil {
+		return false, err
+	}
+
+	// Remove the child from the family_info_children table
+	if err := r.DB.Table("family_info_children").
+		Where("member_id = ?", childID).
+		Delete(nil).
+		Error; err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// RemoveSpouse is the resolver for the removeSpouse field.
+func (r *mutationResolver) RemoveSpouse(ctx context.Context, spouseID string) (bool, error) {
+	// Convert spouseID to uuid.UUID
+	spouseUUID, err := uuid.Parse(spouseID)
+	if err != nil {
+		return false, err
+	}
+
+	// Remove the spouse ID from the family_info table
+	if err := r.DB.Table("family_infos").
+		Where("spouse_id = ?", spouseUUID).
+		Update("spouse_id", nil).
+		Error; err != nil {
+		return false, err
+	}
+
+	return true, nil
+
+}
+
 // CreateSubChurchesWithMainChurch is the resolver for the createSubChurchesWithMainChurch field.
 func (r *mutationResolver) CreateSubChurchesWithMainChurch(ctx context.Context, mainChurchID string, subChurchNames []string) (*model.Church, error) {
 	// Extract Admin's ID from the request context (provided by AuthenticationMiddleware).
@@ -2600,12 +2641,12 @@ func (r *mutationResolver) LogOut(ctx context.Context) (bool, error) {
 
 // GetAllMainChurch is the resolver for the GetAllMainChurch field.
 func (r *queryResolver) GetAllMainChurch(ctx context.Context) ([]*model.Church, error) {
-	var churchs []*model.Church
-	if err := r.DB.Find(&churchs).Order("created_at DESC").Error; err != nil {
+	var churches []*model.Church
+	if err := r.DB.Preload("SubChurches").Preload("SubChurches.Members").Preload("SubChurches.Members.Registrations").Order("created_at DESC").Find(&churches).Error; err != nil {
 		return nil, err
 	}
 
-	return churchs, nil
+	return churches, nil
 }
 
 // GetsubChurchByMainChurchID is the resolver for the GetsubChurchByMainChurchID field.
@@ -2653,6 +2694,60 @@ func (r *queryResolver) GetAllMembersBySubChurchID(ctx context.Context, subChurc
 		member.Types = []string(member.Types)
 	}
 	return members, nil
+}
+
+// GetsubChurchTotalMember is the resolver for the GetsubChurchTotalMember field.
+func (r *queryResolver) GetsubChurchTotalMember(ctx context.Context, subChurchID string) (*int, error) {
+	var totalCount int64
+	if err := r.DB.Model(&model.Member{}).Where("sub_church_id = ?", subChurchID).Count(&totalCount).Error; err != nil {
+		// log.Printf(" Error executing SQL query: %v", err)
+		return nil, fmt.Errorf(" Error executing SQL query: %w", err)
+	}
+
+	// Convert int64 to int
+	count := int(totalCount)
+
+	return &count, nil
+}
+
+// GetRoleCountsBySubChurch is the resolver for the getRoleCountsBySubChurch field.
+func (r *queryResolver) GetRoleCountsBySubChurch(ctx context.Context, subChurchID string) ([]*model.RoleCounts, error) {
+	panic(fmt.Errorf("not implemented: GetRoleCountsBySubChurch - getRoleCountsBySubChurch"))
+}
+
+// GetChurchMinistryRolesBySubChurchID is the resolver for the GetChurchMinistryRolesBySubChurchID field.
+func (r *queryResolver) GetChurchMinistryRolesBySubChurchID(ctx context.Context, subChurchID string) ([]*model.RoleCountResult, error) {
+	var results []*model.RoleCountResult
+	var memberChurchMinistryRoles []*model.MemberChurchMinistryRole
+
+	// Your existing database query code
+	if err := r.DB.Joins("JOIN church_ministry_roles ON member_church_ministry_roles.church_ministry_role_id = church_ministry_roles.id").
+		Where("church_ministry_roles.assigned_sub_church_id = ?", subChurchID).
+		Preload("ChurchMinistryRole").
+		Find(&memberChurchMinistryRoles).Error; err != nil {
+		log.Printf("Error executing SQL query: %v", err)
+		return nil, fmt.Errorf("Error executing SQL query: %v", err)
+	}
+
+	// Count the occurrences of each role
+	roleCounts := make(map[string]int)
+	for _, role := range memberChurchMinistryRoles {
+		roleName := role.ChurchMinistryRole.Role
+		roleCounts[string(*roleName)]++
+	}
+
+	// Create the RoleCountResult and append to the results slice
+	for roleName, count := range roleCounts {
+		result := model.RoleCountResult{
+			RoleName: roleName,
+			Count:    count,
+			Roles:    memberChurchMinistryRoles,
+		}
+		results = append(results, &result)
+
+	}
+
+	return results, nil
 }
 
 // GetAllMembersBySubChurchIDForCallAgent is the resolver for the GetAllMembersBySubChurchIDForCallAgent field.
@@ -2937,12 +3032,132 @@ func (r *queryResolver) GetCallAgent(ctx context.Context) ([]*model.Member, erro
 	return leaders, nil
 }
 
+// GetWeekNumberOfMonth is the resolver for the getWeekNumberOfMonth field.
+func (r *queryResolver) GetWeekNumberOfMonth(ctx context.Context, dayNumber *int) (string, error) {
+	if dayNumber == nil || *dayNumber < 1 || *dayNumber > 31 {
+		return "", fmt.Errorf("Invalid dayNumber")
+	}
+
+	now := time.Now()
+
+	// Get the start of the current month
+	firstDayOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+	// Calculate the day of the month for the given day number
+	targetDayOfMonth := firstDayOfMonth.AddDate(0, 0, *dayNumber-1)
+
+	// Calculate the week number based on the target day
+	weekNumber := (targetDayOfMonth.Day()-1)/7 + 1
+
+	return fmt.Sprintf("Day %d is in week %d of the month.", *dayNumber, weekNumber), nil
+}
+
+// FilterAndSortDates is the resolver for the filterAndSortDates field.
+func (r *queryResolver) FilterAndSortDates(ctx context.Context, dateStrings []string, churchID string) ([]*model.RegistrationWeekly, error) {
+	var dates []time.Time
+	// results, err := r.Query().SortDates(ctx, churchID)
+	// if err != nil {
+	// 	// Handle error
+	// 	return nil, err
+	// }
+	for _, dateString := range dateStrings {
+		date, err := time.Parse("2006-01-02 15:04:05.999999-07", dateString)
+		if err == nil {
+			dates = append(dates, date)
+		}
+	}
+
+	// Get the start and end of the current month
+	now := time.Now()
+	firstDayOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	lastDayOfMonth := firstDayOfMonth.AddDate(0, 1, -1)
+
+	// Filter dates belonging to the current month
+	var currentMonthDates []time.Time
+	for _, date := range dates {
+		if date.After(firstDayOfMonth) && date.Before(lastDayOfMonth.AddDate(0, 0, 1)) {
+			currentMonthDates = append(currentMonthDates, date)
+		}
+	}
+
+	// Sort the current month dates
+	sort.Slice(currentMonthDates, func(i, j int) bool {
+		return currentMonthDates[i].Before(currentMonthDates[j])
+	})
+
+	var result []*model.RegistrationWeekly
+	var currentWeek []string
+	var currentWeekNumber int
+	subChurchName := "Sub Church Name" // Replace with the actual subChurchName
+
+	for _, date := range currentMonthDates {
+		weekNumber := (date.Day()-1)/7 + 1
+
+		if weekNumber != currentWeekNumber {
+			// Start a new week
+			if len(currentWeek) > 0 {
+				registrationCount := calculateRegistrationCount(currentWeek)
+				// Add ordinal suffix to week number
+				weekNumStr := fmt.Sprintf("%d%s Sunday ", currentWeekNumber, schemas.OrdinalSuffix(currentWeekNumber))
+				result = append(result, &model.RegistrationWeekly{
+					Data:                             currentWeek,
+					WeekNumber:                       &weekNumStr,
+					SubChurchMemberRegistrationCount: registrationCount,
+					SubChurchName:                    subChurchName,
+				})
+			}
+
+			currentWeekNumber = weekNumber
+			currentWeek = []string{date.Format("2006-01-02 15:04:05.999999-07")}
+		} else {
+			// Add to the current week
+			currentWeek = append(currentWeek, date.Format("2006-01-02 15:04:05.999999-07"))
+		}
+	}
+
+	// Add the last week
+	if len(currentWeek) > 0 {
+		egistrationCount := calculateRegistrationCount(currentWeek)
+		subChurchName := "Sub Church Name" // Replace with the actual subChurchName
+
+		// Add ordinal suffix to week number
+		weekNumStr := fmt.Sprintf("%d%s Sunday ", currentWeekNumber, schemas.OrdinalSuffix(currentWeekNumber))
+		result = append(result, &model.RegistrationWeekly{
+			Data:                             currentWeek,
+			WeekNumber:                       &weekNumStr,
+			SubChurchMemberRegistrationCount: egistrationCount,
+			SubChurchName:                    subChurchName,
+		})
+	}
+
+	return result, nil
+}
+
+// SortDates is the resolver for the SortDates field.
+func (r *queryResolver) SortDates(ctx context.Context, churchID string) ([]string, error) {
+	// result, err := r.Query().CurrentWeekRegistrationsforMainChuech(ctx, churchID)
+	// if err != nil {
+	// 	// Handle error
+	// 	return nil, err
+	// }
+
+	// registrationDates := schemas.ExtractRegistrationDates(result)
+
+	// // Convert time.Time values to string
+	// var dateStrings []string
+	// for _, date := range registrationDates {
+	// 	dateStrings = append(dateStrings, date.Format("2006-01-02 15:04:05.999999-07"))
+	// }
+
+	return nil, nil
+}
+
 // Getmember is the resolver for the Getmember field.
 func (r *queryResolver) Getmember(ctx context.Context, id string) (*model.Member, error) {
 	var Member model.Member
 
 	// Use GORM to find the Member by its ID
-	if err := r.DB.Where("id = ?", id).Preload("SubChurch").Preload("ChurchMinistries.ChurchMinistryRole").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Children.SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").Order("created_at DESC").First(&Member).Error; err != nil {
+	if err := r.DB.Where("id = ?", id).Preload("SubChurch").Preload("ChurchMinistries.ChurchMinistryRole").Preload("ChurchMinistries.ChurchMinistryRole.AssignedSubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Children.SubChurch").Preload("PersonalInfor.EmergencyContact").Preload("PersonalInfor.Spouse").Preload("PersonalInfor.Occupation").Order("created_at DESC").First(&Member).Error; err != nil {
 		return nil, err
 	}
 
@@ -3162,6 +3377,169 @@ func (r *queryResolver) CurrentWeekRegistrationsforCallCenter(ctx context.Contex
 	return subChurches, nil
 }
 
+// CurrentWeekRegistrationsforMainChuech is the resolver for the currentWeekRegistrationsforMainChuech field.
+func (r *queryResolver) CurrentWeekRegistrationsforMainChuech(ctx context.Context, churchID string) ([]*model.RegistrationWeeklyMap, error) {
+	var subChurches []*model.SubChurch
+
+	// Preload SubChurches, Members, and Registrations
+	if err := r.DB.Preload("Members.Registrations").Where("church_id = ?", churchID).Order("created_at DESC").Find(&subChurches).Error; err != nil {
+		return nil, err
+	}
+
+	// Filter SubChurches and Members based on current month registrations
+	for _, subChurch := range subChurches {
+		subChurch.Members = schemas.FilterMembersByMonth(r.DB, ctx, subChurch.Members)
+		subChurch.Members = schemas.FilterMembersWithNullRegistrations(subChurch.Members)
+	}
+
+	// Convert data structure to the format needed for RegistrationWeekly resolver
+	resultData := make(map[string][]*model.RegistrationWeeklyMap)
+	for _, subChurch := range subChurches {
+		registrationDates := schemas.ExtractRegistrationDates([]*model.SubChurch{subChurch}) // Pass a slice containing only the current subChurch
+
+		var dateStrings []string
+		for _, date := range registrationDates {
+			dateStrings = append(dateStrings, date.Format("2006-01-02 15:04:05.999999-07"))
+		}
+
+		// Update the SubChurchName as needed
+		subChurchName := subChurch.Name
+
+		// Calculate SubChurchMemberRegistrationCount
+		registrationCount := len(dateStrings)
+		WeekNumbers := schemas.CalculateWeekNumbers(dateStrings)
+
+		// Create RegistrationWeekly instance and set data
+		for _, WeekNumber := range WeekNumbers {
+			weekNumStr := WeekNumber
+			resultData[weekNumStr] = append(resultData[weekNumStr], &model.RegistrationWeeklyMap{
+				WeekNumber: weekNumStr,
+				Registrations: []*model.RegistrationWeekly{
+					{
+						Data:                             dateStrings,
+						WeekNumber:                       &weekNumStr,
+						SubChurchMemberRegistrationCount: registrationCount,
+						SubChurchName:                    subChurchName,
+					},
+				},
+			})
+		}
+	}
+
+	// Convert map to array for gqlgen
+	var resultArray []*model.RegistrationWeeklyMap
+	for _, registrations := range resultData {
+		resultArray = append(resultArray, registrations...)
+	}
+
+	return resultArray, nil
+}
+
+// WeekRegistrations is the resolver for the WeekRegistrations field.
+func (r *queryResolver) WeekRegistrations(ctx context.Context, churchID string) ([]*model.Registration, error) {
+	var subChurches []*model.SubChurch
+
+	// Preload SubChurches, Members, and Registrations
+	if err := r.DB.Preload("Members.Registrations").Where("church_id = ?", churchID).Order("created_at DESC").Find(&subChurches).Error; err != nil {
+		return nil, err
+	}
+
+	// Extract registrations from subChurches
+	var registrations []*model.Registration
+	for _, subChurch := range subChurches {
+		for _, member := range subChurch.Members {
+			registrations = append(registrations, member.Registrations...)
+		}
+	}
+
+	// Get the current month
+	now := time.Now()
+	currentMonth := now.Month()
+
+	// Filter registrations for the current month
+	var currentMonthRegistrations []*model.Registration
+	for _, reg := range registrations {
+		if reg.CreatedAt.Month() == currentMonth {
+			currentMonthRegistrations = append(currentMonthRegistrations, reg)
+		}
+	}
+
+	// You can optionally sort registrations by a specific criterion if needed.
+
+	return currentMonthRegistrations, nil
+}
+
+// WeeklyRegistrations is the resolver for the WeeklyRegistrations field.
+func (r *queryResolver) WeeklyRegistrations(ctx context.Context, churchID string) ([]map[string]interface{}, error) {
+	var subChurches []*model.SubChurch
+
+	if err := r.DB.Preload("Members.Registrations").Where("church_id = ?", churchID).Order("created_at DESC").Find(&subChurches).Error; err != nil {
+		return nil, err
+	}
+
+	// Get the current month
+	now := time.Now()
+	currentMonth := now.Month()
+
+	// Categorize registrations by week of the current month for each SubChurch
+	weekRegistrations := make([]map[string]interface{}, 0)
+
+	// Nested map structure to store registrations by week and subChurchName
+	weekRegistrationsMap := make(map[int]map[string][]*model.Registration)
+
+	for _, subChurch := range subChurches {
+		var registrations []*model.Registration
+
+		// Extract registrations from SubChurch
+		for _, member := range subChurch.Members {
+			registrations = append(registrations, member.Registrations...)
+		}
+
+		// Filter registrations for the current month
+		var currentMonthRegistrations []*model.Registration
+		for _, reg := range registrations {
+			if reg.CreatedAt.Month() == currentMonth {
+				currentMonthRegistrations = append(currentMonthRegistrations, reg)
+			}
+		}
+
+		// Group registrations by week number
+		for _, reg := range currentMonthRegistrations {
+			// Calculate the week number within the month
+			weekNumber := schemas.WeekNumberInMonth(reg.CreatedAt)
+
+			// Initialize the nested map if it doesn't exist
+			if _, ok := weekRegistrationsMap[weekNumber]; !ok {
+				weekRegistrationsMap[weekNumber] = make(map[string][]*model.Registration)
+			}
+
+			// Append the registration to the corresponding week and subChurchName
+			weekRegistrationsMap[weekNumber][subChurch.Name] = append(weekRegistrationsMap[weekNumber][subChurch.Name], reg)
+		}
+	}
+
+	// Transform the nested map into the desired output format
+	for weekNumber, subChurchRegistrations := range weekRegistrationsMap {
+		// Add ordinal suffix to the week number
+		weekNumStr := fmt.Sprintf("%d%s Sunday", weekNumber, schemas.OrdinalSuffix(weekNumber))
+
+		// Create a map for each week
+		weekData := map[string]interface{}{
+			"name": weekNumStr,
+		}
+
+		// Append subChurch data to the weekData map
+		for subChurchName, registrations := range subChurchRegistrations {
+			countRegister := len(registrations)
+			weekData[subChurchName] = countRegister
+		}
+
+		weekRegistrations = append(weekRegistrations, weekData)
+	}
+
+	return weekRegistrations, nil
+}
+
 // WeekRegistrationsforSub is the resolver for the WeekRegistrationsforSub field.
 func (r *queryResolver) WeekRegistrationsforSub(ctx context.Context) ([]*model.Registration, error) {
 	// leaderID, ok := ctx.Value(middleware.IDContextKey).(string)
@@ -3310,18 +3688,7 @@ type subChurchResolver struct{ *Resolver }
 //   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //     it when you're done.
 //   - You have helper methods in this file. Move them out to keep these resolver files clean.
-func (r *familyInfoResolver) Children(ctx context.Context, obj *model.FamilyInfo) (*model.MemberChildren, error) {
-	panic(fmt.Errorf("not implemented: Children - children"))
-}
-func StringToChurchMinistryRolesEnum(role string) (model.ChurchMinistryRolesEnum, error) {
-	switch role {
-	case "PASTOR":
-		return model.ChurchMinistryRolesEnumPastor, nil
-	case "RAVEN":
-		return model.ChurchMinistryRolesEnumRaven, nil
-	// Add other cases for each enum value
-
-	default:
-		return "", fmt.Errorf("invalid ChurchMinistryRolesEnum value: %s", role)
-	}
+func calculateRegistrationCount(weekData []string) int {
+	// Replace this with the logic to calculate registration count based on weekData
+	return len(weekData)
 }

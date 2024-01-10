@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"regexp"
@@ -676,6 +677,8 @@ func ArrayToString(arr []string) string {
 	return "{" + strings.Join(arr, ",") + "}"
 }
 
+
+
 // func ReadMembersFromCSV(csvFilePath string, churchID *string, db *gorm.DB) ([]*model.Member, error) {
 // 	file, err := os.Open(csvFilePath)
 // 	if err != nil {
@@ -822,3 +825,253 @@ func ConvertToUUIDSlice(strPtrSlice []*string) []uuid.UUID {
 	}
 	return uuidSlice
 }
+
+
+func GetSubChurchRoleCounts(db *gorm.DB,ctx context.Context, subChurchID string) (map[string]int, error) {
+    roleCounts := make(map[string]int)
+
+    // Define the roles to check
+    roles := []string{"PASTOR", "RAVEN", "BISHOP", "SECURITY", "SUNDAY_SCHOOL_TEACHER", "FINANCE", "USHER", "MUSIC", "DOMESTIC", "MEDIA"}
+
+    for _, role := range roles {
+        var count int64
+
+        // Construct the query
+		query := fmt.Sprintf(`
+		EXISTS (
+			SELECT 1 FROM member_church_ministry_roles mcmr
+			JOIN church_ministry_roles cmr ON mcmr.church_ministry_role_id = cmr.id
+			JOIN sub_churches members ON mcmr.member_id = members.id
+			WHERE members.id = ? AND cmr.role = ?
+		)
+		`)
+		
+	
+
+        // Execute the query and get the count
+        if err := db.Raw(query, subChurchID, role).Count(&count).Error; err != nil {
+            return nil, fmt.Errorf("error executing SQL query for %s: %w", role, err)
+        }
+
+        // Store the count in the map
+        roleCounts[role] = int(count)
+    }
+
+    return roleCounts, nil
+}
+func FilterRegistrationsByMonth(db *gorm.DB, ctx context.Context, registrations []*model.Registration) ([]*model.Registration) {
+	// Get the current month
+	now := time.Now()
+	currentMonth := now.Month()
+
+	// Filter registrations for the current month
+	var currentMonthRegistrations []*model.Registration
+	for _, reg := range registrations {
+		if reg.CreatedAt.Month() == currentMonth {
+			reg.LeaderName, _ = getLeaderName(db, ctx, reg.LeaderID)
+
+			// Check if reg.MemberID is not nil before querying the member
+			if reg.MemberID != "" {
+				memberName, err := getMemberName(db, ctx, reg.MemberID)
+				if err == nil {
+					reg.MemberName = memberName
+				} else {
+					// Handle the error (e.g., log it) and continue or return the error
+					log.Println("Error getting member name:", err)
+					continue
+				}
+			}
+
+			currentMonthRegistrations = append(currentMonthRegistrations, reg)
+		}
+	}
+
+	// Sort registrations by CreatedAt
+	sort.Slice(currentMonthRegistrations, func(i, j int) bool {
+		return currentMonthRegistrations[i].CreatedAt.Before(currentMonthRegistrations[j].CreatedAt)
+	})
+
+	return currentMonthRegistrations
+}
+func FilterMembersByMonth(db *gorm.DB, ctx context.Context, members []*model.Member) []*model.Member {
+	var currentWeekMembers []*model.Member
+	for _, member := range members {
+		member.Registrations = FilterRegistrationsByMonth(db, ctx, member.Registrations)
+		currentWeekMembers = append(currentWeekMembers, member)
+	}
+	return currentWeekMembers
+}
+func FilterMembersWithNullRegistrations(members []*model.Member) []*model.Member {
+	var filteredMembers []*model.Member
+	for _, member := range members {
+		if len(member.Registrations) > 0 {
+			// Member has registrations, include in the results
+			filteredMembers = append(filteredMembers, member)
+		}
+		// If you want to exclude members with null registrations, remove the else block
+		// else {
+		// 	// Member has null registrations, exclude from the results
+		// }
+	}
+	return filteredMembers
+}
+
+func ExtractRegistrationDates(result []*model.SubChurch) []time.Time {
+	var dates []time.Time
+
+	for _, subChurch := range result {
+		for _, member := range subChurch.Members {
+			for _, registration := range member.Registrations {
+				dates = append(dates, registration.CreatedAt)
+			}
+		}
+	}
+
+	return dates
+}
+func OrdinalSuffix(n int) string {
+	if n >= 10 && n <= 20 {
+		return "th"
+	}
+	switch n % 10 {
+	case 1:
+		return "st"
+	case 2:
+		return "nd"
+	case 3:
+		return "rd"
+	default:
+		return "th"
+	}
+}
+func WeekNumberInMonth(t time.Time) int {
+	_, weekNumber := t.ISOWeek()
+	firstOfMonth := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
+	_, firstWeek := firstOfMonth.ISOWeek()
+
+	// Calculate the week number within the month
+	return weekNumber - firstWeek + 1
+}
+func CalculateWeekNumber(dateStrings []string) string {
+	// Use the first date to determine the week number
+	if len(dateStrings) > 0 {
+		date, err := time.Parse("2006-01-02 15:04:05.999999-07", dateStrings[0])
+		if err == nil {
+			weekNumber := (date.Day()-1)/7 + 1
+			weekNumStr := fmt.Sprintf("%d%s Sunday", weekNumber,OrdinalSuffix(weekNumber))
+			return weekNumStr
+		}
+	}
+
+	// Return a default value if no valid date is found
+	return "Unknown Week"
+}
+func CalculateWeekNumbers(dateStrings []string) []string {
+    var weekNumbers []string
+
+    for _, dateString := range dateStrings {
+        date, err := time.Parse("2006-01-02 15:04:05.999999-07", dateString)
+        if err == nil {
+            weekNumber := (date.Day()-1)/7 + 1
+            weekNumStr := fmt.Sprintf("%d%s Sunday", weekNumber, OrdinalSuffix(weekNumber))
+            weekNumbers = append(weekNumbers, weekNumStr)
+        }
+    }
+
+    return weekNumbers
+}
+
+func GroupRegistrationsByWeek(registrations []*model.Registration) map[int][]*model.Registration {
+	weekRegistrations := make(map[int][]*model.Registration)
+
+	// Get the current month
+	now := time.Now()
+	currentMonth := now.Month()
+
+	for _, reg := range registrations {
+		if reg.CreatedAt.Month() == currentMonth {
+			// Calculate the week number of the current month
+			_, currentWeek := reg.CreatedAt.ISOWeek()
+
+			// Append the registration to the corresponding week
+			weekRegistrations[currentWeek] = append(weekRegistrations[currentWeek], reg)
+		}
+	}
+
+	return weekRegistrations
+}
+
+// func (r *queryResolver) GetsubChurchTotalMember(ctx context.Context, subChurchID string) (*model.RoleCounts, error) {
+// 	var subChurch model.SubChurch
+
+// 	// Query to retrieve the SubChurch with associated Members and ChurchMinistries
+// 	if err := r.DB.Where("id = ?", subChurchID).
+// 		Preload("Members").
+// 		Preload("Members.ChurchMinistries").
+// 		Preload("Members.ChurchMinistries.ChurchMinistryRole").
+// 		Order("created_at DESC").
+// 		Find(&subChurch).Error; err != nil {
+// 		log.Printf("Error executing SQL query: %v", err)
+// 		return nil, fmt.Errorf("Error executing SQL query: %w", err)
+// 	}
+
+// 	// Query to retrieve all MemberChurchMinistryRoles for the specified SubChurchID
+// 	var roles []model.ChurchMinistryRole
+
+// 	// Query to retrieve all ChurchMinistryRoles for the specified SubChurchID
+// 	if err := r.DB.Where("assigned_sub_church_id = ?", subChurchID).
+// 		Find(&roles).Error; err != nil {
+// 		log.Printf("Error executing SQL query: %v", err)
+// 		return nil, fmt.Errorf("Error executing SQL query: %w", err)
+// 	}
+
+// 	// Map to store role counts
+// 	roleCounts := make(map[string]int)
+
+// 	// // Iterate over ChurchMinistryRoles and log each role
+// 	for _, role := range roles {
+// 		log.Printf("Role: %+v", role)
+
+// 		// Count the occurrences of each role
+// 		roleName := string(*role.Role)
+// 		roleCounts[roleName]++
+// 	}
+
+// 	// Log the role counts
+// 	log.Printf("Role counts for SubChurch ID %s:", subChurchID)
+// 	for roleName, count := range roleCounts {
+// 		log.Printf("%s: %d", roleName, count)
+// 	}
+
+// 	// Log all the roles
+// 	// log.Printf("Log all the roles: %+v", roles)
+
+// 	// Log the total number of members and roles within ChurchMinistries for the SubChurch
+// 	// totalMembers := len(subChurch.Members)
+// 	// roleCounts := make(map[string]int) // Map to store role counts
+
+// 	for _, member := range subChurch.Members {
+// 		for _, churchMinistry := range member.ChurchMinistries {
+// 			role := churchMinistry.ChurchMinistryRole.Role
+// 			roleCounts[string(*role)]++
+// 		}
+// 	}
+
+// 	// Log the role counts for the SubChurch
+// 	// log.Printf("Total Members for SubChurch ID : %d", totalMembers)
+// 	// for role, count := range roleCounts {
+// 	// 	log.Printf("%s: %d", role, count)
+// 	// }
+
+// 	// Calculate the total count of all roles for the specific SubChurchID
+// 	var totalAllRoles int
+// 	for _, count := range roleCounts {
+// 		totalAllRoles += count
+// 	}
+
+// 	// Log the total count of all roles for the specific SubChurchID
+// 	// log.Printf("Total count of all roles for SubChurch ID %d", totalAllRoles)
+
+// 	return nil, nil
+
+// }
