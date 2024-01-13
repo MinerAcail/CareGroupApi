@@ -2002,7 +2002,6 @@ func (r *mutationResolver) RemoveSpouse(ctx context.Context, spouseID string) (b
 	}
 
 	return true, nil
-
 }
 
 // CreateSubChurchesWithMainChurch is the resolver for the createSubChurchesWithMainChurch field.
@@ -2649,6 +2648,33 @@ func (r *queryResolver) GetAllMainChurch(ctx context.Context) ([]*model.Church, 
 	return churches, nil
 }
 
+// GetAllMainChurchWithCurrentRegistrarion is the resolver for the GetAllMainChurchWithCurrentRegistrarion field.
+func (r *queryResolver) GetAllMainChurchWithCurrentRegistrarion(ctx context.Context) ([]*model.Church, error) {
+	var churches []*model.Church
+	if err := r.DB.Preload("SubChurches").Preload("SubChurches.Members").Preload("SubChurches.Members.Registrations").Order("created_at DESC").Find(&churches).Error; err != nil {
+	    return nil, err
+	}
+  
+	// Iterate through churches and filter registrations for the current week
+	currentWeekNumber := schemas.GetWeekNumber(time.Now())
+  
+	for _, church := range churches {
+	    for _, subChurch := range church.SubChurches {
+		  for _, member := range subChurch.Members {
+			var currentRegistrations []*model.Registration
+			for _, registration := range member.Registrations {
+			    if schemas.GetWeekNumber(registration.CreatedAt) == currentWeekNumber {
+				  currentRegistrations = append(currentRegistrations, registration)
+			    }
+			}
+			member.Registrations = currentRegistrations
+		  }
+	    }
+	}
+  
+	return churches, nil
+}
+
 // GetsubChurchByMainChurchID is the resolver for the GetsubChurchByMainChurchID field.
 func (r *queryResolver) GetAllsubChurchByMainChurchID(ctx context.Context, mainChurchID string) ([]*model.SubChurch, error) {
 	var subChurch []*model.SubChurch
@@ -3019,7 +3045,7 @@ func (r *queryResolver) GetCaller(ctx context.Context) ([]*model.Member, error) 
 func (r *queryResolver) GetCallAgent(ctx context.Context) ([]*model.Member, error) {
 	var leaders []*model.Member
 
-	// types := []string{"CallAgent"}
+	// types := []string{"CallAgent"}kkk
 
 	if err := r.DB.WithContext(ctx).
 		Where("? = ANY(types)", "CallAgent").
@@ -3688,6 +3714,9 @@ type subChurchResolver struct{ *Resolver }
 //   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
 //     it when you're done.
 //   - You have helper methods in this file. Move them out to keep these resolver files clean.
+func (r *queryResolver) GetCallAgent1(ctx context.Context) ([]*model.Member, error) {
+	panic(fmt.Errorf("not implemented: GetCallAgent1 - GetCallAgent1"))
+}
 func calculateRegistrationCount(weekData []string) int {
 	// Replace this with the logic to calculate registration count based on weekData
 	return len(weekData)

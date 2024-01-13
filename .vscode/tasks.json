@@ -1,0 +1,26 @@
+{
+      "version": "2.0.0",
+      "tasks": [
+        {
+          "label": "Run Gin Server",
+          "type": "shell",
+          "command": "gin",
+          "args": ["-p", "9091", "run", "server.go"],
+          "group": {
+            "kind": "build",
+            "isDefault": true
+          }
+        },
+        {
+          "label": "Generate GraphQL",
+          "type": "shell",
+          "command": "go",
+          "args": ["run", "github.com/99designs/gqlgen", "generate"],
+          "group": {
+            "kind": "build",
+            "isDefault": false
+          }
+        }
+      ]
+    }
+    

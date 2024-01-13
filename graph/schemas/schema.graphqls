@@ -262,6 +262,7 @@ type KeyValue {
 }
 type Query {
   GetAllMainChurch: [Church]
+  GetAllMainChurchWithCurrentRegistrarion: [Church]
   GetAllsubChurchByMainChurchID(mainChurchId: String!): [SubChurch]
   GetAllsubChurchByMemberId(memberId: String!): [SubChurch]
   GetAllMembersBySubChurchID(subChurchId: String!): [Member]

@@ -274,6 +274,7 @@ type ComplexityRoot struct {
 		FilterAndSortDates                                func(childComplexity int, dateStrings []string, churchID string) int
 		GetAllDaysFormassignCallAgentToMemberRegistration func(childComplexity int) int
 		GetAllMainChurch                                  func(childComplexity int) int
+		GetAllMainChurchWithCurrentRegistrarion           func(childComplexity int) int
 		GetAllMemberBySubLeaderToLeader                   func(childComplexity int, subChurchID string, day string) int
 		GetAllMembersByLeader                             func(childComplexity int, leaderID string) int
 		GetAllMembersBySubChurchID                        func(childComplexity int, subChurchID string) int
@@ -514,6 +515,7 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	GetAllMainChurch(ctx context.Context) ([]*model.Church, error)
+	GetAllMainChurchWithCurrentRegistrarion(ctx context.Context) ([]*model.Church, error)
 	GetAllsubChurchByMainChurchID(ctx context.Context, mainChurchID string) ([]*model.SubChurch, error)
 	GetAllsubChurchByMemberID(ctx context.Context, memberID string) ([]*model.SubChurch, error)
 	GetAllMembersBySubChurchID(ctx context.Context, subChurchID string) ([]*model.Member, error)
@@ -1982,6 +1984,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.GetAllMainChurch(childComplexity), true
+
+	case "Query.GetAllMainChurchWithCurrentRegistrarion":
+		if e.complexity.Query.GetAllMainChurchWithCurrentRegistrarion == nil {
+			break
+		}
+
+		return e.complexity.Query.GetAllMainChurchWithCurrentRegistrarion(childComplexity), true
 
 	case "Query.GetAllMemberBySubLeaderToLeader":
 		if e.complexity.Query.GetAllMemberBySubLeaderToLeader == nil {
@@ -13254,6 +13263,67 @@ func (ec *executionContext) fieldContext_Query_GetAllMainChurch(ctx context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_GetAllMainChurchWithCurrentRegistrarion(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetAllMainChurchWithCurrentRegistrarion(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetAllMainChurchWithCurrentRegistrarion(rctx)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.Church)
+	fc.Result = res
+	return ec.marshalOChurch2ᚕᚖgithubᚗcomᚋkobbiᚋvbciapiᚋgraphᚋmodelᚐChurch(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetAllMainChurchWithCurrentRegistrarion(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Church_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Church_name(ctx, field)
+			case "password":
+				return ec.fieldContext_Church_password(ctx, field)
+			case "email":
+				return ec.fieldContext_Church_email(ctx, field)
+			case "types":
+				return ec.fieldContext_Church_types(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Church_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Church_createdAt(ctx, field)
+			case "token":
+				return ec.fieldContext_Church_token(ctx, field)
+			case "subChurches":
+				return ec.fieldContext_Church_subChurches(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Church", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_GetAllsubChurchByMainChurchID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_GetAllsubChurchByMainChurchID(ctx, field)
 	if err != nil {
@@ -24450,6 +24520,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_GetAllMainChurch(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetAllMainChurchWithCurrentRegistrarion":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetAllMainChurchWithCurrentRegistrarion(ctx, field)
 				return res
 			}
 
